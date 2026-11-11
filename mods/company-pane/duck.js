@@ -43,6 +43,30 @@ export function speciesOf(key) {
   return "sheep";
 }
 
+// Antigravity's arch: a smooth bell, warm at the crown (red and orange), cooling through yellow and green to blue feet.
+// Built once from thin rows (10 units tall), each blended left to right, so it reads as a soft gradient.
+const hexRgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const mixRgb = (a, b, t) => "#" + hexRgb(a).map((v, i) => Math.round(v + (hexRgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
+const ramp = (stops, t) => {
+  for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) return mixRgb(stops[i - 1][1], stops[i][1], (t - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]));
+  return stops.at(-1)[1];
+};
+const ARCH_LEFT = [[0, "#F4723A"], [0.3, "#F6C33A"], [0.5, "#B6D24C"], [0.72, "#52C08C"], [1, "#3186FF"]];
+const ARCH_RIGHT = [[0, "#FC413D"], [0.3, "#F7803A"], [0.5, "#F8B13A"], [0.72, "#8FCB4F"], [1, "#4A97F0"]];
+const ARCH = (() => {
+  const out = [];
+  const SEG = 6;
+  for (let y = 0; y < 120; y += 10) {
+    const t = y / 110;
+    const half = 40 + 53 * Math.pow(Math.min(1, (y + 5) / 115), 0.75);
+    const x0 = 125 - half, w = (half * 2) / SEG;
+    for (let k = 0; k < SEG; k++) out.push([x0 + k * w, y, w + 0.6, 10.6, mixRgb(ramp(ARCH_LEFT, t), ramp(ARCH_RIGHT, t), (k + 0.5) / SEG)]);
+  }
+  // Below the shoulders the arch splits into two blue feet with the arch cut out between them.
+  for (const [y, lw, rx] of [[120, 76, 149], [140, 56, 169], [160, 56, 169], [180, 56, 169]]) out.push([25, y, lw, 20, "#3186FF"], [rx, y, 226 - rx, 20, "#3186FF"]);
+  return out;
+})();
+
 const ROOM = 118; // desk props reach left of the body group
 const WIDTH = ROOM + 250;
 const HEIGHT = 240;
@@ -161,12 +185,7 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .child(leftClaw)
     .child(rightClaw)
     .when(!sp.bot && !sp.arch, (el) => el.child(rect(25, 0, 200, 200, BODY)))
-    .when(Boolean(sp.arch), (el) => el.children([
-      // The Antigravity arch: warm at the crown, cooling through yellow and green to blue feet, with the arch cut out underneath.
-      [0, 85, 80, "#F4723A", "#FC413D"], [20, 65, 120, "#F9A93A", "#F4573A"], [40, 55, 140, "#F2D33C", "#F58B3A"],
-      [60, 45, 160, "#9BCB4E", "#F5B53B"], [80, 38, 174, "#43B98A", "#9BCB4E"], [100, 32, 186, "#3186FF", "#4FA0E6"],
-    ].flatMap(([y, x, w, l, r]) => [rect(x, y, w / 2, 20, l), rect(x + w / 2, y, w / 2, 20, r)])
-      .concat([[120, 25, 76, 174], [140, 25, 56, 144], [160, 25, 56, 144], [180, 25, 56, 144]].flatMap(([y, lx, lw, rx]) => [rect(lx, y, lw, 20, "#3186FF"), rect(rx, y, 226 - rx, 20, "#3186FF")]))))
+    .when(Boolean(sp.arch), (el) => el.children(ARCH.map(([x, y, w, h, c]) => rect(x, y, w, h, c))))
     .when(Boolean(sp.bot), (el) => el
       .child(rect(25, 24, 200, 104, BODY)).child(rect(55, 2, 56, 30, BODY)).child(rect(122, 0, 64, 34, BODY)).child(rect(176, 12, 40, 24, BODY))
       .child(rect(25, 128, 200, 72, BODY)).child(rect(40, 30, 34, 10, "#8E9CFF"))

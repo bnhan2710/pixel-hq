@@ -51,7 +51,7 @@ a lanyard; the robot has its own chest screen and wears none.
 
 | Status | What the pet does | Pane chip |
 | --- | --- | --- |
-| working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" orange, spinner |
+| working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" blue, spinner |
 | blocked | waves its right claw, an amber `!` blinks beside it (`!!`, faster, after a minute) | "needs you" |
 | done | claws up, hops, amber sparkles twinkle | "shipped" green |
 | idle | eyes closed, a mug with steam beside it | "on break" dim |

@@ -9,6 +9,11 @@
   <img src="preview.png" alt="Agent Co. layout for Herdr: an office of pixel pets in the sidebar, desk nameplates on every pane, a team status bar" width="900">
 </p>
 
+<p align="center">
+  <img src="screenshot.png" alt="A real screenshot of the layout" width="900"><br>
+  <sub>A real screenshot (demo data only).</sub>
+</p>
+
 ## What you get
 
 - **An office in your sidebar.** Every agent is a pixel pet sitting on an office chair at its own desk, with a MacBook.

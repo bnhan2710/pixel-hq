@@ -17,32 +17,17 @@ tabs and terminals on the right, a status bar at the bottom.
 
 - **Brand block** (top of the sidebar, 46px): the Herdr logo (`frame/welcome/herdr.png`, 30px, rounded), "Pixel HQ"
   in semibold 14px and under it "engineering floor" in dim 10px. Search and sidebar-toggle buttons on the right.
-- **Floors** (the spaces block, header "Spaces" with a + button): each top-level space is a 62px card, rounded 8, with a 34px
-  building tile, then three lines.
-  - Tile: a rounded square tinted with the space's color (the one Herdr stores in `space.colors`, 20% opacity), a 20x23 building body in the
-    full color with a 4x5 antenna, six 5px windows in two columns (dark by default; one lit amber per agent in the space, up to six;
-    the first goes pink when an agent needs you; lit windows twinkle while someone is typing) and a dark door.
-  - Line 1: a small `L1`, `L2`... chip (floor number = the space's index + 1) and the space name in semibold.
-  - Line 2: the repo (only if its name differs from the space) and the git branch, with green up and red down arrows for ahead and behind.
-    Without git it shows the folder name.
-  - Line 3: one 6px dot per agent (blue typing, pink needs you, green shipped, grey idle) and a word: "empty floor", "N typing", "N on break" or "N needs you".
-  - A floor with an agent that needs you gets a 1px pink outline and a 16px pink `!` badge at its right edge that blinks.
-  - Worktree spaces keep the shipped compact tree rows; drag to reorder, right-click menu and the collapsed rail work as in the shipped mod.
-  - The mod resizes its own block (`layout.resize`) to `31 + floors x 64 + 20` px, between 100 and 380, plus 56 per remote machine,
-    so the office gets the rest; more floors than fit scroll. The layout file starts it at 104px.
-- **The Engineering Floor** (the agents block, bottom of the sidebar): a pixel-art office, all on a 4px grid.
-  - Back wall: two windows onto a night city (lit windows twinkle), a wall clock, a small blue
-    asterisk sign between them, a plant on the left, a water cooler on the right.
-  - Floor: dark tiles and a carpet with a lighter border.
-  - Each agent sits at a wooden desk (a drawer-less top with two legs) on a tall blue-violet office chair with
-    a blue headrest strip, a pole, a star base and wheels. A small nameplate under the desk shows the
-    agent's tab name and how long it has been in this state; the focused agent's plate is yellow,
-    one that needs you is rust-red.
-  - Desks stand in two staggered columns, 6 slots, then wrap with a small offset.
-  - Drag a pet to move its desk anywhere in the room; positions are remembered. Click (no drag)
-    focuses that agent. Right-click a pet to change its figures; right-click empty floor to reset positions.
-- **Pane headers** (40px): the agent's pet (30px tall), its name, a job-title chip, the folder, and a
-  status chip on the right. Hovering shows split, zoom and close buttons.
+- **Floors** (the spaces block, header "Spaces" with a + button): each top-level space is one floor, a 52px card (rounded 8, no outline).
+  - Tile (32x24, rounded 3): a side view of a single room. Wall in the space's color (the one Herdr stores in `space.colors`, top 17px),
+    a dark floor strip (bottom 7px) with a 1px light line on top, a 9x8 window at (4,4) that is amber while an agent in the space is typing and
+    dark otherwise, and one small brown 4x5 desk for each agent in the space, up to three (empty slots are a faint dark square).
+  - Line 1: the space name, semibold. Line 2, dim 11px: the git branch (or the folder name without git), a dot, and "N staff" or "empty",
+    then green up and red down arrows for ahead and behind.
+  - Right edge: one 8px dot. Blue while someone is typing, pink and softly pulsing when an agent needs you, nothing otherwise.
+  - The active floor gets the shipped selected background. Worktree spaces keep the shipped compact tree rows; drag to reorder, the right-click menu
+    and the collapsed rail work as in the shipped mod.
+  - The mod resizes its own block (`layout.resize`) to `31 + floors x 54 + 20` px, between 100 and 380, plus 56 per remote machine, so the
+    office gets the rest; more floors than fit scroll. The layout file starts it at 104px.
 - **Find staff** (above the room, 30px, 10px side margins): a rounded search field with a magnifier icon and the placeholder "Find staff". While there is text it shows "matches/total" and an x button. A pet matches when every word of the query appears in its tab or title text, space name, program name, job title (staff engineer, code reviewer, platform engineer) or a status word (typing/working, idle/break, shipped/done, needs you/blocked). Pets that do not match drop to 14% opacity and matches get a yellow nameplate; Enter focuses the first match.
 - **Status bar** (28px): "Pixel HQ" in lavender, machine, git branch, "N on the team", then colored dots:
   "typing", "need you", "shipped", "on break".

@@ -25,8 +25,8 @@ function place(s, ps) {
   const tabs = new Set((s.tabs ?? []).map((c) => c.id));
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
-// A space is a floor card: building, floor number and name, branch, and one dot per agent working there.
-const CARD = 62;
+// A space is one floor: a small pixel room, the name, the branch and staff count, and a status dot.
+const CARD = 52;
 const rowHeight = ({ tree }) => (tree ? 28 : CARD);
 const RAIL_CELL = 32;
 const railCell = (el) => h_flex().flex_none().justify_center().child(el);
@@ -386,44 +386,35 @@ export default class Spaces extends View {
       .when(g.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)));
   }
 
-  // The floor card for a top-level space.
+  // The floor card for a top-level space: a small pixel room (one floor), the name, one dim line, one status dot.
   card(w, i, g, fill, t) {
     const crew = this.crew?.get(w.id) ?? [];
     const count = (k) => crew.filter((a) => a.status === k).length;
     const blocked = count("blocked"), working = count("working");
-    const lit = Math.min(6, crew.length);
-    const DOT = { working: "#89b4fa", blocked: "#f38ba8", done: "#a6e3a1", idle: "#6c7086" };
-    // A pixel building tinted with the space's color; a lit window per agent (pink when one needs you).
-    const windows = [0, 1, 2, 3, 4, 5].map((k) => {
-      const on = k < lit;
-      const el = div().absolute().left(9 + (k % 2) * 9).top(12 + Math.floor(k / 2) * 7).w(5).h(5).bg(on ? (blocked && k === 0 ? "#f38ba8" : "#f9e2af") : "#00000066");
-      return on && working > 0 ? el.loop("opacity", { from: 0.55, to: 1, period: 1300 + k * 350, easing: "ease-in-out" }) : el;
-    });
-    const building = div().relative().size(34).flex_none().rounded(8).bg(fill + "33")
-      .child(div().absolute().left(15).top(4).w(4).h(5).bg(fill))
-      .child(div().absolute().left(7).top(9).w(20).h(23).bg(fill))
-      .children(windows)
-      .child(div().absolute().left(14).top(26).w(6).h(6).bg("#00000088"));
+    // One floor of the building, seen from the side: wall in the space's color, a dark floor, a window
+    // (lit while someone is typing) and a small desk for each agent, up to three.
+    const room = div().relative().w(32).h(24).flex_none().rounded(3).overflow_hidden()
+      .child(div().absolute().left(0).top(0).w(32).h(17).bg(fill))
+      .child(div().absolute().left(0).top(17).w(32).h(7).bg("#00000066"))
+      .child(div().absolute().left(0).top(17).w(32).h(1).bg("#ffffff33"))
+      .child(div().absolute().left(4).top(4).w(9).h(8).bg(working > 0 ? "#f9e2af" : "#00000040"))
+      .children([0, 1, 2].map((k) => div().absolute().left(17 + k * 5).top(12).w(4).h(5).bg(k < crew.length ? "#7a5436" : "#00000033")));
     const raw = g?.branch ?? null;
-    const repo = g && g.name && g.name.toLowerCase() !== w.name.toLowerCase() ? g.name : "";
-    const where = [repo, raw].filter(Boolean).join(" \u00b7 ") || base(w.folder ?? "");
-    const staff = !crew.length ? "empty floor" : blocked ? `${blocked} needs you` : working ? `${working} typing` : `${crew.length} on break`;
-    const staffColor = blocked ? "#f38ba8" : working ? "#89b4fa" : t.dim;
-    return h_flex().size_full().gap(10).items_center().px(2)
-      .child(building)
-      .child(v_flex().flex_1().min_w(0).gap(2)
-        .child(h_flex().gap(6).items_center()
-          .child(div().flex_none().px(5).h(15).flex().items_center().rounded(4).bg("#ffffff14").text_size(10).font_semibold().text_color(t.dim).child(`L${i + 1}`))
-          .child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(w.name)))
+    const place = raw ?? base(w.folder ?? "");
+    const staff = crew.length ? `${crew.length} staff` : "empty";
+    const dot = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : null;
+    return h_flex().size_full().gap(10).items_center().px(4)
+      .child(room)
+      .child(v_flex().flex_1().min_w(0).gap(1)
+        .child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(w.name))
         .child(h_flex().gap(5).items_center().text_size(11).text_color(t.dim)
-          .child(div().min_w(0).truncate().child(where))
+          .child(div().min_w(0).truncate().child(`${place} \u00b7 ${staff}`))
           .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
-          .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`))))
-        .child(h_flex().gap(3).items_center()
-          .children(crew.slice(0, 8).map((a) => div().size(6).flex_none().rounded(3).bg(DOT[a.status] ?? DOT.idle)))
-          .child(div().ml(crew.length ? 3 : 0).text_size(10.5).text_color(staffColor).child(staff))))
-      .when(blocked > 0, (el) => el.child(div().flex_none().size(16).rounded(8).bg("#f38ba8").flex().items_center().justify_center().text_size(11).font_bold().text_color("#1e1e2e").child("!")
-        .loop("opacity", { from: 0.45, to: 1, period: 700, easing: "linear" })));
+          .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)))))
+      .when(Boolean(dot), (el) => {
+        const d = div().flex_none().size(8).rounded(4).bg(dot).mr(4);
+        return el.child(blocked > 0 ? d.loop("opacity", { from: 0.4, to: 1, period: 900, easing: "ease-in-out" }) : d);
+      });
   }
 
   row({ w, i, g, tree }, t) {
@@ -442,7 +433,6 @@ export default class Spaces extends View {
       .rounded(8)
       .when(on, (el) => el.bg(t.selected))
       .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
-      .when(!tree && (this.crew?.get(w.id) ?? []).some((a) => a.status === "blocked"), (el) => el.border_1().border_color("#f38ba866"))
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
       .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
         div().absolute().left(0).right(0).h(2).bg(t.accent)

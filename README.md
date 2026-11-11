@@ -1,17 +1,10 @@
-<h1 align="center">Pixel HQ</h1>
+<p align="center">
+  <img src="banner.png" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="100%">
+</p>
 
 <p align="center">
   A <a href="https://herdr.dev">Herdr</a> layout where your coding agents are a small engineering company.<br>
   Pixel pets at desks, chairs and MacBooks, in a dark Catppuccin office.
-</p>
-
-<p align="center">
-  <img src="preview.png" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="900">
-</p>
-
-<p align="center">
-  <img src="screenshot.png" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
-  <sub>A real screenshot of the layout (demo data only).</sub>
 </p>
 
 <p align="center">
@@ -51,6 +44,13 @@ One species per agent program, so you can tell who is who at a glance:
 | idle | eyes closed, a mug of coffee steaming at the desk |
 
 All of it is drawn from rectangles and animated with Herdr's native `.loop()`: no timers, no images.
+
+## A real screenshot
+
+<p align="center">
+  <img src="screenshot.png" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
+  <sub>The layout as it runs (demo data only).</sub>
+</p>
 
 ## Install
 

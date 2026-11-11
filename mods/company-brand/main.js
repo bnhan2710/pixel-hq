@@ -50,7 +50,7 @@ export default class WorkspaceChrome extends View {
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center().text_size(13.5)
       .when(window()?.platform === "macos" && !window()?.fullscreen && !collapsed, el => el.pl(76))
       .when(!collapsed, el => el.child(h_flex().flex_1().gap(9).items_center().child(logo)
-        .child(v_flex().gap(0).child(div().font_semibold().text_size(14).text_color(t.foreground).child("Agent Co."))
+        .child(v_flex().gap(0).child(div().font_semibold().text_size(14).text_color(t.foreground).child("Pixel HQ"))
           .child(div().text_size(10).text_color(t.dim).child("engineering floor")))))
       .when(!collapsed, el => el.child(this.button("search", svg("mods/company-brand/search.svg").size(15), () => run("mod.open", { name: "picker" }))))
       // On the macOS rail the traffic lights fill the row; the agents list's » unfolds it.

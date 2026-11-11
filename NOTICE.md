@@ -1,6 +1,6 @@
 # Notices
 
-Agent Co. is built on other people's work:
+Pixel HQ is built on other people's work:
 
 - **`mods/company-agents/`** is a heavily modified copy of the **Pond Agents** mod from
   [SimonBystromTableCheck/herdr-mods](https://github.com/SimonBystromTableCheck/herdr-mods/tree/main/pond-agents)

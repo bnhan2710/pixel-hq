@@ -1,4 +1,4 @@
-<h1 align="center">Agent Co.</h1>
+<h1 align="center">Pixel HQ</h1>
 
 <p align="center">
   A <a href="https://herdr.dev">Herdr</a> layout where your coding agents are a small engineering company.<br>
@@ -6,7 +6,12 @@
 </p>
 
 <p align="center">
-  <img src="preview.png" alt="Agent Co. layout for Herdr: an office of pixel pets in the sidebar, desk nameplates on every pane, a team status bar" width="900">
+  <img src="preview.png" alt="Pixel HQ layout for Herdr: an office of pixel pets in the sidebar, desk nameplates on every pane, a team status bar" width="900">
+</p>
+
+<p align="center">
+  <img src="demo.gif" alt="The engineering floor in motion: pets type at their desks, walk to the water cooler on a break and walk back" width="320"><br>
+  <sub>The floor, live: pets type, stroll to the water cooler on a break and walk back to work.</sub>
 </p>
 
 <p align="center">
@@ -18,10 +23,11 @@
 
 - **An office in your sidebar.** Every agent is a pixel pet sitting on an office chair at its own desk, with a MacBook.
   Drag a pet to move its desk anywhere; click to jump to that agent.
+- **Pets that live their day.** When an agent goes idle its pet gets up from the desk and strolls to the water cooler; when work arrives it walks back. When an agent ships, pixel confetti rains over its desk until you look.
 - **Desk nameplates on every pane.** The pane header shows the pet, its job title and a live status chip:
   `typing`, `needs you`, `shipped` or `on break`.
-- **A team status bar.** "Agent Co. HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.
-- **A company sign.** The Herdr logo with "Agent Co. / engineering floor" at the top of the sidebar.
+- **A team status bar.** "Pixel HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.
+- **A company sign.** The Herdr logo with "Pixel HQ / engineering floor" at the top of the sidebar.
 - **A Catppuccin Mocha palette** with a soft blue accent, in a matching terminal theme.
 
 ## The team
@@ -48,10 +54,10 @@ All of it is drawn from rectangles and animated with Herdr's native `.loop()`: n
 
 Ask your agent:
 
-> Read ~/.config/herdr-app/AGENTS.md, then add this layout: herdr.dev/layouts/bnhan2710/herdr-agent-co
+> Read ~/.config/herdr-app/AGENTS.md, then add this layout: herdr.dev/layouts/bnhan2710/pixel-hq
 
 Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, quit and reopen Herdr once,
-then pick **company** in Settings > Look and the **company** theme.
+then pick **pixel-hq** in Settings > Look and the **pixel-hq** theme.
 
 Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. It makes no network requests; the only programs it runs are local helpers
 (`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). Read it before you install it.

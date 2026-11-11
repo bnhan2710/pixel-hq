@@ -477,6 +477,7 @@ export default class Agents extends View {
       else localStorage.setItem("petpos", JSON.stringify(this.petpos));
       cx.notify();
     };
+    const breakers = list.filter((x) => x.status === "idle" && !x.focused).map((x) => x.address);
     const pets = list.map((a, i) => {
       const [sx, sy] = SLOTS[i % SLOTS.length];
       const lap = Math.floor(i / SLOTS.length) * 0.07;
@@ -489,6 +490,10 @@ export default class Agents extends View {
       const hot = a.status === "blocked";
       // The pet sits on a chair behind a wooden desk (the MacBook is part of the pet).
       const ctr = DUCK_CENTER * petW;
+      const k = breakers.indexOf(a.address);
+      const away = k >= 0;
+      const fx = away ? Math.round(sz.width - petW - 6 - (k % 2) * petW * 0.95 - left) : 0;
+      const fy = away ? Math.round(horizon + 10 + Math.floor(k / 2) * PET * 0.9 - top) : 0;
       const seat = div().relative().w(petW).h(PET + 28)
         // Office chair: tall padded back with an orange headrest, side bolsters, a pole and wheels under the desk.
         .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#5a6393"))
@@ -498,7 +503,12 @@ export default class Agents extends View {
         .child(div().absolute().left(ctr - 15).top(PET * 0.84 + 18).w(30).h(4).bg("#2b2f45"))
         .child(div().absolute().left(ctr - 17).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
         .child(div().absolute().left(ctr + 12).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
-        .child(div().absolute().left(0).top(0).child(figureFor(a.space_name, a.status, PET, now - when, speciesOf(a.program?.key))))
+        // On a break the pet gets up and walks to the water cooler; it walks back when work arrives.
+        .child(div().id(`walker-${a.address}`).absolute().left(fx).top(fy).transition("left", 1400).transition("top", 1400)
+          .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key))))
+        // Shipped: pixel confetti rains over the desk until someone looks at it.
+        .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
+          .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))
         .child(div().absolute().left(-6).top(PET * 0.84).w(petW + 12).h(8).bg("#7a5436"))
         .child(div().absolute().left(-6).top(PET * 0.84).w(petW + 12).h(3).bg("#9a7048"))
         .child(div().absolute().left(-2).top(PET * 0.84 + 8).w(4).h(8).bg("#4d3522"))

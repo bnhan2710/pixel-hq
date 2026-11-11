@@ -1,12 +1,12 @@
-# Agent Co.
+# Pixel HQ
 
 Your coding agents as a small engineering company. Each agent is a pixel pet sitting on a chair
 at its own desk with a MacBook, in a dark office. Its pane header is a desk nameplate with
 its job title. Typing, on a break, shipped, needs you: all drawn.
 
-![Agent Co.](preview.png)
+![Pixel HQ](preview.png)
 
-This file is the brief: enough to build Agent Co. from an empty folder. The files next to it are
+This file is the brief: enough to build Pixel HQ from an empty folder. The files next to it are
 one build of it. If they don't work on your Herdr, or you want it different, build it again from here.
 
 ## What you see
@@ -15,7 +15,7 @@ The Herdr window in a Catppuccin Mocha palette: dark blue-gray panels, light tex
 as the one accent. Panels are rounded (14px) with a faint white 1px border. A sidebar on the left,
 tabs and terminals on the right, a status bar at the bottom.
 
-- **Brand block** (top of the sidebar, 46px): the Herdr logo (`frame/welcome/herdr.png`, 30px, rounded), "Agent Co."
+- **Brand block** (top of the sidebar, 46px): the Herdr logo (`frame/welcome/herdr.png`, 30px, rounded), "Pixel HQ"
   in semibold 14px and under it "engineering floor" in dim 10px. Search and sidebar-toggle buttons on the right.
 - **Spaces list**: the shipped `spaces` mod, unchanged.
 - **The Engineering Floor** (the agents block, bottom of the sidebar): a pixel-art office, all on a 4px grid.
@@ -31,7 +31,7 @@ tabs and terminals on the right, a status bar at the bottom.
     focuses that agent. Right-click a pet to change its figures; right-click empty floor to reset positions.
 - **Pane headers** (40px): the agent's pet (30px tall), its name, a job-title chip, the folder, and a
   status chip on the right. Hovering shows split, zoom and close buttons.
-- **Status bar** (28px): "Agent Co. HQ" in lavender, machine, git branch, "N on the team", then colored dots:
+- **Status bar** (28px): "Pixel HQ" in lavender, machine, git branch, "N on the team", then colored dots:
   "typing", "need you", "shipped", "on break".
 
 ## The pets
@@ -53,19 +53,19 @@ a lanyard; the robot has its own chest screen and wears none.
 | --- | --- | --- |
 | working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" blue, spinner |
 | blocked | waves its right claw, an amber `!` blinks beside it (`!!`, faster, after a minute) | "needs you" |
-| done | claws up, hops, amber sparkles twinkle | "shipped" green |
-| idle | eyes closed, a mug with steam beside it | "on break" dim |
+| done | claws up, hops, amber sparkles twinkle, and seven pixel confetti pieces (yellow, pink, green, blue, violet, orange, teal) fall over the desk until someone looks | "shipped" green |
+| idle | gets up from the desk and walks (1.4 s, eased) to the water cooler by the wall, where idle pets gather in two staggered columns; eyes closed, a mug with steam beside it. It walks back to its desk when work resumes | "on break" dim |
 
 ## Built from
 
-- **The layout** (`layouts/company.json`): a root `row` with `padding: 8`, `gap: 8`, `background: #11111b`,
+- **The layout** (`layouts/pixel-hq.json`): a root `row` with `padding: 8`, `gap: 8`, `background: #11111b`,
   `titlebar: "none"`, `traffic_lights: [12, 16]` and these `colors`: accent `#89b4fa`, chrome `#181825`,
   canvas `#11111b`, background `#1e1e2e`, surface `#262637`, raised `#313244`, border `#ffffff14`.
   Children: a `sidebar` column (brand block 46px, spaces block, agents block, footer block) and a `work`
   column (tabs block 42px, the terminals block `{ tab: "active", pane: { … } }`, a files/changes panel, status block 28px).
   The pane frame: radius 14, gap 8, background `#1e1e2e`, 1px border, focus border `#89b4fa`,
   header `{ mod: "company-pane", height: 40 }`.
-- **Theme** (`themes/company.json`): background `#1e1e2e`, foreground `#cdd6f4`, cursor `#89b4fa`, the Catppuccin Mocha 16-color ANSI set.
+- **Theme** (`themes/pixel-hq.json`): background `#1e1e2e`, foreground `#cdd6f4`, cursor `#89b4fa`, the Catppuccin Mocha 16-color ANSI set.
 - **`mods/company-brand/`**: the shipped `workspace-chrome` header with the logo tile and two-line name.
 - **`mods/company-pane/`**: a pane header. Reads `panes()` for its terminal; draws the pet with `duckMood`
   from its own `duck.js`; chip colors come from the status.
@@ -79,7 +79,7 @@ a lanyard; the robot has its own chest screen and wears none.
 
 ## Install
 
-Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **company** in Settings > Look
-and the **company** theme. Quit and reopen Herdr once so it loads the new mods.
+Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **pixel-hq** in Settings > Look
+and the **pixel-hq** theme. Quit and reopen Herdr once so it loads the new mods.
 
 Credits and licenses: see `NOTICE.md`.

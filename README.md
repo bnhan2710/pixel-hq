@@ -36,6 +36,11 @@ One species per agent program, so you can tell who is who at a glance:
 | OpenCode | penguin | Platform Engineer |
 | anything else | sheep | the program's name |
 
+<p align="center">
+  <img src="team.png" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
+  <sub>Four staff at their desks: two Claude crabs, an OpenCode penguin and a Codex robot (the robot is waiting for you).</sub>
+</p>
+
 | Status | What the pet does |
 | --- | --- |
 | working | sits behind a MacBook with a glowing apple logo and types |

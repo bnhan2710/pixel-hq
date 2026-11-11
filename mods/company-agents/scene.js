@@ -65,5 +65,5 @@ export function scene(W, H) {
 
 // Where each desk stands: x as a fraction of the width, y of the floor. Two staggered columns.
 export const SLOTS = [
-  [0.27, 0.0], [0.74, 0.15], [0.27, 0.5], [0.74, 0.65], [0.27, 1.0], [0.74, 1.0],
+  [0.27, 0.0], [0.74, 0.1], [0.27, 0.62], [0.74, 0.72], [0.27, 1.0], [0.74, 1.0],
 ];

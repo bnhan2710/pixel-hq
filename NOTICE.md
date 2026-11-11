@@ -11,4 +11,6 @@ Pixel HQ is built on other people's work:
   `workspace-chrome`, `pane`, `workspace-status` and `spaces` mods ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
 - The layout starts from Herdr's shipped `main` layout.
 
+`mods/company-brand/logo.png` is the Pixel HQ logo (a corgi at a laptop), made for this project.
+
 Everything else here is MIT, see `LICENSE`.

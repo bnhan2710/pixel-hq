@@ -15,7 +15,7 @@ The Herdr window in a Catppuccin Mocha palette: dark blue-gray panels, light tex
 as the one accent. Panels are rounded (14px) with a faint white 1px border. A sidebar on the left,
 tabs and terminals on the right, a status bar at the bottom.
 
-- **Brand block** (top of the sidebar, 46px): the Herdr logo (`frame/welcome/herdr.png`, 30px, rounded), "Pixel HQ"
+- **Brand block** (top of the sidebar, 46px): the Pixel HQ logo (`mods/company-brand/logo.png`, a pixel-art corgi at a laptop in a rounded purple frame, 34px, transparent corners), "Pixel HQ"
   in semibold 14px and under it "engineering floor" in dim 10px. Search and sidebar-toggle buttons on the right.
 - **Floors** (the spaces block, header "Spaces" with a + button): each top-level space is one floor, a 52px card (rounded 8, no outline).
   - Tile (32x24, rounded 3): a side view of a single room. Wall in the space's color (the one Herdr stores in `space.colors`, top 17px),

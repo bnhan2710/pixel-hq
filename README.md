@@ -22,7 +22,7 @@
   `typing`, `needs you`, `shipped` or `on break`.
 - **Find staff.** A search bar above the office: type a name, a job title (`reviewer`, `engineer`), a status (`typing`, `break`) or a space, and everyone who does not match fades out while matches get a yellow nameplate. Enter jumps to the first match.
 - **A team status bar.** "Pixel HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.
-- **A company sign.** The Herdr logo with "Pixel HQ / engineering floor" at the top of the sidebar.
+- **A company sign.** The Pixel HQ corgi logo with "Pixel HQ / engineering floor" at the top of the sidebar.
 - **A Catppuccin Mocha palette** with a soft blue accent, in a matching terminal theme.
 
 ## The team
@@ -48,7 +48,7 @@ One species per agent program, so you can tell who is who at a glance:
 | shipped | claws up, hops, sparkles |
 | idle | eyes closed, a mug of coffee steaming at the desk |
 
-All of it is drawn from rectangles and animated with Herdr's native `.loop()`: no timers, no images.
+The pets, desks and room are drawn from rectangles and animated with Herdr's native `.loop()`. The only picture is the logo, and the only timer is a one-second tick that decides when a pet steps out.
 
 ## A real screenshot
 

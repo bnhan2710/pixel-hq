@@ -6,17 +6,13 @@
 </p>
 
 <p align="center">
-  <img src="preview.png" alt="Pixel HQ layout for Herdr: an office of pixel pets in the sidebar, desk nameplates on every pane, a team status bar" width="900">
+  <img src="preview.png" alt="Pixel HQ for Herdr: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
+  <sub>A real screenshot of the layout (demo data only).</sub>
 </p>
 
 <p align="center">
-  <img src="demo.gif" alt="The engineering floor in motion: pets type at their desks and step out beside them on a break" width="320"><br>
-  <sub>The floor, live: pets type, step away from the desk on a break and come right back.</sub>
-</p>
-
-<p align="center">
-  <img src="screenshot.png" alt="A real screenshot of the layout" width="900"><br>
-  <sub>A real screenshot (demo data only).</sub>
+  <img src="demo.gif" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
+  <sub>The sidebar, live: floors with a status dot, pets typing at their desks and stepping out for a moment on a break.</sub>
 </p>
 
 ## What you get

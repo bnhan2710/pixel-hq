@@ -6,7 +6,11 @@
 </p>
 
 <p align="center">
-  <img src="preview.png" alt="Pixel HQ for Herdr: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
+  <img src="preview.png" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="900">
+</p>
+
+<p align="center">
+  <img src="screenshot.png" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
   <sub>A real screenshot of the layout (demo data only).</sub>
 </p>
 

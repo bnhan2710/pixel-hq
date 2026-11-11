@@ -26,11 +26,12 @@ const STEAM = "#FFFFFF";
 const BADGE = "#F4E9DC";
 const BADGE_TOP = "#8C4A33";
 
-// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, the rest sheep.
+// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, Antigravity the rainbow arch, the rest sheep.
 const SPECIES = {
   crab: { body: "#D97757", shade: "#B5593B", eye: "#2A1A14", badge: "#F4E9DC" },
   bot: { body: "#5B6CF0", shade: "#4553C9", eye: "#DDE4FF", badge: "#F4E9DC", bot: true, screen: "#1B2140", glyph: "#DDE4FF", legs: [88, 152], legW: 30 },
   penguin: { body: "#2F3B4C", shade: "#243040", eye: "#1A1A1A", badge: "#F2A33A", mask: "#F4F1EA", beak: "#F2A33A", belly: "#F4F1EA" },
+  arch: { body: "#3186FF", shade: "#2a6fdc", eye: "#14131f", badge: "#F4E9DC", arch: true, legs: [25, 169], legW: 56 },
   sheep: { body: "#F1E7D3", shade: "#4A3B33", eye: "#FFFFFF", badge: "#E8744F", face: "#4A3B33" },
 };
 export function speciesOf(key) {
@@ -38,6 +39,7 @@ export function speciesOf(key) {
   if (k.includes("claude")) return "crab";
   if (k.includes("codex")) return "bot";
   if (k.includes("opencode")) return "penguin";
+  if (k.includes("antigravity") || k === "agy") return "arch";
   return "sheep";
 }
 
@@ -97,6 +99,11 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
         ? [rect(64, 48, 12, 12, EYE), rect(76, 60, 12, 12, EYE), rect(88, 72, 12, 12, EYE), rect(76, 84, 12, 12, EYE), rect(64, 96, 12, 12, EYE), motion(rect(120, 90, 38, 10, EYE), "opacity", { from: 0.15, to: 1, period: 600, easing: "linear" })]
         : [rect(55, 42, 20, 30, EYE), rect(164, 42, 20, 30, EYE)];
 
+  // The arch has a narrower crown, so its eyes sit closer together.
+  const eyes2 = sp.arch
+    ? (cheer ? [...arch(75, 50), ...arch(140, 50)] : rest ? [rect(80, 66, 30, 8, EYE), rect(140, 66, 30, 8, EYE)] : [rect(88, 46, 20, 30, EYE), rect(142, 46, 20, 30, EYE)])
+    : eyes;
+
   // Claws. Typing: they alternate. Waving: the right one waves up. Cheering: both flap high.
   let leftClaw = rect(0, 122, 25, 40, SHADE);
   let rightClaw = rect(225, 122, 25, 40, SHADE);
@@ -116,9 +123,15 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     // Sitting behind a MacBook: we see the silver lid with its glowing apple, the screen's light on the face.
     const SILVER = "#c9ced6", EDGE = "#a7adb8", DECK = "#aeb4c0";
     const glow = motion(rect(40, 56, 170, 44, "#8fd0ff"), "opacity", { from: 0.06, to: 0.2, period: 900, easing: "ease-in-out" });
-    const apple = motion(div().absolute().left(0).top(0).w(1).h(1)
-      .child(rect(126, 128, 6, 4, "#ffffff")).child(rect(114, 134, 24, 4, "#ffffff")).child(rect(110, 138, 32, 12, "#ffffff"))
-      .child(rect(114, 150, 24, 6, "#ffffff")).child(rect(138, 138, 6, 6, SILVER)), "opacity", { from: 0.55, to: 1, period: 1400, easing: "ease-in-out" });
+    // The lid shows the maker's logo: the white apple, or for Antigravity its rainbow arch.
+    const lid = sp.arch
+      ? div().absolute().left(0).top(0).w(1).h(1)
+        .child(rect(120, 130, 12, 4, "#FC413D")).child(rect(116, 134, 20, 4, "#F5A83A")).child(rect(112, 138, 28, 4, "#9BCB4E"))
+        .child(rect(110, 142, 10, 12, "#3186FF")).child(rect(132, 142, 10, 12, "#3186FF")).child(rect(114, 142, 24, 4, "#3186FF"))
+      : div().absolute().left(0).top(0).w(1).h(1)
+        .child(rect(126, 128, 6, 4, "#ffffff")).child(rect(114, 134, 24, 4, "#ffffff")).child(rect(110, 138, 32, 12, "#ffffff"))
+        .child(rect(114, 150, 24, 6, "#ffffff")).child(rect(138, 138, 6, 6, SILVER));
+    const apple = motion(lid, "opacity", { from: 0.55, to: 1, period: 1400, easing: "ease-in-out" });
     props = div().absolute().left(0).top(0).w(px(1)).h(px(1))
       .child(glow)
       .child(rect(36, 100, 178, 88, SILVER)).child(rect(36, 100, 178, 4, "#e6e9ee")).child(rect(36, 184, 178, 4, EDGE))
@@ -147,7 +160,13 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
   let group = div().absolute().left(px(ROOM)).top(0).w(px(250)).h(px(207))
     .child(leftClaw)
     .child(rightClaw)
-    .when(!sp.bot, (el) => el.child(rect(25, 0, 200, 200, BODY)))
+    .when(!sp.bot && !sp.arch, (el) => el.child(rect(25, 0, 200, 200, BODY)))
+    .when(Boolean(sp.arch), (el) => el.children([
+      // The Antigravity arch: warm at the crown, cooling through yellow and green to blue feet, with the arch cut out underneath.
+      [0, 85, 80, "#F4723A", "#FC413D"], [20, 65, 120, "#F9A93A", "#F4573A"], [40, 55, 140, "#F2D33C", "#F58B3A"],
+      [60, 45, 160, "#9BCB4E", "#F5B53B"], [80, 38, 174, "#43B98A", "#9BCB4E"], [100, 32, 186, "#3186FF", "#4FA0E6"],
+    ].flatMap(([y, x, w, l, r]) => [rect(x, y, w / 2, 20, l), rect(x + w / 2, y, w / 2, 20, r)])
+      .concat([[120, 25, 76, 174], [140, 25, 56, 144], [160, 25, 56, 144], [180, 25, 56, 144]].flatMap(([y, lx, lw, rx]) => [rect(lx, y, lw, 20, "#3186FF"), rect(rx, y, 226 - rx, 20, "#3186FF")]))))
     .when(Boolean(sp.bot), (el) => el
       .child(rect(25, 24, 200, 104, BODY)).child(rect(55, 2, 56, 30, BODY)).child(rect(122, 0, 64, 34, BODY)).child(rect(176, 12, 40, 24, BODY))
       .child(rect(25, 128, 200, 72, BODY)).child(rect(40, 30, 34, 10, "#8E9CFF"))
@@ -160,7 +179,7 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .when(Boolean(sp.mask), (el) => el.child(rect(48, 24, 144, 76, sp.mask)))
     .when(Boolean(sp.face), (el) => el.child(rect(64, 22, 112, 88, sp.face)).child(rect(14, 40, 26, 18, sp.face)).child(rect(200, 40, 26, 18, sp.face)))
     .when(Boolean(sp.beak), (el) => el.child(rect(104, 80, 32, 22, sp.beak)))
-    .children(eyes)
+    .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
     .when(!sp.bot, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
     .when(Boolean(props), (el) => el.child(props));

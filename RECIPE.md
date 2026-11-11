@@ -41,6 +41,7 @@ One species per agent program, picked from `program.key`:
 | Claude Code | orange crab (`#D97757`, claws and legs `#B5593B`) | Staff Engineer |
 | Codex | blue terminal robot: cloud-shaped head, dark screen face with `>` and a blinking `_`, chest panel | Code Reviewer |
 | OpenCode | penguin: dark blue body, white face and belly, amber beak | Platform Engineer |
+| Antigravity (`agy`, program key `antigravity`) | the logo's arch, built from stepped rectangles: a narrow crown that widens into two feet with the arch cut out underneath. Crown rows go from red and orange through yellow and green on the left, cooling to blue (`#3186FF`) on the shoulders and feet. Eyes sit closer together under the crown. When it types, the laptop lid shows a tiny rainbow arch instead of the white apple | Systems Architect |
 | anything else | sheep: cream wool, brown face | the program's name |
 
 All are blocky, front-facing, built from rectangles. The body is 200x200 units, claws 25x40 at the sides,

@@ -13,4 +13,6 @@ Pixel HQ is built on other people's work:
 
 `mods/company-brand/logo.png` is the Pixel HQ logo (a corgi at a laptop), made for this project.
 
+Claude, Codex, OpenCode, Antigravity and Herdr are names and marks of their respective owners. The pets are fan-made pixel drawings; this project is not affiliated with or endorsed by any of them.
+
 Everything else here is MIT, see `LICENSE`.

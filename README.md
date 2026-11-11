@@ -34,11 +34,17 @@ One species per agent program, so you can tell who is who at a glance:
 | Claude Code | orange crab | Staff Engineer |
 | Codex | blue terminal robot | Code Reviewer |
 | OpenCode | penguin | Platform Engineer |
+| Antigravity (`agy`) | rainbow arch, red crown to blue feet, with its logo on the laptop lid | Systems Architect |
 | anything else | sheep | the program's name |
 
 <p align="center">
   <img src="team.png" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
   <sub>Four staff at their desks: two Claude crabs, an OpenCode penguin and a Codex robot (the robot is waiting for you).</sub>
+</p>
+
+<p align="center">
+  <img src="agy.png" alt="Antigravity's pet up close: a rainbow arch typing at a laptop whose lid shows the arch logo" width="300"><br>
+  <sub>Antigravity (<code>agy</code>) gets its own pet: the logo's arch, red crown to blue feet, with the arch logo on its laptop lid.</sub>
 </p>
 
 | Status | What the pet does |

@@ -6,11 +6,11 @@ import { duckMood, duckWidth, mood } from "./duck.js";
 
 const SPECIES = (key) => {
   const k = String(key ?? "").toLowerCase();
-  return k.includes("claude") ? "crab" : k.includes("codex") ? "bot" : k.includes("opencode") ? "penguin" : k.includes("gemini") ? "sheep" : null;
+  return k.includes("claude") ? "crab" : k.includes("codex") ? "bot" : k.includes("opencode") ? "penguin" : (k.includes("antigravity") || k === "agy") ? "arch" : k.includes("gemini") ? "sheep" : null;
 };
 const ROLE = (p) => {
   const k = String(p.program?.key ?? "").toLowerCase();
-  return k.includes("claude") ? "Staff Engineer" : k.includes("codex") ? "Code Reviewer" : k.includes("opencode") ? "Platform Engineer" : k.includes("gemini") ? "Data Scientist"
+  return k.includes("claude") ? "Staff Engineer" : k.includes("codex") ? "Code Reviewer" : k.includes("opencode") ? "Platform Engineer" : (k.includes("antigravity") || k === "agy") ? "Systems Architect" : k.includes("gemini") ? "Data Scientist"
     : p.program?.shell ? "Terminal" : (p.program?.name ?? "Contractor");
 };
 

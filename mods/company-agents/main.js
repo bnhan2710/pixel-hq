@@ -501,7 +501,7 @@ export default class Agents extends View {
       else localStorage.setItem("petpos", JSON.stringify(this.petpos));
       cx.notify();
     };
-    const ROLES = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? "staff engineer" : k.includes("codex") ? "code reviewer" : k.includes("opencode") ? "platform engineer" : ""; };
+    const ROLES = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? "staff engineer" : k.includes("codex") ? "code reviewer" : k.includes("opencode") ? "platform engineer" : (k.includes("antigravity") || k === "agy") ? "systems architect" : ""; };
     const STATE = { working: "typing working busy", idle: "idle break coffee", done: "shipped done finished", blocked: "needs you blocked waiting" };
     const q = this.query.trim().toLowerCase();
     const hitOf = (a) => !q || q.split(/\s+/).every((w) => [detail.get(a.address), a.space_name, label(a), a.program?.name, ROLES(a), STATE[a.status]].join(" ").toLowerCase().includes(w));

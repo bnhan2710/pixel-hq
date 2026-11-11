@@ -391,14 +391,27 @@ export default class Spaces extends View {
     const crew = this.crew?.get(w.id) ?? [];
     const count = (k) => crew.filter((a) => a.status === k).length;
     const blocked = count("blocked"), working = count("working");
-    // One floor of the building, seen from the side: wall in the space's color, a dark floor, a window
-    // (lit while someone is typing) and a small desk for each agent, up to three.
-    const room = div().relative().w(32).h(24).flex_none().rounded(3).overflow_hidden()
-      .child(div().absolute().left(0).top(0).w(32).h(17).bg(fill))
-      .child(div().absolute().left(0).top(17).w(32).h(7).bg("#00000066"))
-      .child(div().absolute().left(0).top(17).w(32).h(1).bg("#ffffff33"))
-      .child(div().absolute().left(4).top(4).w(9).h(8).bg(working > 0 ? "#f9e2af" : "#00000040"))
-      .children([0, 1, 2].map((k) => div().absolute().left(17 + k * 5).top(12).w(4).h(5).bg(k < crew.length ? "#7a5436" : "#00000033")));
+    // One floor of the night office, cut away like a dollhouse: a glowing window and LED screen on the wall, and one desk per agent
+    // (up to three) with a tiny pet in its own colours. Lights are on while someone works; an empty floor goes dark.
+    const R = (x, y, w, h, c) => div().absolute().left(x).top(y).w(w).h(h).bg(c);
+    const lit = working > 0, any = crew.length > 0;
+    const skin = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? ["#D97757", "#D97757"] : k.includes("codex") ? ["#5B6CF0", "#5B6CF0"] : k.includes("opencode") ? ["#4a5a70", "#F4F1EA"] : (k.includes("antigravity") || k === "agy") ? ["#F6A03A", "#3186FF"] : ["#F1E7D3", "#F1E7D3"]; };
+    const room = div().relative().w(54).h(40).flex_none().rounded(6).overflow_hidden().border_1().border_color("#0c0e1c")
+      .child(R(0, 0, 54, 24, any ? "#2a2f52" : "#20243d")).child(R(0, 0, 54, 3, fill)).child(R(0, 3, 54, 1, "#ffffff22"))
+      .child(R(4, 7, 22, 15, "#0c0e1c")).child(R(5, 8, 20, 13, lit ? "#1a2350" : "#0e1226"))
+      .child(R(6, 15, 4, 6, "#121733")).child(R(11, 12, 5, 9, "#121733")).child(R(17, 16, 6, 5, "#121733"))
+      .child(R(12, 14, 1, 1, "#f5e9b0")).child(R(14, 17, 1, 1, "#f5e9b0")).child(R(7, 17, 1, 1, "#e0b94a")).child(R(19, 18, 1, 1, "#e0b94a"))
+      .child(R(20, 10, 3, 3, lit ? "#f7efc0" : "#9a947a")).child(R(14, 8, 1, 13, "#0c0e1c"))
+      .child(R(31, 6, 19, 16, "#0a0c1a")).child(R(32, 7, 17, 14, "#10132a"))
+      .children([["#f4723a", 0, 9], ["#8fcb4f", 3, 10], ["#37c5d6", 0, 6], ["#f9d23c", 2, 11], ["#c678dd", 0, 8], ["#f38ba8", 4, 9]].map(([c, x, w], k) => { const bar = R(34 + x, 9 + k * 2, Math.min(w, 13 - x), 1, c); return lit && k % 2 === 0 ? bar.loop("opacity", { from: 0.4, to: 1, period: 800 + k * 200, easing: "ease-in-out" }) : bar; }))
+      .child(R(0, 24, 54, 16, "#242843")).child(R(0, 24, 54, 2, "#171a2c")).child(R(0, 31, 54, 1, "#1c1f36")).child(R(18, 26, 1, 14, "#1c1f36")).child(R(36, 26, 1, 14, "#1c1f36"))
+      .children([0, 1, 2].flatMap((k) => {
+        const x = 3 + k * 17, a = crew[k];
+        const pet = a ? (() => { const [c1, c2] = skin(a); return [R(x + 2, 24, 10, 8, "#3c4054"), R(x + 3, 23, 8, 4, c1), R(x + 3, 26, 8, 4, c2), R(x + 4, 25, 1, 2, "#14131f"), R(x + 8, 25, 1, 2, "#14131f")]; })() : [];
+        const glow = a ? R(x + 3, 30, 8, 3, a.status === "blocked" ? "#f38ba8" : "#d8def0") : R(x + 3, 30, 8, 3, "#323650");
+        const mark = a && a.status === "blocked" ? [R(x + 12, 20, 2, 5, "#f9e2af").loop("opacity", { from: 0.2, to: 1, period: 700, easing: "linear" }), R(x + 12, 26, 2, 2, "#f9e2af")] : a && a.status === "done" ? [R(x + 11, 21, 2, 2, "#a6e3a1"), R(x + 2, 20, 2, 2, "#f9e2af")] : [];
+        return [...pet, R(x, 32, 14, 3, "#646a8c"), R(x, 32, 14, 1, "#8a91b6"), glow, ...mark];
+      }));
     const raw = g?.branch ?? null;
     const place = raw ?? base(w.folder ?? "");
     const staff = crew.length ? `${crew.length} staff` : "empty";

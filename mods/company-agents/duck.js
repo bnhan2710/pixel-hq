@@ -31,7 +31,7 @@ const SPECIES = {
   crab: { body: "#D97757", shade: "#B5593B", eye: "#2A1A14", badge: "#F4E9DC" },
   bot: { body: "#5B6CF0", shade: "#4553C9", eye: "#DDE4FF", badge: "#F4E9DC", bot: true, screen: "#1B2140", glyph: "#DDE4FF", legs: [88, 152], legW: 30 },
   penguin: { body: "#2F3B4C", shade: "#243040", eye: "#1A1A1A", badge: "#F2A33A", mask: "#F4F1EA", beak: "#F2A33A", belly: "#F4F1EA" },
-  arch: { body: "#3186FF", shade: "#2a6fdc", eye: "#14131f", badge: "#F4E9DC", arch: true, legs: [25, 169], legW: 56 },
+  arch: { body: "#3186FF", shade: "#E8743B", eye: "#14131f", badge: "#F4E9DC", arch: true, legs: [70, 126], legW: 54 },
   sheep: { body: "#F1E7D3", shade: "#4A3B33", eye: "#FFFFFF", badge: "#E8744F", face: "#4A3B33" },
 };
 export function speciesOf(key) {
@@ -51,19 +51,32 @@ const ramp = (stops, t) => {
   for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) return mixRgb(stops[i - 1][1], stops[i][1], (t - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]));
   return stops.at(-1)[1];
 };
-const ARCH_LEFT = [[0, "#F4723A"], [0.3, "#F6C33A"], [0.5, "#B6D24C"], [0.72, "#52C08C"], [1, "#3186FF"]];
-const ARCH_RIGHT = [[0, "#FC413D"], [0.3, "#F7803A"], [0.5, "#F8B13A"], [0.72, "#8FCB4F"], [1, "#4A97F0"]];
+// Antigravity: a gradient cube head, a blue-green torso with the Antigravity badge on the chest,
+// orange arms and boots. Built from thin rects blended from red/orange at the crown through green to blue.
+const HEAD_L = [[0, "#F4723A"], [0.38, "#F6B03A"], [0.7, "#8FCB4F"], [1, "#52C08C"]];
+const HEAD_R = [[0, "#F7803A"], [0.35, "#D6C24A"], [0.62, "#7BD07A"], [0.85, "#45B8A8"], [1, "#3186FF"]];
+const TORSO = [[0, "#3186FF"], [0.55, "#35A3C4"], [1, "#52C08C"]];
 const ARCH = (() => {
   const out = [];
-  const SEG = 6;
-  for (let y = 0; y < 120; y += 10) {
-    const t = y / 110;
-    const half = 40 + 53 * Math.pow(Math.min(1, (y + 5) / 115), 0.75);
-    const x0 = 125 - half, w = (half * 2) / SEG;
-    for (let k = 0; k < SEG; k++) out.push([x0 + k * w, y, w + 0.6, 10.6, mixRgb(ramp(ARCH_LEFT, t), ramp(ARCH_RIGHT, t), (k + 0.5) / SEG)]);
+  // Top face of the cube: rows that widen toward the front edge.
+  for (let y = 8; y < 44; y += 3) {
+    const t = (y - 8) / 36, x0 = 62 - t * 22, x1 = 182 + t * 14;
+    for (let k = 0; k < 4; k++) out.push([x0 + ((x1 - x0) / 4) * k, y, (x1 - x0) / 4 + 0.6, 3.6, mixRgb(mixRgb("#FF5A3C", "#FF9A4A", k / 3), "#FFB36A", t * 0.5)]);
   }
-  // Below the shoulders the arch splits into two blue feet with the arch cut out between them.
-  for (const [y, lw, rx] of [[120, 76, 149], [140, 56, 169], [160, 56, 169], [180, 56, 169]]) out.push([25, y, lw, 20, "#3186FF"], [rx, y, 226 - rx, 20, "#3186FF"]);
+  // Front-left face (the arch side) and the wide right face (the face), in 6-unit rows.
+  for (let y = 44; y < 134; y += 6) {
+    const t = (y - 44) / 90;
+    out.push([40, y, 64, 6.6, ramp(HEAD_L, t)]);
+    for (let k = 0; k < 4; k++) out.push([104 + k * 23, y, 23.6, 6.6, mixRgb(ramp(HEAD_R, t), ramp(HEAD_L, t), 0.35 - k * 0.1)]);
+  }
+  out.push([104, 44, 3, 90, "#ffffff55"]);
+  // Neck ring and a round torso.
+  out.push([64, 132, 122, 10, "#3186FF"], [64, 132, 122, 3, "#6FB2FF"]);
+  for (let y = 142; y < 208; y += 6) out.push([68, y, 114, 6.6, ramp(TORSO, (y - 142) / 66)]);
+  // The Antigravity logo sits straight on the suit (no plate), to the right and a little higher, with a thin pale halo.
+  const logo = [[134, 156, 8, 3, "#FC413D"], [131, 159, 14, 3, "#F5A83A"], [128, 162, 20, 3, "#9BCB4E"], [126, 165, 8, 12, "#3186FF"], [142, 165, 8, 12, "#3186FF"], [130, 165, 16, 3, "#3186FF"]];
+  for (const [x, y, w, h] of logo) out.push([x - 2, y - 2, w + 4, h + 4, "#eaf6ffcc"]);
+  for (const l of logo) out.push(l);
   return out;
 })();
 
@@ -123,22 +136,29 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
         ? [rect(64, 48, 12, 12, EYE), rect(76, 60, 12, 12, EYE), rect(88, 72, 12, 12, EYE), rect(76, 84, 12, 12, EYE), rect(64, 96, 12, 12, EYE), motion(rect(120, 90, 38, 10, EYE), "opacity", { from: 0.15, to: 1, period: 600, easing: "linear" })]
         : [rect(55, 42, 20, 30, EYE), rect(164, 42, 20, 30, EYE)];
 
-  // The arch has a narrower crown, so its eyes sit closer together.
+  // Antigravity: big glossy eyes with blush on the wide face, .
+  const WH = "#ffffff";
+  const archFace = cheer
+    ? [rect(122, 80, 24, 7, EYE), rect(127, 73, 14, 7, EYE), rect(164, 80, 24, 7, EYE), rect(169, 73, 14, 7, EYE)]
+    : rest
+      ? [rect(122, 84, 26, 7, EYE), rect(162, 84, 26, 7, EYE)]
+      : [rect(122, 66, 24, 32, EYE), rect(162, 66, 24, 32, EYE), rect(127, 91, 14, 7, "#2a6fdc"), rect(167, 91, 14, 7, "#2a6fdc"), rect(128, 70, 9, 9, WH), rect(168, 70, 9, 9, WH)];
   const eyes2 = sp.arch
-    ? (cheer ? [...arch(75, 50), ...arch(140, 50)] : rest ? [rect(80, 66, 30, 8, EYE), rect(140, 66, 30, 8, EYE)] : [rect(88, 46, 20, 30, EYE), rect(142, 46, 20, 30, EYE)])
+    ? [...archFace, rect(116, 104, 22, 8, "#ef6a7e"), rect(170, 104, 22, 8, "#ef6a7e")]
     : eyes;
 
   // Claws. Typing: they alternate. Waving: the right one waves up. Cheering: both flap high.
-  let leftClaw = rect(0, 122, 25, 40, SHADE);
-  let rightClaw = rect(225, 122, 25, 40, SHADE);
+  const LX = sp.arch ? 26 : 0, RX = sp.arch ? 194 : 225, CW = sp.arch ? 30 : 25;
+  let leftClaw = rect(LX, 122, CW, 40, SHADE);
+  let rightClaw = rect(RX, 122, CW, 40, SHADE);
   if (typing) {
-    leftClaw = motion(rect(0, 122, 25, 40, SHADE), "top", { from: px(122), to: px(110), period: 240, easing: "ease-in-out" });
-    rightClaw = motion(rect(225, 122, 25, 40, SHADE), "top", { from: px(110), to: px(122), period: 240, easing: "ease-in-out" });
+    leftClaw = motion(rect(LX, 122, CW, 40, SHADE), "top", { from: px(122), to: px(110), period: 240, easing: "ease-in-out" });
+    rightClaw = motion(rect(RX, 122, CW, 40, SHADE), "top", { from: px(110), to: px(122), period: 240, easing: "ease-in-out" });
   } else if (waving) {
-    rightClaw = motion(rect(225, 55, 25, 85, SHADE), "top", { from: px(48), to: px(66), period: urgent ? 260 : 480, easing: "ease-in-out" });
+    rightClaw = motion(rect(RX, 55, CW, 85, SHADE), "top", { from: px(48), to: px(66), period: urgent ? 260 : 480, easing: "ease-in-out" });
   } else if (cheer) {
-    leftClaw = motion(rect(0, 60, 25, 80, SHADE), "top", { from: px(50), to: px(70), period: 300, easing: "ease-in-out" });
-    rightClaw = motion(rect(225, 60, 25, 80, SHADE), "top", { from: px(70), to: px(50), period: 300, easing: "ease-in-out" });
+    leftClaw = motion(rect(LX, 60, CW, 80, SHADE), "top", { from: px(50), to: px(70), period: 300, easing: "ease-in-out" });
+    rightClaw = motion(rect(RX, 60, CW, 80, SHADE), "top", { from: px(70), to: px(50), period: 300, easing: "ease-in-out" });
   }
 
   // Desk props in the room on the left.
@@ -200,7 +220,7 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .when(Boolean(sp.beak), (el) => el.child(rect(104, 80, 32, 22, sp.beak)))
     .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
-    .when(!sp.bot, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
+    .when(!sp.bot && !sp.arch, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
     .when(Boolean(props), (el) => el.child(props));
   group = cheer
     ? motion(group, "top", { from: 0, to: px(-18), period: 300, easing: "ease-in-out" })

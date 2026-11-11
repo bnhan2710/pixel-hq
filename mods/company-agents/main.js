@@ -1,12 +1,12 @@
 // Agents in grouped or priority views; parents take their most urgent sub-agent's place.
 // A viewed done agent stays in Done until left.
 
-import { View, div, svg } from "gpui-kit";
+import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
-import { scene, SLOTS, yHorizon } from "./scene.js";
+import { scene, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
 
 // The figure editor, as a dialog; `space` opens it on that space's pick.
@@ -125,7 +125,7 @@ export default class Agents extends View {
       if (now < this.nextAt) return;
       this.nextAt = now + 3000;
       const c = this.breakerList.filter((x) => this.drag?.addr !== x);
-      if (c.length) { this.out = { addr: c[Math.floor(Math.random() * c.length)], until: now + 3600 }; cx.notify(); }
+      if (c.length) { this.out = { addr: c[Math.floor(Math.random() * c.length)], until: now + 9000 }; cx.notify(); }
     });
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
@@ -488,11 +488,19 @@ export default class Agents extends View {
 
     // Expanded: a pixel farm with one small pet per agent, scattered over the field.
     const sz = this.size ?? { width: 268, height: 640 };
-    const PET = 46;
-    const petW = duckWidth(PET);
+    // Every agent gets a desk. The more agents, the smaller the desks (never below 0.42x), so all of them stay visible.
     const horizon = yHorizon(sz.height);
     const fieldTop = horizon + 20;
-    const fieldH = Math.max(40, sz.height - fieldTop - (PET + 46));
+    const nAgents = list.length;
+    const plan = (sc) => {
+      const P = Math.round(46 * sc), pw = duckWidth(P), cw = Math.max(pw + Math.round(24 * sc), 76), ch = P + Math.round(28 * sc) + 26;
+      return { sc, P, pw, cw, ch, cols: Math.max(1, Math.floor((sz.width - 8) / cw)), rows: Math.max(1, Math.floor((sz.height - fieldTop - 4) / ch)) };
+    };
+    const P0 = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42].map(plan);
+    const pick = P0.find((p) => p.cols * p.rows >= nAgents) ?? P0[P0.length - 1];
+    const S = pick.sc, PET = pick.P, petW = pick.pw, cellW = pick.cw, cellH = pick.ch;
+    const kk = (v) => Math.round(v * S);
+    const fieldH = Math.max(0, sz.height - fieldTop - cellH);
     const endDrag = (cx) => {
       const d = this.drag;
       if (!d) return;
@@ -510,14 +518,21 @@ export default class Agents extends View {
     const breakers = list.filter((x) => x.status === "idle" && !x.focused).map((x) => x.address);
     this.breakerList = breakers;
     const stable = list.map((x) => x.address).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
-    const pets = list.map((a, i) => {
+    const seated = list.slice(0, pick.cols * pick.rows);
+    const shownSet = new Set(seated.map((x) => x.address));
+    const order = stable.filter((x) => shownSet.has(x));
+    const colsUsed = Math.min(pick.cols, Math.max(2, Math.ceil(seated.length / pick.rows)));
+    const rowsUsed = Math.ceil(seated.length / colsUsed);
+    const hidden = list.length - seated.length;
+    const pets = seated.map((a, i) => {
       // A pet keeps its desk: slots follow a stable order, not the status sort.
-      const slot = stable.indexOf(a.address);
-      const [sx, sy] = SLOTS[slot % SLOTS.length];
-      const lap = Math.floor(slot / SLOTS.length) * 0.07;
+      const slot = order.indexOf(a.address);
+      const sx = ((slot % colsUsed) + 0.5) / colsUsed;
+      const sy = rowsUsed > 1 ? (Math.floor(slot / colsUsed) + ((slot % colsUsed) % 2) * (rowsUsed < 3 ? 0.12 : 0)) / (rowsUsed - 1 + (rowsUsed < 3 ? 0.12 : 0)) : 0;
+      const lap = 0;
       const own = this.petpos[a.address];
       const left = own ? own[0] * sz.width : Math.max(2, Math.min(sz.width - petW - 2, sz.width * Math.min(0.92, sx + lap) - petW / 2));
-      const top = own ? own[1] * sz.height : fieldTop + fieldH * ((sy + lap) % 1);
+      const top = own ? own[1] * sz.height : fieldTop + fieldH * Math.min(1, sy + lap);
       const more = detail.get(a.address);
       const text = more ?? a.space_name ?? label(a);
       const when = this.since(a);
@@ -528,17 +543,33 @@ export default class Agents extends View {
       const away = k >= 0;
       // On a break the pet steps out beside its desk for a moment and comes right back, over and over.
       const dir = left + petW / 2 < sz.width / 2 ? 1 : -1;
-      const dx = dir * (petW + 14);
+      const dx = dir * Math.min(petW + kk(14), Math.max(kk(14), Math.round((cellW - petW) / 2)));
       const dy = Math.round(PET * 0.3);
-      const seat = div().relative().w(petW).h(PET + 28)
-        // Office chair: tall padded back with an orange headrest, side bolsters, a pole and wheels under the desk.
-        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#5a6393"))
-        .child(div().absolute().left(ctr - petW * 0.4 + 4).top(-4).w(petW * 0.8 - 8).h(PET * 0.84 - 4).bg("#464e7a"))
-        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(5).bg("#89b4fa"))
-        .child(div().absolute().left(ctr - 2).top(PET * 0.84 + 8).w(4).h(10).bg("#2b2f45"))
-        .child(div().absolute().left(ctr - 15).top(PET * 0.84 + 18).w(30).h(4).bg("#2b2f45"))
-        .child(div().absolute().left(ctr - 17).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
-        .child(div().absolute().left(ctr + 12).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
+      const seat = div().relative().w(petW).h(PET + kk(28))
+        // Office chair seen from behind: a tall rounded back with a headrest, a lighter cushion with a centre seam,
+        // two rounded armrests, then a pole and a star base with wheels under the desk.
+        .child(div().absolute().left(ctr - petW * 0.4 - kk(2)).top(-kk(12)).w(petW * 0.8 + kk(4)).h(PET * 0.9 + kk(2)).rounded_t(11).bg("#1c1e2c"))
+        .child(div().absolute().left(ctr - kk(15)).top(-kk(17)).w(kk(30)).h(kk(11)).rounded_t(6).bg("#1c1e2c"))
+        .child(div().absolute().left(ctr - kk(13)).top(-kk(15)).w(kk(26)).h(kk(9)).rounded_t(5).bg("#4d5273"))
+        .child(div().absolute().left(ctr - petW * 0.4).top(-kk(10)).w(petW * 0.8).h(PET * 0.9).rounded_t(9).bg("#3c4054"))
+        .child(div().absolute().left(ctr - petW * 0.4 + kk(5)).top(-kk(1)).w(petW * 0.8 - kk(10)).h(PET * 0.9 - kk(12)).rounded_t(6).bg("#474c66"))
+        .child(div().absolute().left(ctr - kk(1)).top(kk(0)).w(kk(2)).h(PET * 0.9 - kk(13)).bg("#363a4f"))
+        .child(div().absolute().left(ctr - petW * 0.4 + kk(7)).top(-kk(8)).w(petW * 0.8 - kk(14)).h(kk(3)).rounded(2).bg("#60668a"))
+        .child(div().absolute().left(ctr - petW * 0.4 - kk(9)).top(PET * 0.34).w(kk(11)).h(kk(19)).rounded(4).bg("#1c1e2c"))
+        .child(div().absolute().left(ctr - petW * 0.4 - kk(7)).top(PET * 0.34 + kk(2)).w(kk(8)).h(kk(16)).rounded(3).bg("#32364b"))
+        .child(div().absolute().left(ctr - petW * 0.4 - kk(6)).top(PET * 0.34 + kk(3)).w(kk(6)).h(kk(3)).rounded(1).bg("#585e82"))
+        .child(div().absolute().left(ctr + petW * 0.4 - kk(2)).top(PET * 0.34).w(kk(11)).h(kk(19)).rounded(4).bg("#1c1e2c"))
+        .child(div().absolute().left(ctr + petW * 0.4 - kk(1)).top(PET * 0.34 + kk(2)).w(kk(8)).h(kk(16)).rounded(3).bg("#32364b"))
+        .child(div().absolute().left(ctr + petW * 0.4).top(PET * 0.34 + kk(3)).w(kk(6)).h(kk(3)).rounded(1).bg("#585e82"))
+        .child(div().absolute().left(ctr - kk(2)).top(PET * 0.84 + kk(8)).w(kk(4)).h(kk(10)).bg("#2b2f45"))
+        .child(div().absolute().left(ctr - kk(15)).top(PET * 0.84 + kk(18)).w(kk(30)).h(kk(4)).bg("#2b2f45"))
+        .child(div().absolute().left(ctr - kk(17)).top(PET * 0.84 + kk(22)).w(kk(5)).h(kk(4)).bg("#14172a"))
+        .child(div().absolute().left(ctr + kk(12)).top(PET * 0.84 + kk(22)).w(kk(5)).h(kk(4)).bg("#14172a"))
+        // Cubicle panels on both sides of the desk.
+        .child(div().absolute().left(-kk(9)).top(PET * 0.34).w(kk(5)).h(PET * 0.62).bg("#8b92b4"))
+        .child(div().absolute().left(-kk(9)).top(PET * 0.34).w(kk(2)).h(PET * 0.62).bg("#aab1d2"))
+        .child(div().absolute().left(petW + kk(4)).top(PET * 0.34).w(kk(5)).h(PET * 0.62).bg("#8b92b4"))
+        .child(div().absolute().left(petW + kk(7)).top(PET * 0.34).w(kk(2)).h(PET * 0.62).bg("#6f7698"))
         .child(div().id(`walker-${a.address}`).absolute()
           .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
@@ -547,10 +578,13 @@ export default class Agents extends View {
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
           .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))
-        .child(div().absolute().left(-6).top(PET * 0.84).w(petW + 12).h(8).bg("#7a5436"))
-        .child(div().absolute().left(-6).top(PET * 0.84).w(petW + 12).h(3).bg("#9a7048"))
-        .child(div().absolute().left(-2).top(PET * 0.84 + 8).w(4).h(8).bg("#4d3522"))
-        .child(div().absolute().left(petW - 2).top(PET * 0.84 + 8).w(4).h(8).bg("#4d3522"));
+        // A steel-grey desk with a front panel, and a mouse on top.
+        .child(div().absolute().left(-kk(6)).top(PET * 0.84).w(petW + kk(12)).h(kk(9)).bg("#646a8c"))
+        .child(div().absolute().left(-kk(6)).top(PET * 0.84).w(petW + kk(12)).h(kk(3)).bg("#7a81a6"))
+        .child(div().absolute().left(-kk(6)).top(PET * 0.84 + kk(9)).w(petW + kk(12)).h(kk(3)).bg("#454a68"))
+        .child(div().absolute().left(-kk(3)).top(PET * 0.84 + kk(12)).w(petW + kk(6)).h(kk(10)).bg("#3b3f5a"))
+        .child(div().absolute().left(ctr - kk(8)).top(PET * 0.84 + kk(15)).w(kk(16)).h(kk(3)).bg("#262a40"))
+        .child(div().absolute().left(petW - kk(6)).top(PET * 0.84 - kk(4)).w(kk(7)).h(kk(4)).rounded(2).bg("#c9cee6"));
       return v_flex()
         .id(`pet-${a.address}`)
         .absolute()
@@ -568,10 +602,10 @@ export default class Agents extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openFigures(a.space_name); })
         .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text} · drag to move`)
         .child(seat)
-        .child(div().mt(6).max_w(petW + 22).px(5).h(15).flex().items_center().rounded(3)
+        .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center().rounded(3)
           .bg(a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
           .text_size(10.5).text_color(a.focused || (q && hitOf(a)) ? "#2a1a14" : "#ffffff").truncate()
-          .child(`${text}${when ? ` · ${duration(now - when)}` : ""}`));
+          .child(`${text}${when && cellW >= 90 ? ` · ${duration(now - when)}` : ""}`));
     });
     const farm = div().id("farm-area").relative().flex_1().min_h(0).overflow_hidden()
       .on_mouse_move((e, cx) => {
@@ -591,7 +625,19 @@ export default class Agents extends View {
       })
       .child(scene(sz.width, sz.height))
       .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No agents yet. They show up here when they report a status.")))
-      .children(this.drag?.moved ? [...pets.filter((_, i) => list[i].address !== this.drag.addr), ...pets.filter((_, i) => list[i].address === this.drag.addr)] : pets);
+      .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
+      .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);
+
+    // Pixel UI: notched 2px frames, a hard bottom shadow, a mono caps title and a hand-drawn magnifier.
+    const frame = (bc, bg) => [
+      div().absolute().left(2).right(2).top(0).bottom(0).bg(bg),
+      div().absolute().left(0).top(2).bottom(2).w(2).bg(bc), div().absolute().right(0).top(2).bottom(2).w(2).bg(bc),
+      div().absolute().left(2).right(2).top(0).h(2).bg(bc), div().absolute().left(2).right(2).bottom(0).h(2).bg(bc),
+    ];
+    const MAG = [[2, 0, 4, 1], [1, 1, 1, 1], [6, 1, 1, 1], [0, 2, 1, 4], [7, 2, 1, 4], [1, 6, 1, 1], [6, 6, 1, 1], [2, 7, 4, 1], [7, 7, 2, 1], [8, 8, 2, 1], [9, 9, 1, 1]];
+    const magnifier = (c) => div().relative().w(15).h(15).flex_none().children(MAG.map(([x, y, w, h]) => div().absolute().left(x * 1.5).top(y * 1.5).w(w * 1.5).h(h * 1.5).bg(c)));
+        const corgi = image("mods/company-brand/logo.png").size(24).flex_none().rounded(4);
+    const mono = "JetBrains Mono";
 
     return v_flex()
       .id("farm-root")
@@ -602,47 +648,45 @@ export default class Agents extends View {
       .border_color(t.border)
       .text_size(13)
       .when(!collapsed, (el) =>
-        el.child(
-          h_flex()
-            .px(16)
-            .h(41)
-            .pt(14)
-            .pb(5)
-            .flex_none()
-            .items_center()
-            .justify_between()
-            .child(div().text_size(11.5).font_medium().text_color(t.dim).child("The Engineering Floor"))
-            .child(h_flex().gap(10).items_center()
-              .when(Boolean(this.fileError), (el) => el.child(div().id("ag-file-error").text_size(11).font_bold().text_color(t.blocked)
-                .tooltip(`${this.fileError}. Using the last good figures.`).child("!")))
-              .child(div()
-                .id("ag-figures")
-                .text_color(t.dim)
-                .hover((s) => s.text_color(t.foreground))
-                .on_click(() => openFigures(focused()?.space ? spaces().find((s) => s.id === focused().space)?.name : null))
-                .tooltip("Pond figures: how agents look, per space")
-                .child(svg("mods/company-agents/duck-icon.svg").size(14)))
-              .child(
-              div()
-                .id("ag-sort")
-                .text_size(11)
-                .text_color(t.dim)
-                .hover((s) => s.text_color(t.foreground))
-                .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", width: 200, height: 140, props: { sortMenu: true } }))
-                .tooltip(`Sort agents: ${sort.label}`)
-                .child(svg(`mods/workspace-chrome/${sort.icon}.svg`).size(14)),
-            )),
-        ),
+        el.child(div().px(10).pt(10).pb(2).flex_none().child(
+          div().relative().h(30).w_full().child(div().absolute().left(2).right(2).bottom(-2).h(2).bg("#11111b"))
+            .children(frame("#45475a", "#181825"))
+            .child(h_flex().size_full().px(10).gap(8).items_center().justify_between()
+              .child(h_flex().min_w(0).gap(7).items_center().child(corgi)
+                .child(div().min_w(0).truncate().font_family(mono).font_bold().text_size(10).text_color("#89b4fa").child("THE ENGINEERING FLOOR")))
+              .child(h_flex().gap(10).items_center().flex_none()
+                .when(Boolean(this.fileError), (el) => el.child(div().id("ag-file-error").text_size(11).font_bold().text_color(t.blocked)
+                  .tooltip(`${this.fileError}. Using the last good figures.`).child("!")))
+                .child(div()
+                  .id("ag-figures")
+                  .text_color(t.dim)
+                  .hover((s) => s.text_color(t.foreground))
+                  .on_click(() => openFigures(focused()?.space ? spaces().find((s) => s.id === focused().space)?.name : null))
+                  .tooltip("Pond figures: how agents look, per space")
+                  .child(svg("mods/company-agents/duck-icon.svg").size(14)))
+                .child(
+                  div()
+                    .id("ag-sort")
+                    .text_size(11)
+                    .text_color(t.dim)
+                    .hover((s) => s.text_color(t.foreground))
+                    .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", width: 200, height: 140, props: { sortMenu: true } }))
+                    .tooltip(`Sort agents: ${sort.label}`)
+                    .child(svg(`mods/workspace-chrome/${sort.icon}.svg`).size(14)),
+                ))),
+        )),
       )
-      .when(!collapsed, (el) => el.child(h_flex().id("staff-search").mx(10).mt(2).mb(6).h(30).px(9).gap(7).flex_none().items_center().rounded(8).border_1()
-        .border_color(this.typing ? "#89b4fa" : "#ffffff1f").bg("#ffffff0a")
-        .child(svg("mods/workspace-chrome/search.svg").size(13).flex_none().text_color(t.dim))
-        .child(div().flex_1().min_w(0).h_full().flex().items_center().cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-          .child(Input.new(this.searchInput).h_full().text_size(12).text_color(t.foreground)))
-        .when(Boolean(q), (e2) => e2
-          .child(div().flex_none().text_size(11).text_color(t.dim).child(`${hits.length}/${list.length}`))
-          .child(div().id("staff-clear").flex_none().px(4).rounded(4).text_size(14).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
-            .on_click((_e, cx) => { this.searchInput.set_value(""); this.query = ""; cx.notify(); }).child("×")))))
+      .when(!collapsed, (el) => el.child(div().id("staff-search").relative().mx(10).mt(4).mb(8).h(32).flex_none()
+        .child(div().absolute().left(2).right(2).bottom(-2).h(2).bg("#11111b"))
+        .children(frame(this.typing ? "#89b4fa" : "#45475a", "#11111b"))
+        .child(h_flex().size_full().px(10).gap(8).items_center()
+          .child(magnifier(this.typing ? "#89b4fa" : "#7f849c"))
+          .child(div().flex_1().min_w(0).h_full().flex().items_center().cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+            .child(Input.new(this.searchInput).h_full().text_size(12).font_family(mono).text_color(t.foreground)))
+          .when(Boolean(q), (e2) => e2
+            .child(div().flex_none().text_size(10.5).font_family(mono).text_color(t.dim).child(`${hits.length}/${list.length}`))
+            .child(div().id("staff-clear").flex_none().px(4).text_size(14).font_family(mono).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
+              .on_click((_e, cx) => { this.searchInput.set_value(""); this.query = ""; cx.notify(); }).child("×"))))))
       .child(collapsed ? v_flex().id("ag-list").flex_1().min_h(0).px(0).overflow_y_scrollbar().mode("always").children(rows) : farm)
       .when(collapsed, (el) =>
         el.child(

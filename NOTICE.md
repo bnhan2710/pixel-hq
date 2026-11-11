@@ -7,8 +7,8 @@ Pixel HQ is built on other people's work:
   (MIT). The row layout, the figure sets and their editor, the context bar and the sorting come from it.
   The office scene, the crab, robot, penguin and sheep drawings, the desks and chairs and the drag-to-move are new.
   The original MIT license applies to the parts taken from it.
-- **`mods/company-brand/`, `mods/company-pane/`, `mods/company-status/`** start from Herdr's shipped
-  `workspace-chrome`, `pane` and `workspace-status` mods ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
+- **`mods/company-brand/`, `mods/company-pane/`, `mods/company-status/`, `mods/company-spaces/`** start from Herdr's shipped
+  `workspace-chrome`, `pane`, `workspace-status` and `spaces` mods ([herdrdev/herdr-app](https://github.com/herdrdev/herdr-app), Apache-2.0).
 - The layout starts from Herdr's shipped `main` layout.
 
 Everything else here is MIT, see `LICENSE`.

@@ -17,7 +17,19 @@ tabs and terminals on the right, a status bar at the bottom.
 
 - **Brand block** (top of the sidebar, 46px): the Herdr logo (`frame/welcome/herdr.png`, 30px, rounded), "Pixel HQ"
   in semibold 14px and under it "engineering floor" in dim 10px. Search and sidebar-toggle buttons on the right.
-- **Spaces list**: the shipped `spaces` mod, unchanged.
+- **Floors** (the spaces block, header "Spaces" with a + button): each top-level space is a 62px card, rounded 8, with a 34px
+  building tile, then three lines.
+  - Tile: a rounded square tinted with the space's color (the one Herdr stores in `space.colors`, 20% opacity), a 20x23 building body in the
+    full color with a 4x5 antenna, six 5px windows in two columns (dark by default; one lit amber per agent in the space, up to six;
+    the first goes pink when an agent needs you; lit windows twinkle while someone is typing) and a dark door.
+  - Line 1: a small `L1`, `L2`... chip (floor number = the space's index + 1) and the space name in semibold.
+  - Line 2: the repo (only if its name differs from the space) and the git branch, with green up and red down arrows for ahead and behind.
+    Without git it shows the folder name.
+  - Line 3: one 6px dot per agent (blue typing, pink needs you, green shipped, grey idle) and a word: "empty floor", "N typing", "N on break" or "N needs you".
+  - A floor with an agent that needs you gets a 1px pink outline and a 16px pink `!` badge at its right edge that blinks.
+  - Worktree spaces keep the shipped compact tree rows; drag to reorder, right-click menu and the collapsed rail work as in the shipped mod.
+  - The mod resizes its own block (`layout.resize`) to `31 + floors x 64 + 20` px, between 100 and 380, plus 56 per remote machine,
+    so the office gets the rest; more floors than fit scroll. The layout file starts it at 104px.
 - **The Engineering Floor** (the agents block, bottom of the sidebar): a pixel-art office, all on a 4px grid.
   - Back wall: two windows onto a night city (lit windows twinkle), a wall clock, a small blue
     asterisk sign between them, a plant on the left, a water cooler on the right.
@@ -71,6 +83,7 @@ a lanyard; the robot has its own chest screen and wears none.
 - **`mods/company-pane/`**: a pane header. Reads `panes()` for its terminal; draws the pet with `duckMood`
   from its own `duck.js`; chip colors come from the status.
 - **`mods/company-status/`**: counts from `agents()` by status.
+- **`mods/company-spaces/`**: the shipped `spaces` mod with a floor card instead of the one-line row. It reads `agents()` and groups by `agent.space`.
 - **`mods/company-agents/`**: the agents block: `agents()` for the team, `setAgentOrder` on render, `run("pane.focus")`
   on click. The room is `scene.js` (rectangles plus a few `.loop()` twinkles), the pets are `duck.js`.
   Drag uses `on_mouse_down` on a pet and `on_mouse_move` / `on_mouse_up` on the room, positions stored in

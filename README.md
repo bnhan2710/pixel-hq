@@ -21,6 +21,7 @@
 
 ## What you get
 
+- **Every space is a floor.** The Spaces list becomes floor cards: a pixel building tinted with the space's color, a floor number (`L1`, `L2`…), the name, the git branch (with ahead/behind), and one dot per agent working there. Lit windows show how many agents are in; a floor with an agent that needs you gets a pink outline and a blinking `!`. The block is only as tall as its floors, so the office below gets the rest of the sidebar.
 - **An office in your sidebar.** Every agent is a pixel pet sitting on an office chair at its own desk, with a MacBook.
   Drag a pet to move its desk anywhere; click to jump to that agent.
 - **Pets that live their day.** When an agent goes idle its pet mostly stays at the desk; every so often one steps out beside it for a few seconds and comes right back. When work arrives it types. When an agent ships, pixel confetti rains over its desk until you look.

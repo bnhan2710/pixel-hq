@@ -25,10 +25,10 @@
               "id": "spaces",
               "type": "block",
               "content": {
-                "mod": "spaces"
+                "mod": "company-spaces"
               },
               "size": {
-                "weight": 0.4
+                "px": 104
               },
               "min": 90
             },
@@ -39,7 +39,7 @@
                 "mod": "company-agents"
               },
               "size": {
-                "weight": 1.7
+                "weight": 1
               },
               "min": 90
             }

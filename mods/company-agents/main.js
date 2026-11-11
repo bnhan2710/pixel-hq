@@ -2,7 +2,7 @@
 // A viewed done agent stays in Done until left.
 
 import { View, div, svg } from "gpui-kit";
-import { v_flex, h_flex } from "gpui-base";
+import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
@@ -103,6 +103,30 @@ export default class Agents extends View {
     // Where the person dragged each pet: fractions of the panel, kept across restarts.
     try { this.petpos = JSON.parse(localStorage.getItem("petpos") ?? "{}"); } catch { this.petpos = {}; }
     this.drag = null;
+    // Find staff: typing dims everyone who does not match; Enter jumps to the first match.
+    this.query = "";
+    this.typing = false;
+    this.firstHit = null;
+    this.searchInput = InputState.new({ placeholder: "Find staff" });
+    this.searchInput.on("change", (_e, cx) => { this.query = this.searchInput.value(); cx.notify(); });
+    this.searchInput.on("submit", () => { if (this.firstHit) run("pane.focus", { pane: this.firstHit }); });
+    this.searchInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
+    this.searchInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
+    this.out = null;
+    this.breakerList = [];
+    this.nextAt = Date.now() + 6000;
+    cx.timer.every(1000, (cx) => {
+      const now = Date.now();
+      if (this.out) {
+        if (now >= this.out.until) { this.out = null; this.nextAt = now + 14000 + Math.random() * 18000; cx.notify(); }
+        return;
+      }
+      if (now < this.nextAt) return;
+      this.nextAt = now + 3000;
+      const c = this.breakerList.filter((x) => this.drag?.addr !== x);
+      if (c.length) { this.out = { addr: c[Math.floor(Math.random() * c.length)], until: now + 3600 }; cx.notify(); }
+    });
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
     this.pendingPins = JSON.parse(localStorage.getItem("pins") ?? "[]");
@@ -477,10 +501,20 @@ export default class Agents extends View {
       else localStorage.setItem("petpos", JSON.stringify(this.petpos));
       cx.notify();
     };
+    const ROLES = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? "staff engineer" : k.includes("codex") ? "code reviewer" : k.includes("opencode") ? "platform engineer" : ""; };
+    const STATE = { working: "typing working busy", idle: "idle break coffee", done: "shipped done finished", blocked: "needs you blocked waiting" };
+    const q = this.query.trim().toLowerCase();
+    const hitOf = (a) => !q || q.split(/\s+/).every((w) => [detail.get(a.address), a.space_name, label(a), a.program?.name, ROLES(a), STATE[a.status]].join(" ").toLowerCase().includes(w));
+    const hits = list.filter(hitOf);
+    this.firstHit = q ? hits[0]?.pane ?? null : null;
     const breakers = list.filter((x) => x.status === "idle" && !x.focused).map((x) => x.address);
+    this.breakerList = breakers;
+    const stable = list.map((x) => x.address).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
     const pets = list.map((a, i) => {
-      const [sx, sy] = SLOTS[i % SLOTS.length];
-      const lap = Math.floor(i / SLOTS.length) * 0.07;
+      // A pet keeps its desk: slots follow a stable order, not the status sort.
+      const slot = stable.indexOf(a.address);
+      const [sx, sy] = SLOTS[slot % SLOTS.length];
+      const lap = Math.floor(slot / SLOTS.length) * 0.07;
       const own = this.petpos[a.address];
       const left = own ? own[0] * sz.width : Math.max(2, Math.min(sz.width - petW - 2, sz.width * Math.min(0.92, sx + lap) - petW / 2));
       const top = own ? own[1] * sz.height : fieldTop + fieldH * ((sy + lap) % 1);
@@ -496,7 +530,6 @@ export default class Agents extends View {
       const dir = left + petW / 2 < sz.width / 2 ? 1 : -1;
       const dx = dir * (petW + 14);
       const dy = Math.round(PET * 0.3);
-      const per = 5200 + (i % 4) * 900;
       const seat = div().relative().w(petW).h(PET + 28)
         // Office chair: tall padded back with an orange headrest, side bolsters, a pole and wheels under the desk.
         .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#5a6393"))
@@ -506,12 +539,10 @@ export default class Agents extends View {
         .child(div().absolute().left(ctr - 15).top(PET * 0.84 + 18).w(30).h(4).bg("#2b2f45"))
         .child(div().absolute().left(ctr - 17).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
         .child(div().absolute().left(ctr + 12).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
-        // On a break the pet gets up and walks to the water cooler; it walks back when work arrives.
-        .child(div().id(`walker-${a.address}`).absolute().left(0).top(0)
-          // Not while it is being dragged, so it follows the pointer exactly.
-          .when(away && this.drag?.addr !== a.address, (el) => el
-            .loop("left", { from: 0, to: dx, period: per, easing: "ease-in-out" })
-            .loop("top", { from: 0, to: dy, period: per, easing: "ease-in-out" }))
+        .child(div().id(`walker-${a.address}`).absolute()
+          .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
+          // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
+          .when(this.drag?.addr !== a.address, (el) => el.transition("left", 800).transition("top", 800))
           .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
@@ -523,6 +554,7 @@ export default class Agents extends View {
       return v_flex()
         .id(`pet-${a.address}`)
         .absolute()
+        .opacity(hitOf(a) ? 1 : 0.14)
         .left(left)
         .top(top)
         .w(petW)
@@ -537,8 +569,8 @@ export default class Agents extends View {
         .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text} · drag to move`)
         .child(seat)
         .child(div().mt(6).max_w(petW + 22).px(5).h(15).flex().items_center().rounded(3)
-          .bg(a.focused ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
-          .text_size(10.5).text_color(a.focused ? "#2a1a14" : "#ffffff").truncate()
+          .bg(a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
+          .text_size(10.5).text_color(a.focused || (q && hitOf(a)) ? "#2a1a14" : "#ffffff").truncate()
           .child(`${text}${when ? ` · ${duration(now - when)}` : ""}`));
     });
     const farm = div().id("farm-area").relative().flex_1().min_h(0).overflow_hidden()
@@ -602,6 +634,15 @@ export default class Agents extends View {
             )),
         ),
       )
+      .when(!collapsed, (el) => el.child(h_flex().id("staff-search").mx(10).mt(2).mb(6).h(30).px(9).gap(7).flex_none().items_center().rounded(8).border_1()
+        .border_color(this.typing ? "#89b4fa" : "#ffffff1f").bg("#ffffff0a")
+        .child(svg("mods/workspace-chrome/search.svg").size(13).flex_none().text_color(t.dim))
+        .child(div().flex_1().min_w(0).h_full().flex().items_center().cursor_text().on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+          .child(Input.new(this.searchInput).h_full().text_size(12).text_color(t.foreground)))
+        .when(Boolean(q), (e2) => e2
+          .child(div().flex_none().text_size(11).text_color(t.dim).child(`${hits.length}/${list.length}`))
+          .child(div().id("staff-clear").flex_none().px(4).rounded(4).text_size(14).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
+            .on_click((_e, cx) => { this.searchInput.set_value(""); this.query = ""; cx.notify(); }).child("×")))))
       .child(collapsed ? v_flex().id("ag-list").flex_1().min_h(0).px(0).overflow_y_scrollbar().mode("always").children(rows) : farm)
       .when(collapsed, (el) =>
         el.child(

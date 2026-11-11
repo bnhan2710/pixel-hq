@@ -31,6 +31,7 @@ tabs and terminals on the right, a status bar at the bottom.
     focuses that agent. Right-click a pet to change its figures; right-click empty floor to reset positions.
 - **Pane headers** (40px): the agent's pet (30px tall), its name, a job-title chip, the folder, and a
   status chip on the right. Hovering shows split, zoom and close buttons.
+- **Find staff** (above the room, 30px, 10px side margins): a rounded search field with a magnifier icon and the placeholder "Find staff". While there is text it shows "matches/total" and an x button. A pet matches when every word of the query appears in its tab or title text, space name, program name, job title (staff engineer, code reviewer, platform engineer) or a status word (typing/working, idle/break, shipped/done, needs you/blocked). Pets that do not match drop to 14% opacity and matches get a yellow nameplate; Enter focuses the first match.
 - **Status bar** (28px): "Pixel HQ" in lavender, machine, git branch, "N on the team", then colored dots:
   "typing", "need you", "shipped", "on break".
 
@@ -54,7 +55,7 @@ a lanyard; the robot has its own chest screen and wears none.
 | working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" blue, spinner |
 | blocked | waves its right claw, an amber `!` blinks beside it (`!!`, faster, after a minute) | "needs you" |
 | done | claws up, hops, amber sparkles twinkle, and seven pixel confetti pieces (yellow, pink, green, blue, violet, orange, teal) fall over the desk until someone looks | "shipped" green |
-| idle | steps out beside its desk (a sideways move of one pet-width plus 14px and a small step toward the viewer, eased, about 5 to 8 s per round trip, a different period per pet) and comes right back, over and over; eyes closed, a mug with steam beside it. While it is being dragged it stays put | "on break" dim |
+| idle | stays at its desk, eyes closed, a mug with steam beside it. Every 14 to 32 s one idle pet (picked at random, never two at once) glides out beside its desk (one pet-width plus 14px sideways and a small step toward the viewer, 0.8 s) for about 3.6 s and glides back. A one-second timer only decides when; it redraws only when a pet leaves or returns. A pet being dragged stays put | "on break" dim |
 
 ## Built from
 

@@ -23,9 +23,10 @@
 
 - **An office in your sidebar.** Every agent is a pixel pet sitting on an office chair at its own desk, with a MacBook.
   Drag a pet to move its desk anywhere; click to jump to that agent.
-- **Pets that live their day.** When an agent goes idle its pet steps out beside the desk for a moment and comes right back, over and over; when work arrives it stays seated and types. When an agent ships, pixel confetti rains over its desk until you look.
+- **Pets that live their day.** When an agent goes idle its pet mostly stays at the desk; every so often one steps out beside it for a few seconds and comes right back. When work arrives it types. When an agent ships, pixel confetti rains over its desk until you look.
 - **Desk nameplates on every pane.** The pane header shows the pet, its job title and a live status chip:
   `typing`, `needs you`, `shipped` or `on break`.
+- **Find staff.** A search bar above the office: type a name, a job title (`reviewer`, `engineer`), a status (`typing`, `break`) or a space, and everyone who does not match fades out while matches get a yellow nameplate. Enter jumps to the first match.
 - **A team status bar.** "Pixel HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.
 - **A company sign.** The Herdr logo with "Pixel HQ / engineering floor" at the top of the sidebar.
 - **A Catppuccin Mocha palette** with a soft blue accent, in a matching terminal theme.

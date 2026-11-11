@@ -102,6 +102,7 @@ export default class Agents extends View {
     this.folded = new Set();
     // Where the person dragged each pet: fractions of the panel, kept across restarts.
     try { this.petpos = JSON.parse(localStorage.getItem("petpos") ?? "{}"); } catch { this.petpos = {}; }
+    try { this.awaypos = JSON.parse(localStorage.getItem("awaypos") ?? "{}"); } catch { this.awaypos = {}; }
     this.drag = null;
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
@@ -474,7 +475,7 @@ export default class Agents extends View {
       if (!d) return;
       this.drag = null;
       if (!d.moved) run("pane.focus", { pane: d.pane });
-      else localStorage.setItem("petpos", JSON.stringify(this.petpos));
+      else { localStorage.setItem("petpos", JSON.stringify(this.petpos)); localStorage.setItem("awaypos", JSON.stringify(this.awaypos)); }
       cx.notify();
     };
     const breakers = list.filter((x) => x.status === "idle" && !x.focused).map((x) => x.address);
@@ -492,8 +493,11 @@ export default class Agents extends View {
       const ctr = DUCK_CENTER * petW;
       const k = breakers.indexOf(a.address);
       const away = k >= 0;
-      const fx = away ? Math.round(sz.width - petW - 6 - (k % 2) * petW * 0.95 - left) : 0;
-      const fy = away ? Math.round(horizon + 10 + Math.floor(k / 2) * PET * 0.9 - top) : 0;
+      const awayOwn = this.awaypos[a.address];
+      const ax = awayOwn ? awayOwn[0] * sz.width : sz.width - petW - 6 - (k % 2) * petW * 0.95;
+      const ay = awayOwn ? awayOwn[1] * sz.height : horizon + 10 + Math.floor(k / 2) * PET * 0.9;
+      const fx = away ? Math.round(ax - left) : 0;
+      const fy = away ? Math.round(ay - top) : 0;
       const seat = div().relative().w(petW).h(PET + 28)
         // Office chair: tall padded back with an orange headrest, side bolsters, a pole and wheels under the desk.
         .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#5a6393"))
@@ -504,7 +508,15 @@ export default class Agents extends View {
         .child(div().absolute().left(ctr - 17).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
         .child(div().absolute().left(ctr + 12).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
         // On a break the pet gets up and walks to the water cooler; it walks back when work arrives.
-        .child(div().id(`walker-${a.address}`).absolute().left(fx).top(fy).transition("left", 1400).transition("top", 1400)
+        .child(div().id(`walker-${a.address}`).absolute().left(fx).top(fy)
+          // No gliding while the pet (or its desk) is being dragged, so it follows the pointer exactly.
+          .when(this.drag?.addr !== a.address, (el) => el.transition("left", 1400).transition("top", 1400))
+          .when(away, (el) => el.cursor_pointer()
+            .on_mouse_down("left", (e, cx) => {
+              cx.stop_propagation();
+              this.drag = { addr: a.address, kind: "away", pane: a.pane, dx: e.local_position?.x ?? 0, dy: e.local_position?.y ?? 0, sx: e.position.x, sy: e.position.y, moved: false };
+            })
+            .on_mouse_up("left", (_e, cx) => endDrag(cx)))
           .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
@@ -542,11 +554,12 @@ export default class Agents extends View {
         d.moved = true;
         const x = Math.max(0, Math.min(sz.width - petW, e.local_position.x - d.dx));
         const y = Math.max(0, Math.min(sz.height - PET - 34, e.local_position.y - d.dy));
-        this.petpos[d.addr] = [x / sz.width, y / sz.height];
+        if (d.kind === "away") this.awaypos[d.addr] = [x / sz.width, y / sz.height];
+        else this.petpos[d.addr] = [x / sz.width, y / sz.height];
         cx.notify();
       })
       .on_mouse_up("left", (_e, cx) => endDrag(cx))
-      .on_mouse_down("right", () => { this.petpos = {}; localStorage.removeItem("petpos"); })
+      .on_mouse_down("right", () => { this.petpos = {}; this.awaypos = {}; localStorage.removeItem("petpos"); localStorage.removeItem("awaypos"); })
       .on_size_change((s, cx) => {
         if (!this.size || Math.abs(s.width - this.size.width) > 2 || Math.abs(s.height - this.size.height) > 2) { this.size = s; cx.notify(); }
       })

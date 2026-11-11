@@ -48,8 +48,8 @@ Ask your agent:
 Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, quit and reopen Herdr once,
 then pick **company** in Settings > Look and the **company** theme.
 
-Mods are trusted code and Herdr does not sandbox them. This repo is small (a few hundred lines of JavaScript, no network access):
-read it before you install it.
+Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. It makes no network requests; the only programs it runs are local helpers
+(`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). Read it before you install it.
 
 ## Make it yours
 

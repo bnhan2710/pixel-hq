@@ -2,7 +2,7 @@
 
 <p align="center">
   A <a href="https://herdr.dev">Herdr</a> layout where your coding agents are a small engineering company.<br>
-  Pixel pets at desks, chairs and MacBooks, in a warm-dark office.
+  Pixel pets at desks, chairs and MacBooks, in a dark Catppuccin office.
 </p>
 
 <p align="center">
@@ -21,8 +21,8 @@
 - **Desk nameplates on every pane.** The pane header shows the pet, its job title and a live status chip:
   `typing`, `needs you`, `shipped` or `on break`.
 - **A team status bar.** "Agent Co. HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.
-- **A company sign.** An orange pixel asterisk and "Agent Co. / engineering floor" at the top of the sidebar.
-- **A warm-dark palette** with Claude orange as the one accent, in a matching terminal theme.
+- **A company sign.** The Herdr logo with "Agent Co. / engineering floor" at the top of the sidebar.
+- **A Catppuccin Mocha palette** with a soft blue accent, in a matching terminal theme.
 
 ## The team
 

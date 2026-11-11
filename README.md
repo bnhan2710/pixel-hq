@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif" alt="The engineering floor in motion: pets type at their desks, walk to the water cooler on a break and walk back" width="320"><br>
-  <sub>The floor, live: pets type, stroll to the water cooler on a break and walk back to work.</sub>
+  <img src="demo.gif" alt="The engineering floor in motion: pets type at their desks and step out beside them on a break" width="320"><br>
+  <sub>The floor, live: pets type, step away from the desk on a break and come right back.</sub>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 - **An office in your sidebar.** Every agent is a pixel pet sitting on an office chair at its own desk, with a MacBook.
   Drag a pet to move its desk anywhere; click to jump to that agent.
-- **Pets that live their day.** When an agent goes idle its pet gets up from the desk and strolls to the water cooler; when work arrives it walks back. When an agent ships, pixel confetti rains over its desk until you look.
+- **Pets that live their day.** When an agent goes idle its pet steps out beside the desk for a moment and comes right back, over and over; when work arrives it stays seated and types. When an agent ships, pixel confetti rains over its desk until you look.
 - **Desk nameplates on every pane.** The pane header shows the pet, its job title and a live status chip:
   `typing`, `needs you`, `shipped` or `on break`.
 - **A team status bar.** "Pixel HQ", how many agents are on the team, and how many are typing, blocked, shipped or on break.

@@ -54,7 +54,7 @@ a lanyard; the robot has its own chest screen and wears none.
 | working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" blue, spinner |
 | blocked | waves its right claw, an amber `!` blinks beside it (`!!`, faster, after a minute) | "needs you" |
 | done | claws up, hops, amber sparkles twinkle, and seven pixel confetti pieces (yellow, pink, green, blue, violet, orange, teal) fall over the desk until someone looks | "shipped" green |
-| idle | gets up from the desk and walks (1.4 s, eased) to the water cooler by the wall, where idle pets gather in two staggered columns; eyes closed, a mug with steam beside it. It walks back to its desk when work resumes | "on break" dim |
+| idle | steps out beside its desk (a sideways move of one pet-width plus 14px and a small step toward the viewer, eased, about 5 to 8 s per round trip, a different period per pet) and comes right back, over and over; eyes closed, a mug with steam beside it. While it is being dragged it stays put | "on break" dim |
 
 ## Built from
 

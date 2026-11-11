@@ -59,7 +59,7 @@ export default class CompanyPane extends View {
     const chip = (text, color, spin) => h_flex().flex_none().gap(5).px(8).h(20).items_center().rounded(10).bg(color + "26").text_size(10.5).font_semibold().text_color(color)
       .when(Boolean(spin), el => el.child(svg("mods/workspace-chrome/spinner.svg").size(11).flex_none().text_color(color).spin(900)))
       .child(text);
-    const status = st === "working" ? chip("typing", "#D97757", true)
+    const status = st === "working" ? chip("typing", "#89b4fa", true)
       : st === "blocked" ? chip("needs you", t.blocked ?? "#e8744f")
       : st === "done" ? chip("shipped", t.done ?? "#8ec07c")
       : species ? chip("on break", t.dim ?? "#9a8f86") : null;
@@ -79,7 +79,7 @@ export default class CompanyPane extends View {
       .child(avatar)
       .child(h_flex().flex_none().gap(7).items_center()
         .child(div().truncate().max_w(220).font_semibold().text_color(t.foreground).child(title))
-        .child(div().flex_none().px(7).h(19).flex().items_center().rounded(5).bg("#D977571f").text_size(10.5).text_color("#e9a58c").child(ROLE(p))))
+        .child(div().flex_none().px(7).h(19).flex().items_center().rounded(5).bg("#89b4fa1f").text_size(10.5).text_color("#b4befe").child(ROLE(p))))
       .child(div().flex_1().truncate().text_color(t.dim).child(folder(p.cwd)))
       .when(Boolean(status), el => el.child(status))
       .when(this.hovered, el => el

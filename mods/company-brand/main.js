@@ -46,9 +46,7 @@ export default class WorkspaceChrome extends View {
         .child(row("machine", "plus", "Add machine", true, () => run("mod.open", { name: "machine-add" })));
     }
     // The company sign: a pixel asterisk in an orange tile, the company name and the floor.
-    const px = (x, y, w, h) => div().absolute().left(x).top(y).w(w).h(h).bg("#fff3ea");
-    const logo = div().relative().size(30).flex_none().rounded(8).bg("#D97757")
-      .child(px(13, 6, 4, 18)).child(px(6, 13, 18, 4)).child(px(8, 8, 4, 4)).child(px(18, 8, 4, 4)).child(px(8, 18, 4, 4)).child(px(18, 18, 4, 4));
+    const logo = image("frame/welcome/herdr.png").size(30).rounded(8).flex_none();
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center().text_size(13.5)
       .when(window()?.platform === "macos" && !window()?.fullscreen && !collapsed, el => el.pl(76))
       .when(!collapsed, el => el.child(h_flex().flex_1().gap(9).items_center().child(logo)

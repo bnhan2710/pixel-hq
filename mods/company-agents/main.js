@@ -491,9 +491,9 @@ export default class Agents extends View {
       const ctr = DUCK_CENTER * petW;
       const seat = div().relative().w(petW).h(PET + 28)
         // Office chair: tall padded back with an orange headrest, side bolsters, a pole and wheels under the desk.
-        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#3f7a78"))
-        .child(div().absolute().left(ctr - petW * 0.4 + 4).top(-4).w(petW * 0.8 - 8).h(PET * 0.84 - 4).bg("#2f5f5e"))
-        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(5).bg("#d97757"))
+        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(PET * 0.84).bg("#5a6393"))
+        .child(div().absolute().left(ctr - petW * 0.4 + 4).top(-4).w(petW * 0.8 - 8).h(PET * 0.84 - 4).bg("#464e7a"))
+        .child(div().absolute().left(ctr - petW * 0.4).top(-8).w(petW * 0.8).h(5).bg("#89b4fa"))
         .child(div().absolute().left(ctr - 2).top(PET * 0.84 + 8).w(4).h(10).bg("#2b2f45"))
         .child(div().absolute().left(ctr - 15).top(PET * 0.84 + 18).w(30).h(4).bg("#2b2f45"))
         .child(div().absolute().left(ctr - 17).top(PET * 0.84 + 22).w(5).h(4).bg("#14172a"))
@@ -520,7 +520,7 @@ export default class Agents extends View {
         .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text} · drag to move`)
         .child(seat)
         .child(div().mt(6).max_w(petW + 22).px(5).h(15).flex().items_center().rounded(3)
-          .bg(a.focused ? "#d9b64a" : hot ? "#b95a3d" : "#0f111acc")
+          .bg(a.focused ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
           .text_size(10.5).text_color(a.focused ? "#2a1a14" : "#ffffff").truncate()
           .child(`${text}${when ? ` · ${duration(now - when)}` : ""}`));
     });

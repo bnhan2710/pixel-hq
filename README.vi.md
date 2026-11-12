@@ -39,6 +39,7 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 | Codex | robot terminal xanh dương | Code Reviewer |
 | OpenCode | chim cánh cụt | Platform Engineer |
 | Antigravity (`agy`) | phi hành gia nhỏ có đầu hình khối màu gradient, tay và ủng màu cam, logo vòm của nó trên ngực và trên nắp laptop | Systems Architect |
+| Gemini CLI | thú cưng màu gradient xanh dương sang tím, có ngôi sao lấp lánh màu trắng trên ngực và trên nắp laptop | Data Scientist |
 | chương trình khác | cừu | tên của chương trình |
 
 <p align="center">

@@ -40,8 +40,7 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
     <td align="center"><img src="pets/penguin.svg" width="120" alt="chim cánh cụt"><br><b>OpenCode</b><br><sub>Platform Engineer</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="pets/arch.svg" width="120" alt="phi hành gia đầu hình khối"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
-    <td align="center"><img src="pets/spark.svg" width="120" alt="thú cưng xanh tím có ngôi sao trắng"><br><b>Gemini CLI</b><br><sub>Data Scientist</sub></td>
+    <td align="center"><img src="pets/spark.svg" width="120" alt="thú cưng xanh tím có ngôi sao trắng"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
     <td align="center"><img src="pets/sheep.svg" width="120" alt="cừu"><br><b>chương trình khác</b><br><sub>tên của chương trình</sub></td>
   </tr>
 </table>
@@ -51,18 +50,12 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 | Claude Code | cua cam | Staff Engineer |
 | Codex | robot terminal xanh dương | Code Reviewer |
 | OpenCode | chim cánh cụt | Platform Engineer |
-| Antigravity (`agy`) | phi hành gia nhỏ có đầu hình khối màu gradient, tay và ủng màu cam, logo vòm của nó trên ngực và trên nắp laptop | Systems Architect |
-| Gemini CLI | thú cưng màu gradient xanh dương sang tím, có ngôi sao lấp lánh màu trắng trên ngực và trên nắp laptop | Data Scientist |
+| Antigravity (`agy`) | thú cưng màu gradient xanh dương sang tím, có ngôi sao lấp lánh màu trắng trên ngực và trên nắp laptop | Systems Architect |
 | chương trình khác | cừu | tên của chương trình |
 
 <p align="center">
   <img src="team.png?v=3" alt="Đội ngũ đang làm việc: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex ở bàn của mình" width="320"><br>
   <sub>Bốn nhân viên ở bàn: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex (robot đang chờ bạn).</sub>
-</p>
-
-<p align="center">
-  <img src="agy.png?v=3" alt="Cận cảnh thú cưng của Antigravity: đầu hình khối màu gradient đang gõ laptop, nắp laptop có logo vòm" width="300"><br>
-  <sub>Antigravity (<code>agy</code>) có thú cưng riêng: đầu hình khối chuyển màu từ đỉnh đỏ xuống xanh ngọc, logo vòm trên nắp laptop và trên ngực.</sub>
 </p>
 
 | Trạng thái | Thú cưng làm gì |

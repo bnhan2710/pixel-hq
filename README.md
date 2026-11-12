@@ -40,7 +40,7 @@ One species per agent program, so you can tell who is who at a glance:
     <td align="center"><img src="pets/penguin.svg" width="120" alt="penguin"><br><b>OpenCode</b><br><sub>Platform Engineer</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="pets/spark.svg" width="120" alt="blue-to-violet pet with a white sparkle"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
+    <td align="center"><img src="pets/arch.svg" width="120" alt="astronaut with a gradient cube head"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
     <td align="center"><img src="pets/sheep.svg" width="120" alt="sheep"><br><b>anything else</b><br><sub>the program's name</sub></td>
   </tr>
 </table>
@@ -50,12 +50,17 @@ One species per agent program, so you can tell who is who at a glance:
 | Claude Code | orange crab | Staff Engineer |
 | Codex | blue terminal robot | Code Reviewer |
 | OpenCode | penguin | Platform Engineer |
-| Antigravity (`agy`) | blue-to-violet gradient pet with a white sparkle on its chest and on the laptop lid | Systems Architect |
+| Antigravity (`agy`) | little astronaut with a gradient cube head, orange arms and boots, its arch logo on the chest and on the laptop lid | Systems Architect |
 | anything else | sheep | the program's name |
 
 <p align="center">
   <img src="team.png?v=3" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
   <sub>Four staff at their desks: two Claude crabs, an OpenCode penguin and a Codex robot (the robot is waiting for you).</sub>
+</p>
+
+<p align="center">
+  <img src="agy.png?v=3" alt="Antigravity's pet up close: a gradient cube head typing at a laptop whose lid shows the arch logo" width="300"><br>
+  <sub>Antigravity (<code>agy</code>) gets its own pet: a gradient cube head from red crown to teal, with its arch logo on the laptop lid and on the chest.</sub>
 </p>
 
 | Status | What the pet does |

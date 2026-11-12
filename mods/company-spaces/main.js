@@ -395,7 +395,7 @@ export default class Spaces extends View {
     // (up to three) with a tiny pet in its own colours. Lights are on while someone works; an empty floor goes dark.
     const R = (x, y, w, h, c) => div().absolute().left(x).top(y).w(w).h(h).bg(c);
     const lit = working > 0, any = crew.length > 0;
-    const skin = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? ["#D97757", "#D97757"] : k.includes("codex") ? ["#5B6CF0", "#5B6CF0"] : k.includes("opencode") ? ["#4a5a70", "#F4F1EA"] : (k.includes("antigravity") || k === "agy") ? ["#5AA6F0", "#A863C0"] : ["#F1E7D3", "#F1E7D3"]; };
+    const skin = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? ["#D97757", "#D97757"] : k.includes("codex") ? ["#5B6CF0", "#5B6CF0"] : k.includes("opencode") ? ["#4a5a70", "#F4F1EA"] : (k.includes("antigravity") || k === "agy") ? ["#F6A03A", "#3186FF"] : ["#F1E7D3", "#F1E7D3"]; };
     const room = div().relative().w(54).h(40).flex_none().rounded(6).overflow_hidden().border_1().border_color("#0c0e1c")
       .child(R(0, 0, 54, 24, any ? "#2a2f52" : "#20243d")).child(R(0, 0, 54, 3, fill)).child(R(0, 3, 54, 1, "#ffffff22"))
       .child(R(4, 7, 22, 15, "#0c0e1c")).child(R(5, 8, 20, 13, lit ? "#1a2350" : "#0e1226"))

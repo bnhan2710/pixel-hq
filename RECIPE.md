@@ -40,7 +40,7 @@ One species per agent program, picked from `program.key`:
 | Claude Code | orange crab (`#D97757`, claws and legs `#B5593B`) | Staff Engineer |
 | Codex | blue terminal robot: cloud-shaped head, dark screen face with `>` and a blinking `_`, chest panel | Code Reviewer |
 | OpenCode | penguin: dark blue body, white face and belly, amber beak | Platform Engineer |
-| Antigravity (`agy`, program key `antigravity`) | the standard 200x200 block filled with a soft gradient, blue (`#4796E3`) at the top through violet to rose at the bottom, a little lighter on the left. Claws and legs `#6F5CC4`. A white four-point sparkle with a thin dark halo sits on the chest where the badge would be (no badge). The laptop lid shows a small blue-to-violet sparkle instead of the white apple | Systems Architect |
+| Antigravity (`agy`, program key `antigravity`) | a small astronaut with a cube head: top face red to orange, a narrow left face and a wide right face blending orange, yellow and green into teal and blue. Big glossy eyes with a white highlight and pink cheeks on the wide face; the narrow face carries a soft vertical edge. A short pale-blue neck ring, a round blue-to-green torso with the Antigravity arch logo on the chest (right of center, no plate, thin pale halo), orange arms and boots. The laptop lid shows the tiny rainbow arch instead of the white apple | Systems Architect |
 | anything else | sheep: cream wool, brown face | the program's name |
 
 All are blocky, front-facing, built from rectangles. The body is 200x200 units, claws 25x40 at the sides,

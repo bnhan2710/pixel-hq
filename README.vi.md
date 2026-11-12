@@ -91,6 +91,30 @@ sau đó chọn **pixel-hq** trong Settings > Look và chọn theme **pixel-hq**
 Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 2.000 dòng JavaScript. Nó không gửi request mạng nào; các chương trình duy nhất nó chạy là các công cụ cục bộ
 (`mkdir`, `cp`, `open`, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Hãy đọc code trước khi cài.
 
+## Cập nhật
+
+Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không tự cập nhật. Để lấy Pixel HQ mới nhất:
+
+**Một lệnh** (chép file mới đè lên bản đang cài, các layout và mod khác của bạn không bị đụng):
+
+```sh
+git clone --depth 1 https://github.com/bnhan2710/pixel-hq /tmp/pixel-hq-update \
+  && cp -R /tmp/pixel-hq-update/layouts /tmp/pixel-hq-update/mods /tmp/pixel-hq-update/themes ~/.config/herdr-app/ \
+  && rm -rf /tmp/pixel-hq-update
+```
+
+**Hoặc nhờ agent** (nhớ nói "update", vì mặc định agent không bao giờ ghi đè file có sẵn):
+
+> Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ from herdr.dev/layouts/bnhan2710/pixel-hq: replace `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods with the new files (overwriting is intended here), keep my other layouts, then run `herdr-app check` on each mod.
+
+Sau đó thoát và mở lại Herdr một lần nếu cửa sổ chưa làm mới. Lưu ý:
+
+- Ghi đè sẽ xoá các chỉnh sửa của bạn trong những file đó, kể cả độ cao khối Spaces trong `layouts/pixel-hq.json`. Hãy sao lưu trước nếu bạn đã sửa, hoặc nhân bản layout (`herdr-app do layout.clone '{"name":"pixel-hq","as":"my-hq"}'`) và giữ chỉnh sửa layout ở bản nhân bản (chỉnh sửa trong mod vẫn bị ghi đè).
+- Vị trí pet bạn đã kéo được Herdr lưu riêng, không nằm trong các file này, nên vẫn còn sau khi cập nhật.
+- Muốn biết có gì mới, xem [danh sách commit](https://github.com/bnhan2710/pixel-hq/commits/main) trước khi cập nhật.
+
+Các bước đầy đủ, những gì cập nhật sẽ ghi đè và cách quay lại bản cũ: [UPDATE.md](UPDATE.md) (tiếng Anh).
+
 ## Tuỳ biến theo ý bạn
 
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.

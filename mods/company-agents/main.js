@@ -543,8 +543,8 @@ export default class Agents extends View {
       const away = k >= 0;
       // On a break the pet steps out beside its desk for a moment and comes right back, over and over.
       const dir = left + petW / 2 < sz.width / 2 ? 1 : -1;
-      const dx = dir * Math.min(petW + kk(14), Math.max(kk(14), Math.round((cellW - petW) / 2)));
-      const dy = Math.round(PET * 0.3);
+      const dx = dir * (petW + kk(30));
+      const dy = Math.round(PET * 0.42);
       const seat = div().relative().w(petW).h(PET + kk(28))
         // Office chair seen from behind: a tall rounded back with a headrest, a lighter cushion with a centre seam,
         // two rounded armrests, then a pole and a star base with wheels under the desk.

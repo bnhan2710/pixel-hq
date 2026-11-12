@@ -33,6 +33,19 @@
 
 One species per agent program, so you can tell who is who at a glance:
 
+<table align="center">
+  <tr>
+    <td align="center"><img src="pets/crab.svg" width="120" alt="orange crab"><br><b>Claude Code</b><br><sub>Staff Engineer</sub></td>
+    <td align="center"><img src="pets/bot.svg" width="120" alt="blue terminal robot"><br><b>Codex</b><br><sub>Code Reviewer</sub></td>
+    <td align="center"><img src="pets/penguin.svg" width="120" alt="penguin"><br><b>OpenCode</b><br><sub>Platform Engineer</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="pets/arch.svg" width="120" alt="astronaut with a gradient cube head"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
+    <td align="center"><img src="pets/spark.svg" width="120" alt="blue-to-violet pet with a white sparkle"><br><b>Gemini CLI</b><br><sub>Data Scientist</sub></td>
+    <td align="center"><img src="pets/sheep.svg" width="120" alt="sheep"><br><b>anything else</b><br><sub>the program's name</sub></td>
+  </tr>
+</table>
+
 | Program | Pet | Job title |
 | --- | --- | --- |
 | Claude Code | orange crab | Staff Engineer |

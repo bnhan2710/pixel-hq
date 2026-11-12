@@ -33,6 +33,18 @@
 
 Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai là ai:
 
+<table align="center">
+  <tr>
+    <td align="center"><img src="pets/crab.svg" width="120" alt="cua cam"><br><b>Claude Code</b><br><sub>Staff Engineer</sub></td>
+    <td align="center"><img src="pets/bot.svg" width="120" alt="robot terminal xanh dương"><br><b>Codex</b><br><sub>Code Reviewer</sub></td>
+    <td align="center"><img src="pets/penguin.svg" width="120" alt="chim cánh cụt"><br><b>OpenCode</b><br><sub>Platform Engineer</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="pets/arch.svg" width="120" alt="phi hành gia đầu hình khối"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
+    <td align="center"><img src="pets/sheep.svg" width="120" alt="cừu"><br><b>chương trình khác</b><br><sub>tên của chương trình</sub></td>
+  </tr>
+</table>
+
 | Chương trình | Thú cưng | Chức danh |
 | --- | --- | --- |
 | Claude Code | cua cam | Staff Engineer |

@@ -2,17 +2,9 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { panes, props, run, theme, home, layout } from "herdr";
-import { duckMood, duckWidth, mood } from "./duck.js";
+import { agentOf, duckMood, duckWidth, mood } from "./duck.js";
 
-const SPECIES = (key) => {
-  const k = String(key ?? "").toLowerCase();
-  return k.includes("claude") ? "crab" : k.includes("codex") ? "bot" : k.includes("opencode") ? "penguin" : (k.includes("antigravity") || k === "agy") ? "arch" : k.includes("gemini") ? "sheep" : null;
-};
-const ROLE = (p) => {
-  const k = String(p.program?.key ?? "").toLowerCase();
-  return k.includes("claude") ? "Staff Engineer" : k.includes("codex") ? "Code Reviewer" : k.includes("opencode") ? "Platform Engineer" : (k.includes("antigravity") || k === "agy") ? "Systems Architect" : k.includes("gemini") ? "Data Scientist"
-    : p.program?.shell ? "Terminal" : (p.program?.name ?? "Contractor");
-};
+const ROLE = (p) => agentOf(p.program?.key)?.role ?? (p.program?.shell ? "Terminal" : (p.program?.name ?? "Contractor"));
 
 function paneFrame(node) {
   if (!node || node.hidden) return null;
@@ -49,7 +41,7 @@ export default class CompanyPane extends View {
     if (!p) return div();
     const st = p.status;
     const pane = p.pane;
-    const species = SPECIES(p.program?.key);
+    const species = agentOf(p.program?.key)?.species ?? null;
     const bottom = paneFrame(layout())?.header?.position === "bottom";
     const H = 30;
     const avatar = species

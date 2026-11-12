@@ -5,7 +5,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
 import { figureFor, load } from "./figures.js";
-import { speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
+import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
 
@@ -509,7 +509,7 @@ export default class Agents extends View {
       else localStorage.setItem("petpos", JSON.stringify(this.petpos));
       cx.notify();
     };
-    const ROLES = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? "staff engineer" : k.includes("codex") ? "code reviewer" : k.includes("opencode") ? "platform engineer" : (k.includes("antigravity") || k === "agy") ? "systems architect" : ""; };
+    const ROLES = (a) => (agentOf(a.program?.key)?.role ?? "").toLowerCase();
     const STATE = { working: "typing working busy", idle: "idle break coffee", done: "shipped done finished", blocked: "needs you blocked waiting" };
     const q = this.query.trim().toLowerCase();
     const hitOf = (a) => !q || q.split(/\s+/).every((w) => [detail.get(a.address), a.space_name, label(a), a.program?.name, ROLES(a), STATE[a.status]].join(" ").toLowerCase().includes(w));

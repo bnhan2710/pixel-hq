@@ -26,22 +26,28 @@ const STEAM = "#FFFFFF";
 const BADGE = "#F4E9DC";
 const BADGE_TOP = "#8C4A33";
 
-// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, Antigravity the rainbow arch, the rest sheep.
+// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, Antigravity the rainbow arch, Gemini a sparkle-badged gradient, the rest sheep.
 const SPECIES = {
   crab: { body: "#D97757", shade: "#B5593B", eye: "#2A1A14", badge: "#F4E9DC" },
   bot: { body: "#5B6CF0", shade: "#4553C9", eye: "#DDE4FF", badge: "#F4E9DC", bot: true, screen: "#1B2140", glyph: "#DDE4FF", legs: [88, 152], legW: 30 },
   penguin: { body: "#2F3B4C", shade: "#243040", eye: "#1A1A1A", badge: "#F2A33A", mask: "#F4F1EA", beak: "#F2A33A", belly: "#F4F1EA" },
   arch: { body: "#3186FF", shade: "#E8743B", eye: "#14131f", badge: "#F4E9DC", arch: true, legs: [70, 126], legW: 54 },
+  spark: { body: "#4796E3", shade: "#6F5CC4", eye: "#1B1640", badge: "#F4E9DC", spark: true },
   sheep: { body: "#F1E7D3", shade: "#4A3B33", eye: "#FFFFFF", badge: "#E8744F", face: "#4A3B33" },
 };
-export function speciesOf(key) {
+
+const AGENTS = [
+  { match: (k) => k.includes("claude"), species: "crab", role: "Staff Engineer" },
+  { match: (k) => k.includes("codex"), species: "bot", role: "Code Reviewer" },
+  { match: (k) => k.includes("opencode"), species: "penguin", role: "Platform Engineer" },
+  { match: (k) => k.includes("antigravity") || k === "agy", species: "arch", role: "Systems Architect" },
+  { match: (k) => k.includes("gemini"), species: "spark", role: "Data Scientist" },
+];
+export function agentOf(key) {
   const k = String(key ?? "").toLowerCase();
-  if (k.includes("claude")) return "crab";
-  if (k.includes("codex")) return "bot";
-  if (k.includes("opencode")) return "penguin";
-  if (k.includes("antigravity") || k === "agy") return "arch";
-  return "sheep";
+  return AGENTS.find((a) => a.match(k)) ?? null;
 }
+export const speciesOf = (key) => agentOf(key)?.species ?? "sheep";
 
 // Antigravity's arch: a smooth bell, warm at the crown (red and orange), cooling through yellow and green to blue feet.
 // Built once from thin rows (10 units tall), each blended left to right, so it reads as a soft gradient.
@@ -79,6 +85,27 @@ const ARCH = (() => {
   for (const l of logo) out.push(l);
   return out;
 })();
+
+const sparkle = (cx, cy, r, colorAt) => {
+  const out = [];
+  for (let dy = -r; dy < r; dy += 2) {
+    const d = Math.abs(dy + 1) / r;
+    const hw = Math.max(1.2, r * (1 - d) ** 1.7);
+    out.push([cx - hw, cy + dy, hw * 2, 2.6, colorAt((dy + r) / (2 * r))]);
+  }
+  return out;
+};
+const GEM_L = [[0, "#5AA6F0"], [0.55, "#8A86E6"], [1, "#C07FD0"]];
+const GEM_R = [[0, "#3E86DA"], [0.55, "#7366D2"], [1, "#A863C0"]];
+const GEM = (() => {
+  const out = [];
+  for (let y = 0; y < 200; y += 8) for (let k = 0; k < 8; k++) out.push([25 + k * 25, y, 25.6, 8.6, mixRgb(ramp(GEM_L, y / 192), ramp(GEM_R, y / 192), k / 7)]);
+  out.push([25, 0, 200, 4, "#ffffff33"], [25, 4, 4, 196, "#ffffff22"]);
+  for (const [x, y, w, h, c] of sparkle(176, 148, 30, () => "#2a216088")) out.push([x - 2, y - 1, w + 4, h + 2, c]);
+  out.push(...sparkle(176, 148, 30, () => "#FFFFFF"));
+  return out;
+})();
+const GEM_LID = sparkle(126, 142, 15, (t) => ramp([[0, "#4796E3"], [0.5, "#7B6FD8"], [1, "#B865C9"]], t));
 
 const ROOM = 118; // desk props reach left of the body group
 const WIDTH = ROOM + 250;
@@ -167,11 +194,13 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     // Sitting behind a MacBook: we see the silver lid with its glowing apple, the screen's light on the face.
     const SILVER = "#c9ced6", EDGE = "#a7adb8", DECK = "#aeb4c0";
     const glow = motion(rect(40, 56, 170, 44, "#8fd0ff"), "opacity", { from: 0.06, to: 0.2, period: 900, easing: "ease-in-out" });
-    // The lid shows the maker's logo: the white apple, or for Antigravity its rainbow arch.
+    // The lid shows the maker's logo: the white apple, for Antigravity its rainbow arch, for Gemini its sparkle.
     const lid = sp.arch
       ? div().absolute().left(0).top(0).w(1).h(1)
         .child(rect(120, 130, 12, 4, "#FC413D")).child(rect(116, 134, 20, 4, "#F5A83A")).child(rect(112, 138, 28, 4, "#9BCB4E"))
         .child(rect(110, 142, 10, 12, "#3186FF")).child(rect(132, 142, 10, 12, "#3186FF")).child(rect(114, 142, 24, 4, "#3186FF"))
+      : sp.spark
+        ? div().absolute().left(0).top(0).w(1).h(1).children(GEM_LID.map(([x, y, w, h, c]) => rect(x, y, w, h, c)))
       : div().absolute().left(0).top(0).w(1).h(1)
         .child(rect(126, 128, 6, 4, "#ffffff")).child(rect(114, 134, 24, 4, "#ffffff")).child(rect(110, 138, 32, 12, "#ffffff"))
         .child(rect(114, 150, 24, 6, "#ffffff")).child(rect(138, 138, 6, 6, SILVER));
@@ -204,8 +233,9 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
   let group = div().absolute().left(px(ROOM)).top(0).w(px(250)).h(px(207))
     .child(leftClaw)
     .child(rightClaw)
-    .when(!sp.bot && !sp.arch, (el) => el.child(rect(25, 0, 200, 200, BODY)))
+    .when(!sp.bot && !sp.arch && !sp.spark, (el) => el.child(rect(25, 0, 200, 200, BODY)))
     .when(Boolean(sp.arch), (el) => el.children(ARCH.map(([x, y, w, h, c]) => rect(x, y, w, h, c))))
+    .when(Boolean(sp.spark), (el) => el.children(GEM.map(([x, y, w, h, c]) => rect(x, y, w, h, c))))
     .when(Boolean(sp.bot), (el) => el
       .child(rect(25, 24, 200, 104, BODY)).child(rect(55, 2, 56, 30, BODY)).child(rect(122, 0, 64, 34, BODY)).child(rect(176, 12, 40, 24, BODY))
       .child(rect(25, 128, 200, 72, BODY)).child(rect(40, 30, 34, 10, "#8E9CFF"))
@@ -220,7 +250,7 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .when(Boolean(sp.beak), (el) => el.child(rect(104, 80, 32, 22, sp.beak)))
     .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
-    .when(!sp.bot && !sp.arch, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
+    .when(!sp.bot && !sp.arch && !sp.spark, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
     .when(Boolean(props), (el) => el.child(props));
   group = cheer
     ? motion(group, "top", { from: 0, to: px(-18), period: 300, easing: "ease-in-out" })

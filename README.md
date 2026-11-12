@@ -35,6 +35,7 @@ One species per agent program, so you can tell who is who at a glance:
 | Codex | blue terminal robot | Code Reviewer |
 | OpenCode | penguin | Platform Engineer |
 | Antigravity (`agy`) | little astronaut with a gradient cube head, orange arms and boots, its arch logo on the chest and on the laptop lid | Systems Architect |
+| Gemini CLI | blue-to-violet gradient pet with a white sparkle on its chest and on the laptop lid | Data Scientist |
 | anything else | sheep | the program's name |
 
 <p align="center">

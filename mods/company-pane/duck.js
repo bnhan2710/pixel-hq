@@ -30,7 +30,7 @@ const BADGE_TOP = "#8C4A33";
 const SPECIES = {
   crab: { body: "#D97757", shade: "#B5593B", eye: "#2A1A14", badge: "#F4E9DC" },
   bot: { body: "#5B6CF0", shade: "#4553C9", eye: "#DDE4FF", badge: "#F4E9DC", bot: true, screen: "#1B2140", glyph: "#DDE4FF", legs: [88, 152], legW: 30 },
-  penguin: { body: "#2F3B4C", shade: "#243040", eye: "#1A1A1A", badge: "#F2A33A", mask: "#F4F1EA", beak: "#F2A33A", belly: "#F4F1EA" },
+  penguin: { body: "#35425E", shade: "#2E3A52", eye: "#1B2130", badge: "#F2A33A", round: true },
   arch: { body: "#3186FF", shade: "#E8743B", eye: "#14131f", badge: "#F4E9DC", arch: true, legs: [70, 126], legW: 54 },
   sheep: { body: "#F1E7D3", shade: "#4A3B33", eye: "#FFFFFF", badge: "#E8744F", face: "#4A3B33" },
 };
@@ -83,6 +83,29 @@ const ARCH = (() => {
   for (const l of logo) out.push(l);
   return out;
 })();
+
+const runs = (inside, x0, x1, y0, y1, g, color) => {
+  const out = [];
+  for (let y = y0; y < y1; y += g) {
+    let start = null;
+    for (let x = x0; x <= x1 + g; x += g) {
+      const on = x <= x1 && inside(x + g / 2, y + g / 2);
+      if (on && start === null) start = x;
+      if (!on && start !== null) { out.push([start, y, x - start, g + 0.4, typeof color === "function" ? color(y) : color]); start = null; }
+    }
+  }
+  return out;
+};
+const inPenguin = (x, y) => (x - 125) ** 2 + (y - 112) ** 2 <= 92 ** 2;
+const inPenguinFace = (x, y) => (x - 98) ** 2 + (y - 90) ** 2 <= 40 ** 2 || (x - 152) ** 2 + (y - 90) ** 2 <= 40 ** 2 || ((x - 125) / 64) ** 2 + ((y - 152) / 50) ** 2 <= 1;
+const PENGUIN_COAT = [[0, "#4A5B80"], [0.5, "#35425E"], [1, "#262F44"]];
+const PENGUIN = [
+  ...runs(inPenguin, 30, 220, 18, 206, 5, (y) => ramp(PENGUIN_COAT, (y - 20) / 184)),
+  ...runs((x, y) => inPenguin(x, y) && (x - 131) ** 2 + (y - 118) ** 2 > 92 ** 2, 30, 220, 18, 206, 5, "#6479A3"),
+  ...runs((x, y) => inPenguin(x, y) && inPenguinFace(x, y), 30, 220, 40, 206, 5, (y) => (y > 178 ? "#E4DFD3" : "#F7F4EC")),
+  [117, 10, 10, 12, "#4A5B80"], [127, 4, 8, 12, "#4A5B80"],
+];
+const PENGUIN_FEET = [[66, 206, 48, 12, "#F5A623"], [136, 206, 48, 12, "#F5A623"]];
 
 const ROOM = 118; // desk props reach left of the body group
 const WIDTH = ROOM + 250;
@@ -147,12 +170,22 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     : rest
       ? [rect(122, 84, 26, 7, EYE), rect(162, 84, 26, 7, EYE)]
       : [rect(122, 66, 24, 32, EYE), rect(162, 66, 24, 32, EYE), rect(127, 91, 14, 7, "#2a6fdc"), rect(167, 91, 14, 7, "#2a6fdc"), rect(128, 70, 9, 9, WH), rect(168, 70, 9, 9, WH)];
+  const roundFace = [
+    ...(cheer
+      ? [rect(84, 80, 6, 10, EYE), rect(102, 80, 6, 10, EYE), rect(88, 74, 16, 6, EYE), rect(144, 80, 6, 10, EYE), rect(162, 80, 6, 10, EYE), rect(148, 74, 16, 6, EYE)]
+      : rest
+        ? [rect(84, 84, 24, 5, EYE), rect(144, 84, 24, 5, EYE)]
+        : [rect(86, 68, 20, 28, EYE), rect(146, 68, 20, 28, EYE), rect(89, 71, 8, 8, WH), rect(149, 71, 8, 8, WH), rect(99, 87, 4, 4, "#ffffffaa"), rect(159, 87, 4, 4, "#ffffffaa")]),
+    rect(114, 100, 22, 7, "#F5A623"), rect(118, 107, 14, 6, "#E0861C"), rect(62, 102, 18, 8, "#F49AA8"), rect(170, 102, 18, 8, "#F49AA8"),
+  ];
   const eyes2 = sp.arch
     ? [...archFace, rect(116, 104, 22, 8, "#ef6a7e"), rect(170, 104, 22, 8, "#ef6a7e")]
-    : eyes;
+    : sp.round
+      ? roundFace
+      : eyes;
 
   // Claws. Typing: they alternate. Waving: the right one waves up. Cheering: both flap high.
-  const LX = sp.arch ? 26 : 0, RX = sp.arch ? 194 : 225, CW = sp.arch ? 30 : 25;
+  const [LX, RX, CW] = sp.arch ? [26, 194, 30] : sp.round ? [16, 208, 26] : [0, 225, 25];
   let leftClaw = rect(LX, 122, CW, 40, SHADE);
   let rightClaw = rect(RX, 122, CW, 40, SHADE);
   if (typing) {
@@ -208,8 +241,9 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
   let group = div().absolute().left(px(ROOM)).top(0).w(px(250)).h(px(207))
     .child(leftClaw)
     .child(rightClaw)
-    .when(!sp.bot && !sp.arch, (el) => el.child(rect(25, 0, 200, 200, BODY)))
+    .when(!sp.bot && !sp.arch && !sp.round, (el) => el.child(rect(25, 0, 200, 200, BODY)))
     .when(Boolean(sp.arch), (el) => el.children(ARCH.map(([x, y, w, h, c]) => rect(x, y, w, h, c))))
+    .when(Boolean(sp.round), (el) => el.children(PENGUIN.map(([x, y, w, h, c]) => rect(x, y, w, h, c))))
     .when(Boolean(sp.bot), (el) => el
       .child(rect(25, 24, 200, 104, BODY)).child(rect(55, 2, 56, 30, BODY)).child(rect(122, 0, 64, 34, BODY)).child(rect(176, 12, 40, 24, BODY))
       .child(rect(25, 128, 200, 72, BODY)).child(rect(40, 30, 34, 10, "#8E9CFF"))
@@ -218,21 +252,20 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
       .child(rect(104, 150, 8, 8, sp.glyph)).child(rect(112, 158, 8, 8, sp.glyph)).child(rect(104, 166, 8, 8, sp.glyph)).child(rect(126, 164, 20, 6, sp.glyph)))
     .when(Boolean(sp.ears), (el) => el.child(rect(25, 0, 42, 38, SHADE)).child(rect(183, 0, 42, 38, SHADE)))
     .when(Boolean(sp.patch), (el) => el.child(rect(40, 32, 56, 60, sp.patch)).child(rect(146, 32, 56, 60, sp.patch)))
-    .when(Boolean(sp.belly), (el) => el.child(rect(60, 108, 80, 92, sp.belly)))
-    .when(Boolean(sp.mask), (el) => el.child(rect(48, 24, 144, 76, sp.mask)))
     .when(Boolean(sp.face), (el) => el.child(rect(64, 22, 112, 88, sp.face)).child(rect(14, 40, 26, 18, sp.face)).child(rect(200, 40, 26, 18, sp.face)))
-    .when(Boolean(sp.beak), (el) => el.child(rect(104, 80, 32, 22, sp.beak)))
     .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
-    .when(!sp.bot && !sp.arch, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
+    .when(!sp.bot && !sp.arch && !sp.round, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
     .when(Boolean(props), (el) => el.child(props));
   group = cheer
     ? motion(group, "top", { from: 0, to: px(-18), period: 300, easing: "ease-in-out" })
     : motion(group, "top", { from: 0, to: px(typing ? 3 : 7), ...(typing ? { period: 480, easing: "ease-in-out" } : BOB) });
 
   // Four little legs.
-  let legs = (sp.legs ?? [45, 90, 145, 190]).map((x) => rect(ROOM + x, 200, sp.legW ?? 22, 40, SHADE));
-  if (cheer) legs = legs.map((l, i) => motion(l, "top", { from: px(i % 2 ? 194 : 200), to: px(i % 2 ? 200 : 194), period: 600, easing: "ease-in-out" }));
+  let legs = sp.round
+    ? PENGUIN_FEET.map(([x, y, w, h, c], i) => (cheer ? motion(rect(ROOM + x, y, w, h, c), "top", { from: px(i % 2 ? y - 8 : y), to: px(i % 2 ? y : y - 8), period: 600, easing: "ease-in-out" }) : rect(ROOM + x, y, w, h, c)))
+    : (sp.legs ?? [45, 90, 145, 190]).map((x) => rect(ROOM + x, 200, sp.legW ?? 22, 40, SHADE));
+  if (cheer && !sp.round) legs = legs.map((l, i) => motion(l, "top", { from: px(i % 2 ? 194 : 200), to: px(i % 2 ? 200 : 194), period: 600, easing: "ease-in-out" }));
   const whole = div().absolute().left(0).top(0).w(px(WIDTH)).h(px(HEIGHT)).children(legs).child(group);
 
   return div().relative().flex_none().w(px(WIDTH)).h(px(HEIGHT)).child(whole);

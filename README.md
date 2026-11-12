@@ -1,4 +1,8 @@
 <p align="center">
+  <b>English</b> · <a href="README.vi.md">Tiếng Việt</a>
+</p>
+
+<p align="center">
   <img src="preview.png?v=4" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="100%">
 </p>
 

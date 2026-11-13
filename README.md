@@ -73,13 +73,6 @@ One species per agent program, so you can tell who is who at a glance:
 
 The pets, desks and room are drawn from rectangles and animated with Herdr's native `.loop()`. The only picture is the logo, and the only timer is a one-second tick that decides when a pet steps out.
 
-## A real screenshot
-
-<p align="center">
-  <img src="screenshot.png?v=5" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
-  <sub>The layout as it runs (demo data only).</sub>
-</p>
-
 ## Install
 
 Ask your agent:
@@ -94,7 +87,7 @@ Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 
 
 ## Update
 
-Herdr installs a shared layout as a plain copy, so it does not update by itself. Just ask your agent:
+Herdr installs a shared layout as a plain copy, so it does not update by itself. When a new version is out, Pixel HQ shows an **Update now** button in the office: it opens a new tab with an agent (the one you are in, else Claude) that starts on the prompt below. You can also ask any agent yourself:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -106,11 +99,15 @@ What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
 As an agent's context fills up, a pile of paper grows on its desk: one sheet per 10%, and past 80% the top sheets turn pink (past 95% the pile trembles). Hover it for the exact percentage. **Click the pile, then click it again within 6 seconds**, and Pixel HQ sends the agent `/compact`, which already summarizes the conversation and swaps the history for that summary. It only does this when the agent is idle: a working agent answers "busy: wait for it", a blocked one "answer it first". The first click just arms it and says so on the nameplate.
 
-Herdr does not know how full an agent's context is, so a Claude Code status line has to tell it. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) does that (it labels the terminal with `claude.context`); it needs `python3`. Ask your agent:
+Herdr does not know how full an agent's context is, so each agent has its own way in:
+
+- **Codex:** nothing to set up. Pixel HQ reads the token count Codex writes to its session file (`~/.codex/sessions`, found through the process that has it open, or by folder) every few seconds. macOS and Linux (it needs `sh` and `lsof`).
+- **OpenCode (1.x):** nothing to set up either. The status plugin that Pixel HQ adds to OpenCode (see below) reports the last answer's tokens against the model's context window. OpenCode 2.x has no session events for a plugin to read, so no pile there yet.
+- **Claude Code:** a status line has to tell Herdr. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) does that (it labels the terminal with the context percentage); it needs `python3`. Ask your agent:
 
 > Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
 
-Only Claude Code reports its context this way for now, so other agents have no pile.
+Antigravity (agy) has no pile yet: I found no way to read its context.
 
 ## Teamwork without collisions
 
@@ -131,13 +128,20 @@ Herdr only counts a program as an agent when it reports a status. Claude Code do
 
 ## Update notices
 
-When a newer version of Pixel HQ is out, the office shows a small note ("Pixel HQ 1.2.0 is out · what's new. Ask your agent: ...") that you can click away; it comes back only for the next version. To do this the `company-agents` mod reads one tiny public file, `mods/company-agents/version.json` on this repo's `main` branch, at start and every 6 hours, and compares it with the copy in your install. It sends nothing about you. To turn it off, delete `mods/company-agents/version.json` from your install (an update puts it back).
+When a newer version of Pixel HQ is out, the office shows a small note ("Pixel HQ 1.4.0 is out · what's new") with an **Update now** button (it opens an agent on the update prompt) and a **Later** button that hides it until the next version. To do this the `company-agents` mod reads one tiny public file, `mods/company-agents/version.json` on this repo's `main` branch, at start and every 6 hours, and compares it with the copy in your install. It sends nothing about you. To turn it off, delete `mods/company-agents/version.json` from your install (an update puts it back).
 
 ## Make it yours
 
 - Right-click a pet to change its figures, or right-click empty floor to put every desk back.
 - `RECIPE.md` is the brief this layout was built from. Hand it to your agent to rebuild or remix it.
 - Drawings live in `mods/company-agents/duck.js` (the pets) and `scene.js` (the room).
+
+## A real screenshot
+
+<p align="center">
+  <img src="screenshot.png?v=6" alt="Pixel HQ at work: the metro line of floors, the office with four agents in a 2x2 grid of panes, desk nameplates on every pane and a team status bar" width="900"><br>
+  <sub>The whole office at work: two Claude, a Codex waiting for you and an OpenCode on a break, one git worktree each, with papers piling up on the desks (demo data only).</sub>
+</p>
 
 ## Credits and license
 

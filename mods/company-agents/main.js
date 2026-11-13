@@ -88,6 +88,23 @@ function contextBar(t, pct, model, address) {
     .when(Boolean(model), el => el.child(div().min_w(0).truncate().text_size(10).text_color(t.muted).child(`· ${model}`)));
 }
 
+// What the Update button hands to an agent.
+const UPDATE_PROMPT = "Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.";
+
+// Finds a Codex terminal's session file (the one its process, or a child of it, has open; else the newest recent one that began in the
+// same folder) and prints its last token_count event, whose last_token_usage and model_context_window say how full the context is.
+const CODEX_SH = `home="\${CODEX_HOME:-$HOME/.codex}/sessions"
+pids="$1"; for i in 1 2 3; do pids="$pids $(for p in $pids; do pgrep -P "$p" 2>/dev/null; done)"; done
+f=""
+[ -n "$1" ] && f=$(lsof -p "$(echo $pids | tr -s ' ' ',')" -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E '/rollout-[^/]*\\.jsonl$' | head -1)
+if [ -z "$f" ]; then
+  for c in $(find "$home" -name 'rollout-*.jsonl' -mmin -720 2>/dev/null | xargs ls -t 2>/dev/null | head -20); do
+    case "$(head -n 1 "$c")" in *'"cwd":"'"$2"'"'*) f="$c"; break;; esac
+  done
+fi
+[ -n "$f" ] || exit 3
+tail -n 600 "$f" | grep '"type":"token_count"' | tail -1`;
+
 export default class Agents extends View {
   init(_props, cx) {
     if (props()?.sortMenu) return;
@@ -125,8 +142,12 @@ export default class Agents extends View {
     this.scanning = false;
     this.scan(cx);
     cx.timer.every(6000, (cx) => this.scan(cx));
+    // Codex does not report its context, but it writes it to its session file: read it for each Codex desk.
+    this.ctxRead = new Map();
+    this.scanCodex(cx);
+    cx.timer.every(8000, (cx) => this.scanCodex(cx));
     // `company-agents.hire` (a key binding, or herdr-app do) opens the hire form.
-    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "hire") this.openHire(cx); } });
+    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "hire") this.openHire(cx); if (c === "update") this.runUpdate(cx); } });
     // OpenCode 1.x does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
     // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Only ever replaces Pixel HQ's own older copy;
     // deleting the file removes it for good.
@@ -318,6 +339,29 @@ export default class Agents extends View {
     this.scanning = false;
   }
 
+  async scanCodex(cx) {
+    if (this.scanningCodex || window()?.platform === "windows") return;
+    this.scanningCodex = true;
+    try {
+      const remote = new Set(spaces().filter((x) => x.machine).map((x) => x.id));
+      const paneBy = new Map(panes().map((p) => [p.pane, p]));
+      const next = new Map();
+      for (const a of agents().filter((x) => String(x.program?.key ?? "").toLowerCase().includes("codex") && !remote.has(x.space))) {
+        const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
+        const pid = info?.foreground?.pid;
+        const cwd = paneBy.get(a.pane)?.cwd;
+        if (!pid && !cwd) continue;
+        const r = await exec("sh", ["-c", CODEX_SH, "sh", String(pid ?? ""), cwd ?? "/dev/null/none"], { timeout: 8000 }).catch(() => null);
+        const ev = r?.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
+        const used = ev?.payload?.info?.last_token_usage?.total_tokens, win = ev?.payload?.info?.model_context_window;
+        if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: null });
+      }
+      const sig = JSON.stringify([...next]);
+      if (sig !== JSON.stringify([...this.ctxRead])) { this.ctxRead = next; cx.notify(); }
+    } catch { /* no codex, no lsof, odd output: no pile */ }
+    this.scanningCodex = false;
+  }
+
   openHire(cx) {
     const h = this.hiring;
     h.open = !h.open;
@@ -345,6 +389,21 @@ export default class Agents extends View {
       this.ticketInput.set_value("");
     } catch (e) { h.error = String(e?.message ?? e); }
     h.busy = false;
+    cx.notify();
+  }
+
+  // The Update button: opens a new tab in the shown space with an agent (the one you are in, else Claude) that starts on the update prompt.
+  runUpdate(cx) {
+    // Once per click: every copy of this mod hears the same command, and a double click must not open two agents.
+    if (Date.now() - Number(shared("pixel-hq.update-at") ?? 0) < 5000) return;
+    setShared("pixel-hq.update-at", Date.now());
+    const sp = spaces().find((x) => x.active);
+    const here = agents().find((a) => a.address === focused()?.agent);
+    const key = String(here?.program?.key ?? "").toLowerCase();
+    const argv = key.includes("codex") ? ["codex"] : key.includes("opencode") ? ["opencode"] : ["claude"];
+    if (this.update) localStorage.setItem("upd-dismissed", this.update.version);
+    this.update = null;
+    run("tab.new", { name: "update Pixel HQ", folder: appHome(), argv, task: UPDATE_PROMPT, space: sp?.id });
     cx.notify();
   }
 
@@ -376,25 +435,27 @@ export default class Agents extends View {
   }
 
   async setupOpenCode(cx) {
-    if (localStorage.getItem("oc-plugin-v2")) return;
     const src = `${appHome()}/mods/company-agents/opencode-status.js`;
-    // "oc-plugin" is the first plugin's record: that install only replaces its own old copy and never brings back a removed one.
-    const upgrade = localStorage.getItem("oc-plugin") ? "1" : "";
-    // Exit codes: 0 added, 5 old Pixel HQ copy replaced (it fails to load on OpenCode 2.x), 3 no OpenCode folder,
-    // 4 left alone (already current, someone else's file, or removed by the person).
-    const sh = 'D="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; [ -d "$D" ] || exit 3; T="$D/plugins/opencode-status.js"; U=0; '
-      + 'if [ -e "$T" ]; then grep -q pixel-hq-status "$T" && exit 4; grep -q PixelHqStatus "$T" || exit 4; U=5; elif [ -n "$2" ]; then exit 4; fi; '
-      + 'mkdir -p "$D/plugins" || exit 1; cp "$1" "$T" || exit 1; exit $U';
-    const ps = "param($src, $upgrade); $c = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }; $d = Join-Path $c 'opencode'; "
-      + "if (-not (Test-Path -LiteralPath $d)) { exit 3 }; $p = Join-Path $d 'plugins'; $t = Join-Path $p 'opencode-status.js'; $u = 0; "
-      + "if (Test-Path -LiteralPath $t) { $s = Get-Content -Raw -LiteralPath $t; if ($s -match 'pixel-hq-status' -or $s -notmatch 'PixelHqStatus') { exit 4 }; $u = 5 } elseif ($upgrade) { exit 4 }; "
-      + "New-Item -ItemType Directory -Force -Path $p | Out-Null; Copy-Item -LiteralPath $src -Destination $t -Force -ErrorAction Stop; exit $u";
+    const had = localStorage.getItem("oc-plugin") ? "1" : "0";
+    // Exit codes: 0 added, 3 no OpenCode folder, 4 nothing to do, 5 updated to this mod's newer version of its own plugin.
+    // Never touches a file that is not this plugin, and respects a plugin the person deleted.
+    const sh = 'D="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; [ -d "$D" ] || exit 3; T="$D/plugins/opencode-status.js"; '
+      + 'if [ -e "$T" ]; then grep -q PixelHqStatus "$T" || exit 4; '
+      + '[ "$(grep -o "pixel-hq-plugin v[0-9]*" "$T" | head -1)" = "$(grep -o "pixel-hq-plugin v[0-9]*" "$1" | head -1)" ] && exit 4; '
+      + 'cp "$1" "$T" || exit 1; exit 5; fi; [ "$2" = 1 ] && exit 4; mkdir -p "$D/plugins" || exit 1; cp "$1" "$T" || exit 1';
+    const ps = "param($src, $had); $c = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }; $d = Join-Path $c 'opencode'; "
+      + "if (-not (Test-Path -LiteralPath $d)) { exit 3 }; $p = Join-Path $d 'plugins'; $t = Join-Path $p 'opencode-status.js'; "
+      + "if (Test-Path -LiteralPath $t) { $cur = Get-Content -Raw -LiteralPath $t; if ($cur -notmatch 'PixelHqStatus') { exit 4 }; "
+      + "$a = [regex]::Match($cur, 'pixel-hq-plugin v\\d+').Value; $b = [regex]::Match((Get-Content -Raw -LiteralPath $src), 'pixel-hq-plugin v\\d+').Value; "
+      + "if ($a -eq $b) { exit 4 }; Copy-Item -LiteralPath $src -Destination $t -Force -ErrorAction Stop; exit 5 }; "
+      + "if ($had -eq '1') { exit 4 }; New-Item -ItemType Directory -Force -Path $p | Out-Null; Copy-Item -LiteralPath $src -Destination $t -ErrorAction Stop";
     const r = await (window()?.platform === "windows"
-      ? exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}' '${upgrade}'`])
-      : exec("sh", ["-c", sh, "sh", src, upgrade])).catch(() => null);
+      ? exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}' '${had}'`])
+      : exec("sh", ["-c", sh, "sh", src, had])).catch(() => null);
     if (!r || ![0, 4, 5].includes(r.code)) return; // no OpenCode here (yet), or a failed copy: try again next launch
-    localStorage.setItem("oc-plugin-v2", "1");
-    if (r.code !== 4) { this.notice = `OpenCode plugin ${r.code === 5 ? "updated" : "added"} · restart OpenCode to see it here`; cx.notify(); }
+    localStorage.setItem("oc-plugin", "1");
+    if (r.code === 0) { this.notice = "OpenCode plugin added · restart OpenCode to see it here"; cx.notify(); }
+    if (r.code === 5) { this.notice = "OpenCode plugin updated · restart OpenCode to apply"; cx.notify(); }
   }
 
   render(cx) {
@@ -483,9 +544,10 @@ export default class Agents extends View {
 
     // Context use (0–100) and model that Claude's status line labels its terminal with.
     const contextOf = new Map(all.flatMap((k) => {
-      const v = Number.parseInt(k.labels?.["claude.context"], 10);
-      return Number.isFinite(v) ? [[k.address, { pct: Math.max(0, Math.min(100, v)), model: k.labels?.["claude.model"] || null }]] : [];
+      const v = Number.parseInt(k.labels?.["agent.context"] ?? k.labels?.["claude.context"], 10);
+      return Number.isFinite(v) ? [[k.address, { pct: Math.max(0, Math.min(100, v)), model: k.labels?.["agent.model"] || k.labels?.["claude.model"] || null }]] : [];
     }));
+    for (const [addr, c] of this.ctxRead) if (!contextOf.has(addr)) contextOf.set(addr, c);
 
     const row = (a, i, subs = []) => {
       const pic = figureFor(a.space_name, a.status, 45, now - this.since(a), speciesOf(a.program?.key));
@@ -792,9 +854,16 @@ export default class Agents extends View {
       })
       .child(scene(sz.width, sz.height))
       .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
-      .when(Boolean(this.update || this.notice), (el) => el.child(div().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(4).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4").cursor_pointer()
-        .on_click((_e, cx) => { if (this.update) localStorage.setItem("upd-dismissed", this.update.version); this.update = null; this.notice = null; cx.notify(); })
-        .child(this.update ? `Pixel HQ ${this.update.version} is out${this.update.notes ? ` · ${this.update.notes}` : ""}. Ask your agent: "update Pixel HQ from github.com/bnhan2710/pixel-hq, overwriting is OK" (click to hide)` : this.notice)))
+      .when(Boolean(this.update || this.notice), (el) => {
+        const btn = (id, text, fill, ink, act) => div().id(id).px(10).h(22).flex().items_center().cursor_pointer().bg(fill).text_size(10.5).font_family(monoF).font_bold().text_color(ink).on_click(act).child(text);
+        const box = v_flex().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(6).gap(6).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4");
+        return el.child(this.update
+          ? box.child(div().child(`Pixel HQ ${this.update.version} is out${this.update.notes ? ` · ${this.update.notes}` : ""}`))
+            .child(h_flex().gap(6)
+              .child(btn("upd-go", "Update now", "#89b4fa", "#11111b", (_e, cx) => this.runUpdate(cx)))
+              .child(btn("upd-later", "Later", "#313244", "#cdd6f4", (_e, cx) => { localStorage.setItem("upd-dismissed", this.update.version); this.update = null; cx.notify(); })))
+          : box.cursor_pointer().on_click((_e, cx) => { this.notice = null; cx.notify(); }).child(this.notice));
+      })
       .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
       .children(links)
       .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);

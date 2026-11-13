@@ -11,9 +11,9 @@ What lives in your install (`~/.config/herdr-app/`):
 | `themes/pixel-hq.json` | the terminal theme |
 | `mods/company-agents/`, `company-brand/`, `company-pane/`, `company-spaces/`, `company-status/` | the five mods |
 
-## 1. Ask your agent
+## 1. Press Update now, or ask your agent
 
-An agent never overwrites existing files unless you say so, so say "update":
+When a newer version is out, the office shows an **Update now** button that opens an agent on this prompt for you. Or paste it into any agent yourself. An agent never overwrites existing files unless you say so, which is why the prompt says so:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 

@@ -73,13 +73,6 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 
 Thú cưng, bàn và căn phòng đều được vẽ từ các hình chữ nhật và tạo chuyển động bằng `.loop()` gốc của Herdr. Hình ảnh duy nhất là logo, và bộ đếm giờ duy nhất là một nhịp một giây quyết định khi nào thú cưng đứng dậy ra ngoài.
 
-## Ảnh chụp thật
-
-<p align="center">
-  <img src="screenshot.png?v=5" alt="Ảnh chụp thật của Pixel HQ: các tầng trong danh sách Spaces, văn phòng thú cưng pixel bên dưới, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
-  <sub>Layout khi đang chạy (chỉ dữ liệu demo).</sub>
-</p>
-
 ## Cài đặt
 
 Nhờ agent của bạn:
@@ -94,7 +87,7 @@ Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Re
 
 ## Cập nhật
 
-Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không tự cập nhật. Chỉ cần nhờ agent của bạn:
+Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không tự cập nhật. Khi có phiên bản mới, Pixel HQ hiện nút **Update now** trong văn phòng: nó mở một tab mới với một agent (agent bạn đang dùng, nếu không thì Claude) và chạy ngay câu lệnh bên dưới. Bạn cũng có thể tự nhờ một agent bất kỳ:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -106,11 +99,15 @@ Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm tron
 
 Khi context của agent đầy lên, một chồng giấy cao dần trên bàn của nó: cứ 10% thêm một tờ, quá 80% mấy tờ trên cùng ngả hồng (quá 95% chồng giấy rung). Rê chuột lên để xem phần trăm chính xác. **Bấm vào chồng giấy, rồi bấm lần nữa trong 6 giây**, Pixel HQ sẽ gửi cho agent lệnh `/compact`, vốn đã tự tóm tắt cuộc trò chuyện rồi thay lịch sử bằng bản tóm tắt. Chỉ làm khi agent đang rảnh: agent đang chạy sẽ báo "busy: wait for it", agent đang chờ bạn trả lời báo "answer it first". Lần bấm đầu chỉ lên cò và hiện lời nhắc trên biển tên.
 
-Herdr không biết context của agent đầy bao nhiêu, nên cần status line của Claude Code báo cho nó. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) làm việc đó (gắn nhãn `claude.context` cho terminal); cần `python3`. Nhờ agent của bạn:
+Herdr không biết context của agent đầy bao nhiêu, nên mỗi agent có một đường riêng:
+
+- **Codex:** không cần cài gì. Pixel HQ đọc số token mà Codex ghi vào file phiên của nó (`~/.codex/sessions`, tìm qua tiến trình đang mở file đó, hoặc theo thư mục) mỗi vài giây. Chạy trên macOS và Linux (cần `sh` và `lsof`).
+- **OpenCode (1.x):** cũng không cần cài gì. Plugin trạng thái mà Pixel HQ thêm vào OpenCode (xem mục bên dưới) báo số token của câu trả lời gần nhất so với cửa sổ context của model. OpenCode 2.x không có sự kiện phiên cho plugin đọc, nên chưa có chồng giấy ở đó.
+- **Claude Code:** cần status line báo cho Herdr. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) làm việc đó (gắn nhãn phần trăm context cho terminal); cần `python3`. Nhờ agent của bạn:
 
 > Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
 
-Hiện chỉ Claude Code báo context theo cách này, các agent khác chưa có chồng giấy.
+Antigravity (agy) chưa có chồng giấy: mình chưa tìm ra cách đọc context của nó.
 
 ## Làm việc nhóm không giẫm chân nhau
 
@@ -131,13 +128,20 @@ Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Clau
 
 ## Thông báo cập nhật
 
-Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixel HQ 1.2.0 is out · có gì mới. Ask your agent: ...") mà bạn bấm là tắt; nó chỉ hiện lại ở phiên bản kế tiếp. Để làm vậy, mod `company-agents` đọc một file công khai rất nhỏ, `mods/company-agents/version.json` trên nhánh `main` của repo này, lúc khởi động và mỗi 6 giờ, rồi so với bản trong máy bạn. Nó không gửi gì về bạn. Muốn tắt, xóa `mods/company-agents/version.json` trong bản cài của bạn (cập nhật sẽ đặt nó lại).
+Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixel HQ 1.4.0 is out · có gì mới") kèm nút **Update now** (mở một agent chạy câu lệnh cập nhật) và nút **Later** để ẩn đến phiên bản kế tiếp. Để làm vậy, mod `company-agents` đọc một file công khai rất nhỏ, `mods/company-agents/version.json` trên nhánh `main` của repo này, lúc khởi động và mỗi 6 giờ, rồi so với bản trong máy bạn. Nó không gửi gì về bạn. Muốn tắt, xóa `mods/company-agents/version.json` trong bản cài của bạn (cập nhật sẽ đặt nó lại).
 
 ## Tuỳ biến theo ý bạn
 
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.
 - `RECIPE.md` là bản brief dùng để dựng layout này. Đưa nó cho agent của bạn để dựng lại hoặc remix.
 - Phần vẽ nằm ở `mods/company-agents/duck.js` (thú cưng) và `scene.js` (căn phòng).
+
+## Ảnh chụp thật
+
+<p align="center">
+  <img src="screenshot.png?v=6" alt="Pixel HQ đang làm việc: đường tàu các tầng, văn phòng với bốn agent trong lưới pane 2x2, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
+  <sub>Cả văn phòng đang làm việc: hai Claude, một Codex đang chờ bạn và một OpenCode đang nghỉ, mỗi agent một git worktree, giấy tờ chất dần trên bàn (dữ liệu demo).</sub>
+</p>
 
 ## Ghi công và giấy phép
 

@@ -19,6 +19,7 @@ jobs:
       - name: Update the numbers
         env:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "::notice::No STATS_TOKEN secret, skipping"; exit 0; fi
           python3 scripts/update-stats.py

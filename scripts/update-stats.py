@@ -12,8 +12,9 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY, SVG = os.path.join(HERE, "stats.json"), os.path.join(HERE, "stats.svg")
 
 
-def gh(path, *flags):
-    r = subprocess.run(["gh", "api", *flags, f"repos/{REPO}{path}"], capture_output=True, text=True)
+def gh(path, *flags, token=None):
+    env = dict(os.environ, GH_TOKEN=token) if token else None
+    r = subprocess.run(["gh", "api", *flags, f"repos/{REPO}{path}"], capture_output=True, text=True, env=env)
     if r.returncode:
         raise RuntimeError(f"gh api {path} failed: {(r.stderr or r.stdout).strip()[:300]}")
     return json.loads(r.stdout)
@@ -23,7 +24,8 @@ def star_days():
     """The day each star was given, oldest first (the star+json media type adds starred_at)."""
     out, page = [], 1
     while True:
-        batch = gh(f"/stargazers?per_page=100&page={page}", "-H", "Accept: application/vnd.github.star+json")
+        # the stars list is public: the workflow's own token reads it (the traffic token has no access to it)
+        batch = gh(f"/stargazers?per_page=100&page={page}", "-H", "Accept: application/vnd.github.star+json", token=os.environ.get("GITHUB_TOKEN"))
         out += [b["starred_at"][:10] for b in batch if b.get("starred_at")]
         if len(batch) < 100:
             return sorted(out)

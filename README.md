@@ -55,8 +55,8 @@ One species per agent program, so you can tell who is who at a glance:
 | anything else | sheep | the program's name |
 
 <p align="center">
-  <img src="team.gif?v=1" alt="Six staff in six states: two clashing desks with red tags and a dotted line, a crab typing, a Codex robot waiting for you, an OpenCode penguin on a break, an Antigravity astronaut typing and a crab that has shipped, with branch tags and piles of papers" width="320"><br>
-  <sub>(Animated.) Six staff, six states: a crab and a robot that changed the same file in two worktrees (red tags, dotted sparks), a crab typing, a penguin on a break, an astronaut typing and a crab that has shipped. Each sits in its own worktree, and the papers pile up as their context grows.</sub>
+  <img src="team.gif?v=2" alt="The whole sidebar in motion: the metro line of floors and the office with six staff in six states: two clashing desks with red tags and a dotted line, a crab typing, a Codex robot waiting for you, an OpenCode penguin on a break, an Antigravity astronaut typing and a crab that has shipped, with branch tags and piles of papers" width="320"><br>
+  <sub>(Animated.) The whole sidebar: three floors on the metro line, and the office with six staff in six states: a crab and a robot that changed the same file in two worktrees (red tags, dotted sparks), a crab typing, a penguin on a break, an astronaut typing and a crab that has shipped. Each sits in its own worktree, and the papers pile up as their context grows.</sub>
 </p>
 
 <p align="center">

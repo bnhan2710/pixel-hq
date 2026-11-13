@@ -55,8 +55,8 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 | chương trình khác | cừu | tên của chương trình |
 
 <p align="center">
-  <img src="team.gif?v=1" alt="Sáu nhân viên, sáu trạng thái: hai bàn đụng nhau có thẻ đỏ và đường chấm, một chú cua đang gõ, robot Codex đang chờ bạn, chim cánh cụt OpenCode đang nghỉ, phi hành gia Antigravity đang gõ và một chú cua đã xong việc, kèm tên branch và chồng giấy" width="320"><br>
-  <sub>(Ảnh động.) Sáu nhân viên, sáu trạng thái: một chú cua và robot cùng sửa một file ở hai worktree (thẻ đỏ, tia lửa chấm), một chú cua đang gõ, chim cánh cụt đang nghỉ, phi hành gia đang gõ và một chú cua đã xong việc. Mỗi người ở một worktree riêng, giấy tờ chất dần theo context.</sub>
+  <img src="team.gif?v=2" alt="Cả sidebar chuyển động: đường tàu các tầng và văn phòng với sáu nhân viên, sáu trạng thái: hai bàn đụng nhau có thẻ đỏ và đường chấm, một chú cua đang gõ, robot Codex đang chờ bạn, chim cánh cụt OpenCode đang nghỉ, phi hành gia Antigravity đang gõ và một chú cua đã xong việc, kèm tên branch và chồng giấy" width="320"><br>
+  <sub>(Ảnh động.) Cả sidebar: ba tầng trên đường tàu và văn phòng với sáu nhân viên, sáu trạng thái: một chú cua và robot cùng sửa một file ở hai worktree (thẻ đỏ, tia lửa chấm), một chú cua đang gõ, chim cánh cụt đang nghỉ, phi hành gia đang gõ và một chú cua đã xong việc. Mỗi người ở một worktree riêng, giấy tờ chất dần theo context.</sub>
 </p>
 
 <p align="center">

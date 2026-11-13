@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="preview.png?v=4" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="100%">
+  <img src="preview.png?v=5" alt="Pixel HQ: a tiny office for your coding agents. A pixel-art Herdr layout." width="100%">
 </p>
 
 <p align="center">

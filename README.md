@@ -93,27 +93,13 @@ Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 
 
 ## Update
 
-Herdr installs a shared layout as a plain copy, so it does not update by itself. To get the latest Pixel HQ:
+Herdr installs a shared layout as a plain copy, so it does not update by itself. Just ask your agent:
 
-**One command** (copies the new files over your install; your other layouts and mods are untouched):
+> Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
-```sh
-git clone --depth 1 https://github.com/bnhan2710/pixel-hq /tmp/pixel-hq-update \
-  && cp -R /tmp/pixel-hq-update/layouts /tmp/pixel-hq-update/mods /tmp/pixel-hq-update/themes ~/.config/herdr-app/ \
-  && rm -rf /tmp/pixel-hq-update
-```
+(Say "update": an agent never overwrites existing files unless you tell it to.) Then quit and reopen Herdr once if the window does not refresh.
 
-**Or ask your agent** (say "update", because by default an agent never overwrites existing files):
-
-> Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ from herdr.dev/layouts/bnhan2710/pixel-hq: replace `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods with the new files (overwriting is intended here), keep my other layouts, then run `herdr-app check` on each mod.
-
-Then quit and reopen Herdr once if the window does not refresh. Notes:
-
-- Overwriting resets any edits you made to those files, including the size of the Spaces block in `layouts/pixel-hq.json`. Copy them somewhere first if you changed them, or clone the layout (`herdr-app do layout.clone '{"name":"pixel-hq","as":"my-hq"}'`) and keep your layout tweaks there (edits inside the mods are still overwritten).
-- Pet positions you dragged are stored by Herdr, not in these files, so they survive an update.
-- To see what changed, check the [commit list](https://github.com/bnhan2710/pixel-hq/commits/main) before you update.
-
-Full steps, what an update overwrites and how to go back: [UPDATE.md](UPDATE.md).
+What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
 ## Make it yours
 

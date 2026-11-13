@@ -11,23 +11,15 @@ What lives in your install (`~/.config/herdr-app/`):
 | `themes/pixel-hq.json` | the terminal theme |
 | `mods/company-agents/`, `company-brand/`, `company-pane/`, `company-spaces/`, `company-status/` | the five mods |
 
-## 1. One command
-
-```sh
-git clone --depth 1 https://github.com/bnhan2710/pixel-hq /tmp/pixel-hq-update \
-  && cp -R /tmp/pixel-hq-update/layouts /tmp/pixel-hq-update/mods /tmp/pixel-hq-update/themes ~/.config/herdr-app/ \
-  && rm -rf /tmp/pixel-hq-update
-```
-
-Files with the same name are replaced; your other layouts, mods and themes are left alone.
-
-## 2. Ask your agent
+## 1. Ask your agent
 
 An agent never overwrites existing files unless you say so, so say "update":
 
-> Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ from herdr.dev/layouts/bnhan2710/pixel-hq: replace `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods with the new files (overwriting is intended here), keep my other layouts, then run `herdr-app check` on each mod.
+> Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
-## 3. After updating
+The agent follows the rules in `~/.config/herdr-app/AGENTS.md`: it reads the new files, replaces `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods, runs `herdr-app check` on each mod and leaves everything else alone.
+
+## 2. After updating
 
 1. Run `herdr-app check ~/.config/herdr-app/mods/company-agents` (and the other four mods). Each should print `check passed`.
 2. If the window does not refresh, quit and reopen Herdr once.
@@ -46,9 +38,4 @@ Read the [commit list](https://github.com/bnhan2710/pixel-hq/commits/main) befor
 
 ## Going back
 
-An update is a file copy, so to go back clone an older commit and copy that instead:
-
-```sh
-git clone https://github.com/bnhan2710/pixel-hq /tmp/pixel-hq-old && git -C /tmp/pixel-hq-old checkout <commit> \
-  && cp -R /tmp/pixel-hq-old/layouts /tmp/pixel-hq-old/mods /tmp/pixel-hq-old/themes ~/.config/herdr-app/ && rm -rf /tmp/pixel-hq-old
-```
+Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back to commit `<commit>` of github.com/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended."

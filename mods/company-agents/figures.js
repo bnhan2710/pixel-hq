@@ -106,10 +106,10 @@ export function specFor(set, slot) {
 }
 
 // What an agent in this space and state looks like, `height` px tall.
-export function figureFor(spaceName, status, height, waited = 0, species = "crab") {
+export function figureFor(spaceName, status, height, waited = 0, species = "crab", wear = 0) {
   const c = config();
   const set = allSets(c)[setIdFor(spaceName, c)];
-  return figure(specFor(set, slotOf(status, waited)), height, species);
+  return figure(specFor(set, slotOf(status, waited)), height, species, wear);
 }
 
 function moved(el, motion, h, x) {
@@ -124,9 +124,9 @@ function moved(el, motion, h, x) {
 }
 
 // Every figure takes the duck's box, so rows line up whatever set a space uses.
-export function figure(spec, height, species = "crab") {
+export function figure(spec, height, species = "crab", wear = 0) {
   const w = duckWidth(height);
-  if (spec?.duck) return duckMood(spec.duck, height, { still: Boolean(spec.still), species });
+  if (spec?.duck) return duckMood(spec.duck, height, { still: Boolean(spec.still), species, wear });
   const box = div().relative().flex_none().w(w).h(height);
   const x = Math.round(w * DUCK_CENTER - height / 2);
   if (spec?.image) {

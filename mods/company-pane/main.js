@@ -1,8 +1,8 @@
 // A desk nameplate as the pane header: the agent's pixel pet, its job title, status and folder.
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { panes, props, run, theme, home, layout } from "herdr";
-import { agentOf, duckMood, duckWidth, mood } from "./duck.js";
+import { panes, terminals, props, run, theme, home, layout } from "herdr";
+import { agentOf, contextPercent, duckMood, duckWidth, mood, wearOf } from "./duck.js";
 
 const ROLE = (p) => agentOf(p.program?.key)?.role ?? (p.program?.shell ? "Terminal" : (p.program?.name ?? "Contractor"));
 
@@ -44,8 +44,9 @@ export default class CompanyPane extends View {
     const species = agentOf(p.program?.key)?.species ?? null;
     const bottom = paneFrame(layout())?.header?.position === "bottom";
     const H = 30;
+    const pct = contextPercent(terminals().find((k) => k.address === p.terminal)?.labels);
     const avatar = species
-      ? div().flex_none().w(duckWidth(H)).h(H).child(duckMood(mood(st ?? "idle"), H, { species }))
+      ? div().flex_none().w(duckWidth(H)).h(H).child(duckMood(mood(st ?? "idle"), H, { species, wear: wearOf(pct ?? 0) }))
       : div().flex_none().size(24).rounded(6).bg(t.raised).flex().items_center().justify_center().text_size(12).text_color(t.muted).child(">_");
     const title = ((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name || "shell";
     const chip = (text, color, spin) => h_flex().flex_none().gap(5).px(8).h(20).items_center().rounded(10).bg(color + "26").text_size(10.5).font_semibold().text_color(color)

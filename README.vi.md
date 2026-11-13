@@ -105,6 +105,16 @@ Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm tron
 
 Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, OpenCode từ bản 2.0.29 cũng tự báo. OpenCode 1.x thì không, nên nếu không có gì hỗ trợ thì pane OpenCode 1.x chỉ có pet ở header mà không có bàn trong văn phòng. Lần đầu layout chạy, nếu máy có OpenCode, nó thêm một plugin nhỏ ([`opencode-status.js`](mods/company-agents/opencode-status.js)) vào thư mục plugin của OpenCode (`~/.config/opencode/plugins/`): trên 1.x plugin báo trạng thái, trên 2.x thì đứng yên. Văn phòng hiện một dòng thông báo, bạn mở lại OpenCode một lần là OpenCode có bàn. Nó không bao giờ ghi đè file của người khác và chỉ làm một lần: xóa file plugin là gỡ hẳn. Ngoại lệ duy nhất là bản plugin đầu tiên của chính Pixel HQ, bản mà OpenCode 2.x từ chối nạp ("1 plugin failed"): nếu còn bản đó, nó được thay một lần bằng bản hiện tại. Cách này chạy trên macOS và Linux; Windows được hỗ trợ qua PowerShell nhưng chưa được thử trên máy Windows thật, nếu OpenCode không hiện ở đó bạn hãy mở issue giúp mình.
 
+## Pet mệt dần khi context đầy
+
+Pet của Claude Code càng te tua khi context window càng đầy: từ 60% có giọt mồ hôi, từ 80% có băng cá nhân, vết xước và giọt mồ hôi thứ hai, từ 95% có vết nứt và khói. Pet cũng xệ xuống thấp hơn ở bàn. Con số này vốn đã dùng cho thanh context trong danh sách agent. Herdr không tự đọc được nó từ Claude Code, nên một script status line nhỏ ([`claude-statusline.js`](mods/company-agents/claude-statusline.js)) chép nó lên terminal dưới dạng label (`hc label`). Thêm đoạn này vào `~/.claude/settings.json` (macOS, Linux, WSL) rồi mở lại Claude Code một lần:
+
+```json
+"statusLine": { "type": "command", "command": "node ~/.config/herdr-app/mods/company-agents/claude-statusline.js" }
+```
+
+Script không in gì ra. Nếu bạn đã có status line riêng, hãy chạy thêm script này từ đó và truyền cùng JSON vào. Các agent khác không báo context nên pet của chúng luôn tươi.
+
 ## Tuỳ biến theo ý bạn
 
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.

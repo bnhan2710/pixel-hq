@@ -105,6 +105,16 @@ What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
 Herdr only counts a program as an agent when it reports a status. Claude Code does, and so does OpenCode from 2.0.29 on. OpenCode 1.x does not, so on its own an OpenCode 1.x pane would get its pet in the header but no desk in the office. The first time the layout runs, if OpenCode is installed, it adds one small plugin ([`opencode-status.js`](mods/company-agents/opencode-status.js)) to OpenCode's plugins folder (`~/.config/opencode/plugins/`) that reports the status on 1.x and stays quiet on 2.x. It shows a note in the office, you restart OpenCode once, and OpenCode gets its desk. It never overwrites someone else's file, and it does this once only: delete the plugin file to remove it for good. The one exception is Pixel HQ's own first plugin, which OpenCode 2.x refuses to load ("1 plugin failed"): if that copy is there, it is replaced once with the current one. This works on macOS and Linux; Windows is supported through PowerShell but has not been tested on a real Windows machine yet, so please open an issue if OpenCode does not show up there.
 
+## Tired pets when context fills up
+
+A Claude Code pet gets more battered as its context window fills: from 60% a sweat drop, from 80% a bandage, scuffs and a second drop, from 95% cracks and smoke. The pet also slumps lower at its desk. The same percentage already drives the context bar in the agents list. Herdr cannot read it from Claude Code on its own, so a tiny status line script ([`claude-statusline.js`](mods/company-agents/claude-statusline.js)) copies it onto the terminal as a label (`hc label`). Add this to `~/.claude/settings.json` (macOS, Linux, WSL), then restart Claude Code once:
+
+```json
+"statusLine": { "type": "command", "command": "node ~/.config/herdr-app/mods/company-agents/claude-statusline.js" }
+```
+
+The script prints nothing. If you already have a status line, run the script from it too and pipe the same JSON in. Other agents do not report their context, so their pets stay fresh.
+
 ## Make it yours
 
 - Right-click a pet to change its figures, or right-click empty floor to put every desk back.

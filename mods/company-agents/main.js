@@ -5,7 +5,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 import { figureFor, load } from "./figures.js";
-import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
+import { agentOf, speciesOf, duckWidth, DUCK_CENTER, contextPercent, wearOf } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
 
@@ -385,12 +385,13 @@ export default class Agents extends View {
 
     // Context use (0–100) and model that Claude's status line labels its terminal with.
     const contextOf = new Map(all.flatMap((k) => {
-      const v = Number.parseInt(k.labels?.["claude.context"], 10);
-      return Number.isFinite(v) ? [[k.address, { pct: Math.max(0, Math.min(100, v)), model: k.labels?.["claude.model"] || null }]] : [];
+      const pct = contextPercent(k.labels);
+      return pct == null ? [] : [[k.address, { pct, model: k.labels?.["claude.model"] || null }]];
     }));
+    const wearFor = (a) => wearOf(contextOf.get(a.address)?.pct ?? 0);
 
     const row = (a, i, subs = []) => {
-      const pic = figureFor(a.space_name, a.status, 45, now - this.since(a), speciesOf(a.program?.key));
+      const pic = figureFor(a.space_name, a.status, 45, now - this.since(a), speciesOf(a.program?.key), wearFor(a));
       const ctx = contextOf.get(a.address);
       const more = detail.get(a.address);
       // An agent on another machine (`vps/t7`) says which.
@@ -601,7 +602,7 @@ export default class Agents extends View {
           .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
           .when(this.drag?.addr !== a.address, (el) => el.transition("left", 800).transition("top", 800))
-          .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key))))
+          .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key), wearFor(a))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
           .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))

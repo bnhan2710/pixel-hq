@@ -134,12 +134,19 @@ export const MOODS = [
   { id: "content", label: "Coffee break" },
 ];
 
+export const wearOf = (pct) => (pct >= 95 ? 3 : pct >= 80 ? 2 : pct >= 60 ? 1 : 0);
+
+export function contextPercent(labels) {
+  const v = Number.parseInt(labels?.["claude.context"], 10);
+  return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null;
+}
+
 export function duck(status, height, waited = 0) {
   return duckMood(mood(status, waited), height);
 }
 
 // One mood; `still` draws it without any motion.
-export function duckMood(m, height, { still = false, species = "crab" } = {}) {
+export function duckMood(m, height, { still = false, species = "crab", wear = 0 } = {}) {
   const sp = SPECIES[species] ?? SPECIES.crab;
   const BODY = sp.body, SHADE = sp.shade, EYE = sp.eye, BADGE = sp.badge;
   const s = height / HEIGHT;
@@ -197,6 +204,27 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     leftClaw = motion(rect(LX, 60, CW, 80, SHADE), "top", { from: px(50), to: px(70), period: 300, easing: "ease-in-out" });
     rightClaw = motion(rect(RX, 60, CW, 80, SHADE), "top", { from: px(70), to: px(50), period: 300, easing: "ease-in-out" });
   }
+
+  const PLASTER = "#F4E9DC", SCUFF = "#00000055", CRACK = "#1a1020aa", SWEAT = "#8FD0FF", SMOKE = "#9AA0B4aa";
+  const sweat = (x, y, period) => motion(rect(x, y, 12, 18, SWEAT), "top", { from: px(y), to: px(y + 36), period, easing: "ease-in" });
+  const puff = (x, y, period) => motion(rect(x, y, 16, 16, SMOKE), "top", { from: px(y), to: px(y - 44), period, easing: "ease-out" });
+  const plasterY = sp.round ? 34 : 16;
+  const marks = [
+    ...(wear >= 1 ? [sweat(228, 20, 1100)] : []),
+    ...(wear >= 2
+      ? [
+        sweat(4, 34, 1400),
+        rect(124, plasterY + 4, 44, 10, PLASTER), rect(141, plasterY - 4, 10, 26, PLASTER),
+        rect(70, 86, 22, 6, SCUFF), rect(96, 92, 10, 5, SCUFF), rect(150, 96, 18, 6, SCUFF),
+      ]
+      : []),
+    ...(wear >= 3
+      ? [
+        rect(108, 48, 6, 14, CRACK), rect(114, 60, 6, 14, CRACK), rect(108, 72, 6, 14, CRACK),
+        puff(-6, 80, 1700), puff(14, 70, 2300),
+      ]
+      : []),
+  ];
 
   // Desk props in the room on the left.
   let props = null;
@@ -256,10 +284,12 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
     .when(!sp.bot && !sp.arch && !sp.round, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))
+    .children(marks)
     .when(Boolean(props), (el) => el.child(props));
+  const sag = wear * 3;
   group = cheer
     ? motion(group, "top", { from: 0, to: px(-18), period: 300, easing: "ease-in-out" })
-    : motion(group, "top", { from: 0, to: px(typing ? 3 : 7), ...(typing ? { period: 480, easing: "ease-in-out" } : BOB) });
+    : motion(group, "top", { from: 0, to: px((typing ? 3 : 7) + sag), ...(typing ? { period: 480 + wear * 120, easing: "ease-in-out" } : { ...BOB, period: BOB.period + wear * 400 }) });
 
   // Four little legs.
   let legs = sp.round

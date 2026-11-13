@@ -111,6 +111,7 @@ Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Clau
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.
 - `RECIPE.md` là bản brief dùng để dựng layout này. Đưa nó cho agent của bạn để dựng lại hoặc remix.
 - Phần vẽ nằm ở `mods/company-agents/duck.js` (thú cưng) và `scene.js` (căn phòng).
+- Trước khi mở pull request, chạy `node scripts/check.mjs` (Node 22 trở lên). CI chạy đúng các kiểm tra này: cú pháp JavaScript, JSON và SVG hợp lệ, không còn dấu conflict khi merge hay file do `herdr-app check` để lại, mọi file `mods/<mod>/…` mà mod trỏ tới đều có, cùng các mod và theme mà layout dùng. Nó không thay được `herdr-app check` và việc chạy thử layout trong Herdr.
 
 ## Ghi công và giấy phép
 

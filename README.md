@@ -111,6 +111,7 @@ Herdr only counts a program as an agent when it reports a status. Claude Code do
 - Right-click a pet to change its figures, or right-click empty floor to put every desk back.
 - `RECIPE.md` is the brief this layout was built from. Hand it to your agent to rebuild or remix it.
 - Drawings live in `mods/company-agents/duck.js` (the pets) and `scene.js` (the room).
+- Before a pull request, run `node scripts/check.mjs` (Node 22+). CI runs the same checks: JavaScript syntax, valid JSON and SVG, no merge-conflict markers or files `herdr-app check` leaves behind, every `mods/<mod>/…` asset a mod points at, and the mods and theme the layout uses. It can't replace `herdr-app check` and trying the layout in Herdr.
 
 ## Credits and license
 

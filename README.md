@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif?v=3" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
+  <img src="demo.gif?v=4" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
   <sub>The sidebar, live: floors with a status dot, pets typing at their desks and stepping out for a while on a break.</sub>
 </p>
 
@@ -54,12 +54,12 @@ One species per agent program, so you can tell who is who at a glance:
 | anything else | sheep | the program's name |
 
 <p align="center">
-  <img src="team.png?v=3" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
+  <img src="team.png?v=4" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
   <sub>Four staff at their desks: two Claude crabs, an OpenCode penguin and a Codex robot (the robot is waiting for you).</sub>
 </p>
 
 <p align="center">
-  <img src="agy.png?v=3" alt="Antigravity's pet up close: a gradient cube head typing at a laptop whose lid shows the arch logo" width="300"><br>
+  <img src="agy.png?v=4" alt="Antigravity's pet up close: a gradient cube head typing at a laptop whose lid shows the arch logo" width="300"><br>
   <sub>Antigravity (<code>agy</code>) gets its own pet: a gradient cube head from red crown to teal, with its arch logo on the laptop lid and on the chest.</sub>
 </p>
 
@@ -75,7 +75,7 @@ The pets, desks and room are drawn from rectangles and animated with Herdr's nat
 ## A real screenshot
 
 <p align="center">
-  <img src="screenshot.png?v=3" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
+  <img src="screenshot.png?v=4" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
   <sub>The layout as it runs (demo data only).</sub>
 </p>
 

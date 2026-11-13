@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif?v=3" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
+  <img src="demo.gif?v=4" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
   <sub>Sidebar đang chạy: các tầng có chấm trạng thái, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao một lúc.</sub>
 </p>
 
@@ -54,12 +54,12 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 | chương trình khác | cừu | tên của chương trình |
 
 <p align="center">
-  <img src="team.png?v=3" alt="Đội ngũ đang làm việc: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex ở bàn của mình" width="320"><br>
+  <img src="team.png?v=4" alt="Đội ngũ đang làm việc: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex ở bàn của mình" width="320"><br>
   <sub>Bốn nhân viên ở bàn: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex (robot đang chờ bạn).</sub>
 </p>
 
 <p align="center">
-  <img src="agy.png?v=3" alt="Cận cảnh thú cưng của Antigravity: đầu hình khối màu gradient đang gõ laptop, nắp laptop có logo vòm" width="300"><br>
+  <img src="agy.png?v=4" alt="Cận cảnh thú cưng của Antigravity: đầu hình khối màu gradient đang gõ laptop, nắp laptop có logo vòm" width="300"><br>
   <sub>Antigravity (<code>agy</code>) có thú cưng riêng: đầu hình khối chuyển màu từ đỉnh đỏ xuống xanh ngọc, logo vòm trên nắp laptop và trên ngực.</sub>
 </p>
 
@@ -75,7 +75,7 @@ Thú cưng, bàn và căn phòng đều được vẽ từ các hình chữ nh�
 ## Ảnh chụp thật
 
 <p align="center">
-  <img src="screenshot.png?v=3" alt="Ảnh chụp thật của Pixel HQ: các tầng trong danh sách Spaces, văn phòng thú cưng pixel bên dưới, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
+  <img src="screenshot.png?v=4" alt="Ảnh chụp thật của Pixel HQ: các tầng trong danh sách Spaces, văn phòng thú cưng pixel bên dưới, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
   <sub>Layout khi đang chạy (chỉ dữ liệu demo).</sub>
 </p>
 

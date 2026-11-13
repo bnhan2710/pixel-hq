@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="preview.png?v=5" alt="Pixel HQ: một văn phòng tí hon cho các coding agent của bạn. Một layout Herdr phong cách pixel-art." width="100%">
+  <img src="preview.png?v=6" alt="Pixel HQ: một văn phòng tí hon cho các coding agent của bạn. Một layout Herdr phong cách pixel-art." width="100%">
 </p>
 
 <p align="center">

@@ -12,7 +12,8 @@
 </p>
 
 <p align="center">
-  <img src="stats.svg" alt="Pixel HQ bằng con số: tổng lượt clone, lượt xem, sao và fork, biểu đồ lượt xem và clone mỗi ngày, và nguồn truy cập" width="100%">
+  <b>Lưu lượng truy cập repo</b>: bao nhiêu người đã xem và clone Pixel HQ (số liệu thật từ GitHub, cập nhật mỗi ngày)<br>
+  <img src="stats.svg" alt="Lưu lượng truy cập repo Pixel HQ: tổng lượt clone, lượt xem, sao và fork, biểu đồ lượt xem và clone mỗi ngày, và nguồn truy cập" width="100%">
 </p>
 
 <p align="center">

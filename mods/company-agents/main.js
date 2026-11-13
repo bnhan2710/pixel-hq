@@ -112,8 +112,9 @@ export default class Agents extends View {
     this.searchInput.on("submit", () => { if (this.firstHit) run("pane.focus", { pane: this.firstHit }); });
     this.searchInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.searchInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
-    // OpenCode does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
-    // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Never overwrites; deleting the file removes it for good.
+    // OpenCode 1.x does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
+    // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Only ever replaces Pixel HQ's own older copy;
+    // deleting the file removes it for good.
     this.notice = null;
     this.setupOpenCode(cx);
     // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
@@ -280,19 +281,25 @@ export default class Agents extends View {
   }
 
   async setupOpenCode(cx) {
-    if (localStorage.getItem("oc-plugin")) return;
+    if (localStorage.getItem("oc-plugin-v2")) return;
     const src = `${appHome()}/mods/company-agents/opencode-status.js`;
-    // Exit codes: 0 added, 3 no OpenCode folder, 4 already there.
-    const sh = 'D="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; [ -d "$D" ] || exit 3; mkdir -p "$D/plugins" || exit 1; [ -e "$D/plugins/opencode-status.js" ] && exit 4; cp "$1" "$D/plugins/opencode-status.js" || exit 1';
-    const ps = "param($src); $c = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }; $d = Join-Path $c 'opencode'; "
-      + "if (-not (Test-Path -LiteralPath $d)) { exit 3 }; $p = Join-Path $d 'plugins'; New-Item -ItemType Directory -Force -Path $p | Out-Null; "
-      + "$t = Join-Path $p 'opencode-status.js'; if (Test-Path -LiteralPath $t) { exit 4 }; Copy-Item -LiteralPath $src -Destination $t -ErrorAction Stop";
+    // "oc-plugin" is the first plugin's record: that install only replaces its own old copy and never brings back a removed one.
+    const upgrade = localStorage.getItem("oc-plugin") ? "1" : "";
+    // Exit codes: 0 added, 5 old Pixel HQ copy replaced (it fails to load on OpenCode 2.x), 3 no OpenCode folder,
+    // 4 left alone (already current, someone else's file, or removed by the person).
+    const sh = 'D="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; [ -d "$D" ] || exit 3; T="$D/plugins/opencode-status.js"; U=0; '
+      + 'if [ -e "$T" ]; then grep -q pixel-hq-status "$T" && exit 4; grep -q PixelHqStatus "$T" || exit 4; U=5; elif [ -n "$2" ]; then exit 4; fi; '
+      + 'mkdir -p "$D/plugins" || exit 1; cp "$1" "$T" || exit 1; exit $U';
+    const ps = "param($src, $upgrade); $c = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }; $d = Join-Path $c 'opencode'; "
+      + "if (-not (Test-Path -LiteralPath $d)) { exit 3 }; $p = Join-Path $d 'plugins'; $t = Join-Path $p 'opencode-status.js'; $u = 0; "
+      + "if (Test-Path -LiteralPath $t) { $s = Get-Content -Raw -LiteralPath $t; if ($s -match 'pixel-hq-status' -or $s -notmatch 'PixelHqStatus') { exit 4 }; $u = 5 } elseif ($upgrade) { exit 4 }; "
+      + "New-Item -ItemType Directory -Force -Path $p | Out-Null; Copy-Item -LiteralPath $src -Destination $t -Force -ErrorAction Stop; exit $u";
     const r = await (window()?.platform === "windows"
-      ? exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}'`])
-      : exec("sh", ["-c", sh, "sh", src])).catch(() => null);
-    if (!r || r.code === 3 || (r.code !== 0 && r.code !== 4)) return; // no OpenCode here (yet), or a failed copy: try again next launch
-    localStorage.setItem("oc-plugin", "1");
-    if (r.code === 0) { this.notice = "OpenCode plugin added · restart OpenCode to see it here"; cx.notify(); }
+      ? exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}' '${upgrade}'`])
+      : exec("sh", ["-c", sh, "sh", src, upgrade])).catch(() => null);
+    if (!r || ![0, 4, 5].includes(r.code)) return; // no OpenCode here (yet), or a failed copy: try again next launch
+    localStorage.setItem("oc-plugin-v2", "1");
+    if (r.code !== 4) { this.notice = `OpenCode plugin ${r.code === 5 ? "updated" : "added"} · restart OpenCode to see it here`; cx.notify(); }
   }
 
   render(cx) {

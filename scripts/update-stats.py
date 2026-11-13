@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds stats.svg, the chart at the top of the README: growth of page views and clones (running totals), the totals since launch, stars and forks,
+"""Builds stats.svg, the chart at the top of the README: growth of page views and clones (running totals), the star history, the totals since launch, stars and forks,
 and where visitors come from. GitHub only keeps 14 days of traffic, so the days seen so far are kept in stats.json.
 Needs `gh` signed in as someone who can read the repo's traffic (a token with "Administration: Read-only")."""
 import json, os, subprocess, sys
@@ -12,8 +12,19 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY, SVG = os.path.join(HERE, "stats.json"), os.path.join(HERE, "stats.svg")
 
 
-def gh(path):
-    return json.loads(subprocess.run(["gh", "api", f"repos/{REPO}{path}"], check=True, capture_output=True, text=True).stdout)
+def gh(path, *flags):
+    return json.loads(subprocess.run(["gh", "api", *flags, f"repos/{REPO}{path}"], check=True, capture_output=True, text=True).stdout)
+
+
+def star_days():
+    """The day each star was given, oldest first (the star+json media type adds starred_at)."""
+    out, page = [], 1
+    while True:
+        batch = gh(f"/stargazers?per_page=100&page={page}", "-H", "Accept: application/vnd.github.star+json")
+        out += [b["starred_at"][:10] for b in batch if b.get("starred_at")]
+        if len(batch) < 100:
+            return sorted(out)
+        page += 1
 
 
 # --- data ---------------------------------------------------------------------------------------------------------------
@@ -41,6 +52,7 @@ for r in refs:
     grouped[name] = grouped.get(name, 0) + r["count"]
 top = sorted(grouped.items(), key=lambda kv: -kv[1])[:5]
 
+star_log = star_days()
 total_clones = sum(v["clones"] for v in history.values())
 total_views = sum(v["views"] for v in history.values())
 first = min(history) if history else date.today().isoformat()
@@ -56,7 +68,7 @@ peak = max([1] + [max(v, c) for _, v, c in series])
 step = next(st for st in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000) if peak / st <= 5)
 top_val = ((peak + step - 1) // step) * step
 
-W, H = 900, 424
+W, H = 900, 590
 BG, CARD, LINE, TEXT, DIM = "#11111b", "#181825", "#45475a", "#cdd6f4", "#7f849c"
 VIEWS, CLONES, YELLOW, MAUVE = "#89b4fa", "#a6e3a1", "#f9e2af", "#cba6f7"
 FONT = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
@@ -125,6 +137,39 @@ if not top:
     o.append(f'<text x="{px+14}" y="{cy0+30}" font-size="12" fill="{DIM}">no referrers yet</text>')
 
 o.append(f'<text x="{px+14}" y="{cy0+ch+38}" font-size="10" fill="{DIM}">where visitors came from, by platform</text>')
+
+# star history: the running count of stars, full width under the other charts
+sy0 = 440  # top of the panel
+o += [f'<text x="24" y="{sy0-10}" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">STAR HISTORY · {len(star_log)} PEOPLE STARRED PIXEL HQ</text>',
+      f'<rect x="24" y="{sy0}" width="{W-48}" height="{H-sy0-24}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
+s0 = date.fromisoformat(star_log[0]) - timedelta(days=1) if star_log else today - timedelta(days=3)
+sn = max(4, min(120, (today - s0).days + 1))
+sdays = [(today - timedelta(days=sn - 1 - i)).isoformat() for i in range(sn)]
+spts = [(d, sum(1 for x in star_log if x <= d)) for d in sdays]
+speak = max([1] + [c for _, c in spts])
+sstep = next(st for st in (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 5000) if speak * 1.3 / st <= 4)
+stop = ((int(speak * 1.3) + sstep - 1) // sstep) * sstep  # headroom for the label above the last point
+bx0, by0, bw_, bh = 62, sy0 + 16, W - 24 - 62 - 24, H - sy0 - 24 - 50
+for v in range(0, stop + 1, sstep):
+    y = by0 + bh - bh * v / stop
+    o += [f'<line x1="{bx0}" x2="{bx0+bw_}" y1="{y:.1f}" y2="{y:.1f}" stroke="{LINE}" stroke-width="1" opacity="0.5"/>',
+          f'<text x="{bx0-8}" y="{y+4:.1f}" font-size="10" fill="{DIM}" text-anchor="end">{v}</text>']
+sx = lambda i: bx0 + 12 + i * (bw_ - 24) / (sn - 1)
+sy = lambda val: by0 + bh - bh * val / stop
+every_ = max(1, sn // 10)
+for i, (d, c) in enumerate(spts):
+    if (sn - 1 - i) % every_ == 0:
+        o.append(f'<text x="{sx(i):.1f}" y="{by0 + bh + 16}" font-size="10" fill="{DIM}" text-anchor="middle">{datetime.fromisoformat(d).strftime("%-d/%-m")}</text>')
+pts = [(sx(i), sy(c)) for i, (_, c) in enumerate(spts)]
+line = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+o.append('<g shape-rendering="geometricPrecision">')
+o.append(f'<polygon points="{pts[0][0]:.1f},{by0+bh} {line} {pts[-1][0]:.1f},{by0+bh}" fill="{YELLOW}" opacity="0.14"/>')
+o.append(f'<polyline points="{line}" fill="none" stroke="{YELLOW}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>')
+for i, (x, y) in enumerate(pts):
+    if i == 0 or spts[i][1] != spts[i - 1][1]:
+        o.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{BG}" stroke="{YELLOW}" stroke-width="2"><title>{spts[i][0]}: {spts[i][1]} stars</title></circle>')
+o.append("</g>")
+o.append(f'<text x="{pts[-1][0]-6:.1f}" y="{max(by0+2, pts[-1][1]-18):.1f}" font-size="12" font-weight="700" fill="{YELLOW}" text-anchor="end">{len(star_log)} stars</text>')
 o.append("</svg>")
 open(SVG, "w", encoding="utf-8").write("\n".join(o) + "\n")
-print(f"stats.svg: {total_clones} clones, {total_views} views since {first}, {len(series)} days drawn", file=sys.stderr)
+print(f"stats.svg: {total_clones} clones, {total_views} views, {len(star_log)} stars, since {first}", file=sys.stderr)

@@ -155,6 +155,13 @@ Details in [NOTICE.md](NOTICE.md).
 | --- | --- |
 | Repo clones | 418 |
 | Page views | 550 |
+
+| Where visitors come from | Views | Visitors |
+| --- | --- | --- |
+| Herdr gallery | 133 | 105 |
+| GitHub | 75 | 8 |
+| Facebook | 5 | 4 |
+| Zalo | 4 | 1 |
 <!-- stats:end -->
 
-<sub>From GitHub's traffic numbers, refreshed daily.</sub>
+<sub>From GitHub's traffic numbers (the last 14 days, refreshed daily). "Where visitors come from" counts page views that arrived through a link; visits from apps that hide their source, or typed addresses, do not show up.</sub>

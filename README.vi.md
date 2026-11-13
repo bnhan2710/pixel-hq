@@ -155,6 +155,13 @@ Chi tiết trong [NOTICE.md](NOTICE.md).
 | --- | --- |
 | Clone repo | 418 |
 | Lượt xem trang | 550 |
+
+| Nguồn truy cập | Lượt xem | Người xem |
+| --- | --- | --- |
+| Herdr gallery | 133 | 105 |
+| GitHub | 75 | 8 |
+| Facebook | 5 | 4 |
+| Zalo | 4 | 1 |
 <!-- stats:end -->
 
-<sub>Lấy từ số liệu truy cập của GitHub, cập nhật mỗi ngày.</sub>
+<sub>Lấy từ số liệu truy cập của GitHub (14 ngày gần nhất, cập nhật mỗi ngày). "Nguồn truy cập" chỉ tính các lượt xem đến từ một đường link; lượt vào từ ứng dụng ẩn nguồn hoặc gõ thẳng địa chỉ sẽ không hiện.</sub>

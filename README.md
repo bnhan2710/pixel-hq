@@ -101,6 +101,14 @@ Herdr installs a shared layout as a plain copy, so it does not update by itself.
 
 What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
+## OpenCode in the office
+
+Herdr only counts a program as an agent when it reports a status. Claude Code does, OpenCode does not by itself, so an OpenCode pane gets its pet in the header but no desk in the office. [`extras/opencode-status.js`](extras/opencode-status.js) is a small OpenCode plugin that reports it. Ask your agent:
+
+> Install the OpenCode plugin from github.com/bnhan2710/pixel-hq: copy `extras/opencode-status.js` to `~/.config/opencode/plugins/`, then tell me to restart OpenCode.
+
+OpenCode appears in the office once it has started (it can take a while to load its skills). Delete the file to remove it.
+
 ## Make it yours
 
 - Right-click a pet to change its figures, or right-click empty floor to put every desk back.

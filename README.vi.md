@@ -101,6 +101,14 @@ Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không 
 
 Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm trong [UPDATE.md](UPDATE.md) (tiếng Anh).
 
+## OpenCode trong văn phòng
+
+Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, còn OpenCode thì không, nên pane OpenCode có pet ở header nhưng không có bàn trong văn phòng. [`extras/opencode-status.js`](extras/opencode-status.js) là plugin OpenCode nhỏ để báo trạng thái. Nhờ agent của bạn:
+
+> Install the OpenCode plugin from github.com/bnhan2710/pixel-hq: copy `extras/opencode-status.js` to `~/.config/opencode/plugins/`, then tell me to restart OpenCode.
+
+OpenCode sẽ hiện trong văn phòng sau khi khởi động xong (nó có thể nạp skill khá lâu). Xóa file là gỡ.
+
 ## Tuỳ biến theo ý bạn
 
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds stats.svg, the chart at the top of the README: daily page views and clones, the totals since launch, stars and forks,
+"""Builds stats.svg, the chart at the top of the README: growth of page views and clones (running totals), the totals since launch, stars and forks,
 and where visitors come from. GitHub only keeps 14 days of traffic, so the days seen so far are kept in stats.json.
 Needs `gh` signed in as someone who can read the repo's traffic (a token with "Administration: Read-only")."""
 import json, os, subprocess, sys
@@ -45,13 +45,15 @@ total_clones = sum(v["clones"] for v in history.values())
 total_views = sum(v["views"] for v in history.values())
 first = min(history) if history else date.today().isoformat()
 
-# --- chart: the last 7 to 30 days, oldest first ---------------------------------------------------------------------------
+# --- growth chart: running totals per day, over the days since launch (at most 60) -----------------------------------------------------
 today = datetime.now(timezone.utc).date()
-n = max(7, min(30, (today - date.fromisoformat(first)).days + 1))
+n = max(4, min(60, (today - date.fromisoformat(first)).days + 2))
 days = [(today - timedelta(days=n - 1 - i)).isoformat() for i in range(n)]
-series = [(d, history.get(d, {}).get("views", 0), history.get(d, {}).get("clones", 0)) for d in days]
+def running(key, day):
+    return sum(v[key] for k, v in history.items() if k <= day)
+series = [(d, running("views", d), running("clones", d)) for d in days]
 peak = max([1] + [max(v, c) for _, v, c in series])
-step = 1 if peak <= 5 else 2 if peak <= 10 else 5 if peak <= 25 else 10 if peak <= 60 else 25 if peak <= 150 else 50 if peak <= 300 else 100
+step = next(st for st in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000) if peak / st <= 5)
 top_val = ((peak + step - 1) // step) * step
 
 W, H = 900, 424
@@ -77,26 +79,37 @@ for i, (label, hint, value, color) in enumerate(tiles):
           f'<text x="{x+20:.0f}" y="120" font-size="34" font-weight="700" fill="{color}">{value:,}</text>',
           f'<text x="{x+20:.0f}" y="138" font-size="10" fill="{DIM}">{hint}</text>']
 
-# bar chart
+# growth chart (running totals)
 cx0, cy0, cw, ch = 62, 196, 500, 150  # plot area
-o += [f'<text x="24" y="186" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">VIEWS AND CLONES PER DAY</text>',
+o += [f'<text x="24" y="186" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">GROWTH · TOTAL VIEWS AND CLONES OVER TIME</text>',
       f'<rect x="{cx0-30}" y="{cy0-8}" width="{cw+38}" height="{ch+56}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
 for v in range(0, top_val + 1, step):
     y = cy0 + ch - ch * v / top_val
     o += [f'<line x1="{cx0}" x2="{cx0+cw}" y1="{y:.1f}" y2="{y:.1f}" stroke="{LINE}" stroke-width="1" opacity="0.5"/>',
           f'<text x="{cx0-8}" y="{y+4:.1f}" font-size="10" fill="{DIM}" text-anchor="end">{v}</text>']
-slot = cw / n
-bw = max(3, min(14, slot / 2 - 2))
+px_of = lambda i: cx0 + 12 + i * (cw - 24) / (n - 1)
+py_of = lambda val: cy0 + ch - ch * val / top_val
+every = max(1, n // 7)
 for i, (d, v, c) in enumerate(series):
-    x = cx0 + i * slot + (slot - 2 * bw - 2) / 2
-    for j, (val, color) in enumerate(((v, VIEWS), (c, CLONES))):
-        if val:
-            h = max(2, ch * val / top_val)
-            o.append(f'<rect x="{x + j * (bw + 2):.1f}" y="{cy0 + ch - h:.1f}" width="{bw:.1f}" height="{h:.1f}" fill="{color}"><title>{d}: {val} {"views" if j == 0 else "clones"}</title></rect>')
-    if (n - 1 - i) % max(1, n // 7) == 0:
-        o.append(f'<text x="{cx0 + i * slot + slot / 2:.1f}" y="{cy0 + ch + 16}" font-size="10" fill="{DIM}" text-anchor="middle">{datetime.fromisoformat(d).strftime("%-d/%-m")}</text>')
-o += [f'<rect x="{cx0}" y="{cy0+ch+30}" width="9" height="9" fill="{VIEWS}"/><text x="{cx0+14}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">page views (visits)</text>',
-      f'<rect x="{cx0+150}" y="{cy0+ch+30}" width="9" height="9" fill="{CLONES}"/><text x="{cx0+164}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">clones (downloads)</text>']
+    if (n - 1 - i) % every == 0:
+        o.append(f'<text x="{px_of(i):.1f}" y="{cy0 + ch + 16}" font-size="10" fill="{DIM}" text-anchor="middle">{datetime.fromisoformat(d).strftime("%-d/%-m")}</text>')
+o.append('<g shape-rendering="geometricPrecision">')
+for idx, color in ((1, VIEWS), (2, CLONES)):
+    pts = [(px_of(i), py_of(row[idx])) for i, row in enumerate(series)]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    base = cy0 + ch
+    o.append(f'<polygon points="{pts[0][0]:.1f},{base} {line} {pts[-1][0]:.1f},{base}" fill="{color}" opacity="0.16"/>')
+    o.append(f'<polyline points="{line}" fill="none" stroke="{color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>')
+    for i, (x, y) in enumerate(pts):
+        if i == 0 or series[i][idx] != series[i - 1][idx]:
+            o.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{BG}" stroke="{color}" stroke-width="2"><title>{series[i][0]}: {series[i][idx]} total {"views" if idx == 1 else "clones"}</title></circle>')
+o.append("</g>")
+lx = px_of(n - 1)
+vy, cy_ = py_of(series[-1][1]), py_of(series[-1][2])
+o += [f'<text x="{lx-10:.1f}" y="{max(cy0+8, vy-10):.1f}" font-size="12" font-weight="700" fill="{VIEWS}" text-anchor="end">{series[-1][1]:,} views</text>',
+      f'<text x="{lx-10:.1f}" y="{min(cy0+ch-6, cy_+(18 if abs(vy-cy_) < 22 else -10)):.1f}" font-size="12" font-weight="700" fill="{CLONES}" text-anchor="end">{series[-1][2]:,} clones</text>']
+o += [f'<rect x="{cx0}" y="{cy0+ch+30}" width="9" height="9" fill="{VIEWS}"/><text x="{cx0+14}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">page views, running total</text>',
+      f'<rect x="{cx0+190}" y="{cy0+ch+30}" width="9" height="9" fill="{CLONES}"/><text x="{cx0+204}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">clones, running total</text>']
 
 # where visitors come from
 px, pw = 596, W - 24 - 596

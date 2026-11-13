@@ -39,3 +39,7 @@ Read the [commit list](https://github.com/bnhan2710/pixel-hq/commits/main) befor
 ## Going back
 
 Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back to commit `<commit>` of github.com/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended."
+
+## For the maintainer: announcing a release
+
+Installed copies check `mods/company-agents/version.json` on `main` for a newer `version` (and show `notes` as the "what's new" line). To tell everyone, raise `version` there (for example `1.1.0` to `1.2.0`), edit `notes`, and push. Nothing else is needed.

@@ -3,7 +3,7 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
@@ -117,6 +117,11 @@ export default class Agents extends View {
     // deleting the file removes it for good.
     this.notice = null;
     this.setupOpenCode(cx);
+    // Tell the person when a newer Pixel HQ is out: read the tiny version.json from GitHub at start and every 6 hours.
+    // Nothing is sent. Deleting this mod's own version.json turns the check off.
+    this.update = null;
+    this.checkUpdate(cx);
+    cx.timer.every(6 * 3600 * 1000, (cx) => this.checkUpdate(cx));
     // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
     this.out = null;
     this.breakerList = [];
@@ -278,6 +283,21 @@ export default class Agents extends View {
     // Idle: a ring; done: a dot.
     if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(4).border(1.5).border_color(t.idle ?? t.dim);
     return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
+  }
+
+  async checkUpdate(cx) {
+    try {
+      const mine = JSON.parse(await readTextFile(`${appHome()}/mods/company-agents/version.json`));
+      const res = await fetch("https://raw.githubusercontent.com/bnhan2710/pixel-hq/main/mods/company-agents/version.json");
+      if (!res.ok) return;
+      const latest = JSON.parse(await res.text());
+      const num = (v) => String(v).split(".").map((n) => parseInt(n, 10) || 0);
+      const [a, b] = [num(latest.version), num(mine.version)];
+      const newer = [0, 1, 2].map((i) => (a[i] ?? 0) - (b[i] ?? 0)).find((d) => d !== 0) > 0;
+      if (!newer || localStorage.getItem("upd-dismissed") === String(latest.version)) return;
+      this.update = { version: String(latest.version), notes: latest.notes ? String(latest.notes) : "" };
+      cx.notify();
+    } catch { /* offline, no version.json, or not valid: stay quiet */ }
   }
 
   async setupOpenCode(cx) {
@@ -652,8 +672,9 @@ export default class Agents extends View {
       })
       .child(scene(sz.width, sz.height))
       .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No agents yet. They show up here when they report a status.")))
-      .when(Boolean(this.notice), (el) => el.child(div().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(4).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4").cursor_pointer()
-        .on_click((_e, cx) => { this.notice = null; cx.notify(); }).child(this.notice)))
+      .when(Boolean(this.update || this.notice), (el) => el.child(div().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(4).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4").cursor_pointer()
+        .on_click((_e, cx) => { if (this.update) localStorage.setItem("upd-dismissed", this.update.version); this.update = null; this.notice = null; cx.notify(); })
+        .child(this.update ? `Pixel HQ ${this.update.version} is out${this.update.notes ? ` · ${this.update.notes}` : ""}. Ask your agent: "update Pixel HQ from github.com/bnhan2710/pixel-hq, overwriting is OK" (click to hide)` : this.notice)))
       .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
       .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);
 

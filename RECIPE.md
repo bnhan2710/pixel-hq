@@ -72,6 +72,10 @@ One file loads on every OpenCode. It exports the 1.x factory as `PixelHqStatus` 
 
 On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XDG_CONFIG_HOME/opencode/plugins/` (default `~/.config/opencode/plugins/`) when that folder exists and the file does not, records that in `localStorage` (`oc-plugin-v2`), and shows a dismissible note: "OpenCode plugin added · restart OpenCode to see it here". A file there that has the first release's `PixelHqStatus` but not `pixel-hq-status` is Pixel HQ's own old copy, which 2.x refuses to load: it is replaced, with the note "OpenCode plugin updated · …". Any other file is left alone, and when the first release's record (`oc-plugin`) exists a missing file is not added back, since the person removed it. On Windows the same copy is done with `powershell` (config folder `%XDG_CONFIG_HOME%\opencode`, else `%USERPROFILE%\.config\opencode`) and the plugin writes to `\\.\CONOUT$` instead of `/dev/tty`. The PowerShell copy has been run on Windows; the plugin's `\\.\CONOUT$` output has not been tested on a real Windows machine.
 
+## Update notice
+
+`mods/company-agents/version.json` holds `{ "version": "1.1.0", "notes": "…" }`. At start and every 6 hours the `company-agents` mod reads its own copy with `readTextFile`, fetches the same file from `raw.githubusercontent.com/bnhan2710/pixel-hq/main/mods/company-agents/version.json`, and compares the numbers part by part. When the remote one is newer and was not dismissed, the office shows a dismissible note over the floor: "Pixel HQ <version> is out · <notes>. Ask your agent: "update Pixel HQ from github.com/bnhan2710/pixel-hq, overwriting is OK"". A click hides it and remembers that version in `localStorage` (`upd-dismissed`). A missing or broken `version.json`, no network or a failed request all end the check silently; no data about the person is sent.
+
 ## Built from
 
 - **The layout** (`layouts/pixel-hq.json`): a root `row` with `theme: "pixel-hq"`, `padding: 8`, `gap: 8`, `background: #11111b`,

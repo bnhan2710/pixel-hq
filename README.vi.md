@@ -89,8 +89,8 @@ Nhờ agent của bạn:
 Hoặc làm tay: chép `layouts/`, `mods/` và `themes/` vào `~/.config/herdr-app/`, thoát rồi mở lại Herdr một lần,
 sau đó chọn **pixel-hq** trong Settings > Look. Layout tự mang theme **pixel-hq**, luôn tối kể cả khi hệ thống đang ở chế độ sáng.
 
-Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 2.000 dòng JavaScript. Nó không gửi request mạng nào; các chương trình duy nhất nó chạy là các công cụ cục bộ
-(`mkdir`, `cp`, `open`, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Hãy đọc code trước khi cài.
+Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 2.000 dòng JavaScript. Các chương trình duy nhất nó chạy là các công cụ cục bộ
+(`mkdir`, `cp`, `open`, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Điều duy nhất nó ghi ra ngoài thư mục của mình là plugin trạng thái OpenCode ở mục bên dưới (chỉ khi máy có OpenCode, một lần, không ghi đè). Request mạng duy nhất là một file công khai rất nhỏ trên GitHub (xem "Thông báo cập nhật"). Hãy đọc code trước khi cài.
 
 ## Cập nhật
 
@@ -105,6 +105,10 @@ Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm tron
 ## OpenCode trong văn phòng
 
 Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, OpenCode từ bản 2.0.29 cũng tự báo. OpenCode 1.x thì không, nên nếu không có gì hỗ trợ thì pane OpenCode 1.x chỉ có pet ở header mà không có bàn trong văn phòng. Lần đầu layout chạy, nếu máy có OpenCode, nó thêm một plugin nhỏ ([`opencode-status.js`](mods/company-agents/opencode-status.js)) vào thư mục plugin của OpenCode (`~/.config/opencode/plugins/`): trên 1.x plugin báo trạng thái, trên 2.x thì đứng yên. Văn phòng hiện một dòng thông báo, bạn mở lại OpenCode một lần là OpenCode có bàn. Nó không bao giờ ghi đè file của người khác và chỉ làm một lần: xóa file plugin là gỡ hẳn. Ngoại lệ duy nhất là bản plugin đầu tiên của chính Pixel HQ, bản mà OpenCode 2.x từ chối nạp ("1 plugin failed"): nếu còn bản đó, nó được thay một lần bằng bản hiện tại. Cách này chạy trên macOS và Linux; Windows được hỗ trợ qua PowerShell nhưng chưa được thử trên máy Windows thật, nếu OpenCode không hiện ở đó bạn hãy mở issue giúp mình.
+
+## Thông báo cập nhật
+
+Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixel HQ 1.2.0 is out · có gì mới. Ask your agent: ...") mà bạn bấm là tắt; nó chỉ hiện lại ở phiên bản kế tiếp. Để làm vậy, mod `company-agents` đọc một file công khai rất nhỏ, `mods/company-agents/version.json` trên nhánh `main` của repo này, lúc khởi động và mỗi 6 giờ, rồi so với bản trong máy bạn. Nó không gửi gì về bạn. Muốn tắt, xóa `mods/company-agents/version.json` trong bản cài của bạn (cập nhật sẽ đặt nó lại).
 
 ## Tuỳ biến theo ý bạn
 

@@ -1,6 +1,6 @@
 name: stats
 
-# Once a day: refresh the traffic table at the bottom of the READMEs.
+# Once a day: redraw stats.svg (the chart at the top of the READMEs) and keep the daily numbers in stats.json.
 # GitHub only lets a token with access to the repo's traffic read it, so this needs a secret named STATS_TOKEN
 # (a fine-grained personal access token for this repo with "Administration: Read-only"). Without it the job does nothing.
 on:
@@ -21,10 +21,10 @@ jobs:
           GH_TOKEN: ${{ secrets.STATS_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then echo "::notice::No STATS_TOKEN secret, skipping"; exit 0; fi
-          sh scripts/update-stats.sh
+          python3 scripts/update-stats.py
       - name: Commit if it changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md README.vi.md
+          git add stats.svg stats.json
           git diff --cached --quiet || { git commit -m "Update traffic stats" && git push; }

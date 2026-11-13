@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <img src="stats.svg" alt="Pixel HQ in numbers: total clones, page views, stars and forks, a daily chart of views and clones, and where visitors come from" width="100%">
+</p>
+
+<p align="center">
   <img src="demo.gif?v=5" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
   <sub>The sidebar, live: floors with a status dot, pets typing at their desks and stepping out for a while on a break.</sub>
 </p>
@@ -147,21 +151,3 @@ When a newer version of Pixel HQ is out, the office shows a small note ("Pixel H
 
 MIT, see [LICENSE](LICENSE). Built on the **Pond Agents** mod by SimonBystromTableCheck (MIT) and Herdr's shipped mods and layouts (Apache-2.0).
 Details in [NOTICE.md](NOTICE.md).
-
-## Stats
-
-<!-- stats:start -->
-| Last 14 days | Total |
-| --- | --- |
-| Repo clones | 418 |
-| Page views | 550 |
-
-| Where visitors come from | Views | Visitors |
-| --- | --- | --- |
-| Herdr gallery | 133 | 105 |
-| GitHub | 75 | 8 |
-| Facebook | 5 | 4 |
-| Zalo | 4 | 1 |
-<!-- stats:end -->
-
-<sub>From GitHub's traffic numbers (the last 14 days, refreshed daily). "Where visitors come from" counts page views that arrived through a link; visits from apps that hide their source, or typed addresses, do not show up.</sub>

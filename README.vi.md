@@ -12,6 +12,10 @@
 </p>
 
 <p align="center">
+  <img src="stats.svg" alt="Pixel HQ bằng con số: tổng lượt clone, lượt xem, sao và fork, biểu đồ lượt xem và clone mỗi ngày, và nguồn truy cập" width="100%">
+</p>
+
+<p align="center">
   <img src="demo.gif?v=5" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
   <sub>Sidebar đang chạy: các tầng có chấm trạng thái, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao một lúc.</sub>
 </p>
@@ -147,21 +151,3 @@ Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixe
 
 MIT, xem [LICENSE](LICENSE). Xây dựng dựa trên mod **Pond Agents** của SimonBystromTableCheck (MIT) cùng các mod và layout đi kèm Herdr (Apache-2.0).
 Chi tiết trong [NOTICE.md](NOTICE.md).
-
-## Thống kê
-
-<!-- stats:start -->
-| 14 ngày gần nhất | Tổng |
-| --- | --- |
-| Clone repo | 418 |
-| Lượt xem trang | 550 |
-
-| Nguồn truy cập | Lượt xem | Người xem |
-| --- | --- | --- |
-| Herdr gallery | 133 | 105 |
-| GitHub | 75 | 8 |
-| Facebook | 5 | 4 |
-| Zalo | 4 | 1 |
-<!-- stats:end -->
-
-<sub>Lấy từ số liệu truy cập của GitHub (14 ngày gần nhất, cập nhật mỗi ngày). "Nguồn truy cập" chỉ tính các lượt xem đến từ một đường link; lượt vào từ ứng dụng ẩn nguồn hoặc gõ thẳng địa chỉ sẽ không hiện.</sub>

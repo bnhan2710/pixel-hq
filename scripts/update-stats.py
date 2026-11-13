@@ -13,7 +13,10 @@ HISTORY, SVG = os.path.join(HERE, "stats.json"), os.path.join(HERE, "stats.svg")
 
 
 def gh(path, *flags):
-    return json.loads(subprocess.run(["gh", "api", *flags, f"repos/{REPO}{path}"], check=True, capture_output=True, text=True).stdout)
+    r = subprocess.run(["gh", "api", *flags, f"repos/{REPO}{path}"], capture_output=True, text=True)
+    if r.returncode:
+        raise RuntimeError(f"gh api {path} failed: {(r.stderr or r.stdout).strip()[:300]}")
+    return json.loads(r.stdout)
 
 
 def star_days():
@@ -30,16 +33,18 @@ def star_days():
 # --- data ---------------------------------------------------------------------------------------------------------------
 clones, views, refs, repo = gh("/traffic/clones"), gh("/traffic/views"), gh("/traffic/popular/referrers"), gh("")
 try:
-    history = json.load(open(HISTORY, encoding="utf-8"))
+    saved = json.load(open(HISTORY, encoding="utf-8"))
 except (OSError, ValueError):
-    history = {}
+    saved = {}
+# stats.json is {"days": {date: {clones, views}}, "stars": [date, ...]}; an older file was just the days
+history = dict(saved["days"]) if "days" in saved else {k: v for k, v in saved.items() if k != "stars"}
 for kind, data in (("clones", clones["clones"]), ("views", views["views"])):
     for d in data:
         day = d["timestamp"][:10]
         # days before the first visit are just zeros; they are only kept once something has happened
         if d["count"] or d["uniques"] or day in history or any(x["count"] for x in data if x["timestamp"][:10] < day):
             history.setdefault(day, {"clones": 0, "views": 0})[kind] = d["count"]
-json.dump(OrderedDict(sorted(history.items())), open(HISTORY, "w", encoding="utf-8"), indent=1)
+all_days = OrderedDict(sorted(history.items()))
 history = {k: v for k, v in history.items() if v["clones"] or v["views"] or k > min(history)}
 
 NAMES = [("herdr.dev", "Herdr gallery"), ("github.com", "GitHub"), ("zalo", "Zalo"), ("facebook.com", "Facebook"), ("fb.com", "Facebook"),
@@ -52,7 +57,12 @@ for r in refs:
     grouped[name] = grouped.get(name, 0) + r["count"]
 top = sorted(grouped.items(), key=lambda kv: -kv[1])[:5]
 
-star_log = star_days()
+try:
+    star_log = star_days()
+except RuntimeError as e:
+    print(f"warning: {e}; using the star log from the last run", file=sys.stderr)
+    star_log = saved.get("stars", [])
+json.dump({"days": all_days, "stars": star_log}, open(HISTORY, "w", encoding="utf-8"), indent=1)
 total_clones = sum(v["clones"] for v in history.values())
 total_views = sum(v["views"] for v in history.values())
 first = min(history) if history else date.today().isoformat()

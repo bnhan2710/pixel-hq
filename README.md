@@ -147,3 +147,14 @@ When a newer version of Pixel HQ is out, the office shows a small note ("Pixel H
 
 MIT, see [LICENSE](LICENSE). Built on the **Pond Agents** mod by SimonBystromTableCheck (MIT) and Herdr's shipped mods and layouts (Apache-2.0).
 Details in [NOTICE.md](NOTICE.md).
+
+## Stats
+
+<!-- stats:start -->
+| Last 14 days | Total |
+| --- | --- |
+| Repo clones | 418 |
+| Page views | 550 |
+<!-- stats:end -->
+
+<sub>From GitHub's traffic numbers, refreshed daily.</sub>

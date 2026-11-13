@@ -147,3 +147,14 @@ Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixe
 
 MIT, xem [LICENSE](LICENSE). Xây dựng dựa trên mod **Pond Agents** của SimonBystromTableCheck (MIT) cùng các mod và layout đi kèm Herdr (Apache-2.0).
 Chi tiết trong [NOTICE.md](NOTICE.md).
+
+## Thống kê
+
+<!-- stats:start -->
+| 14 ngày gần nhất | Tổng |
+| --- | --- |
+| Clone repo | 418 |
+| Lượt xem trang | 550 |
+<!-- stats:end -->
+
+<sub>Lấy từ số liệu truy cập của GitHub, cập nhật mỗi ngày.</sub>

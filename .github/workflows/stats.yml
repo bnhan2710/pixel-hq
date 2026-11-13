@@ -1,0 +1,30 @@
+name: stats
+
+# Once a day: refresh the traffic table at the bottom of the READMEs.
+# GitHub only lets a token with access to the repo's traffic read it, so this needs a secret named STATS_TOKEN
+# (a fine-grained personal access token for this repo with "Administration: Read-only"). Without it the job does nothing.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update the numbers
+        env:
+          GH_TOKEN: ${{ secrets.STATS_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::notice::No STATS_TOKEN secret, skipping"; exit 0; fi
+          sh scripts/update-stats.sh
+      - name: Commit if it changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README.vi.md
+          git diff --cached --quiet || { git commit -m "Update traffic stats" && git push; }

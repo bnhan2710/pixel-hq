@@ -74,7 +74,7 @@ On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XD
 
 ## Built from
 
-- **The layout** (`layouts/pixel-hq.json`): a root `row` with `padding: 8`, `gap: 8`, `background: #11111b`,
+- **The layout** (`layouts/pixel-hq.json`): a root `row` with `theme: "pixel-hq"`, `padding: 8`, `gap: 8`, `background: #11111b`,
   `titlebar: "none"`, `traffic_lights: [12, 16]` and these `colors`: accent `#89b4fa`, chrome `#181825`,
   canvas `#11111b`, background `#1e1e2e`, surface `#262637`, raised `#313244`, border `#ffffff14`.
   Children: a `sidebar` column (brand block 46px, spaces block, agents block, footer block) and a `work`
@@ -82,7 +82,10 @@ On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XD
   The pane frame: radius 14, gap 8, background `#1e1e2e`, 1px border, focus border `#89b4fa`,
   header `{ mod: "company-pane", height: 40 }`.
 - **Theme** (`themes/pixel-hq.json`): background `#1e1e2e`, foreground `#cdd6f4`, cursor `#89b4fa`, the Catppuccin Mocha 16-color ANSI set.
-- **`mods/company-brand/`**: the shipped `workspace-chrome` header with the logo tile and two-line name.
+  The layout names it as a single theme, not a `{light, dark}` pair: its panels are painted dark, so with the system (or `appearance`)
+  in light mode a light theme would put dark text on them.
+- **`mods/company-brand/`**: the shipped `workspace-chrome` header with the logo tile and two-line name. Its search and sidebar-toggle
+  icons (`search.svg`, `sidebar.svg`) are copies of `workspace-chrome`'s, so the mod does not depend on another mod's files.
 - **`mods/company-pane/`**: a pane header. Reads `panes()` for its terminal; draws the pet with `duckMood`
   from its own `duck.js`; chip colors come from the status.
 - **`mods/company-status/`**: counts from `agents()` by status.
@@ -96,7 +99,7 @@ On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XD
 
 ## Install
 
-Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **pixel-hq** in Settings > Look
-and the **pixel-hq** theme. Quit and reopen Herdr once so it loads the new mods.
+Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **pixel-hq** in Settings > Look;
+it brings its own **pixel-hq** theme. Quit and reopen Herdr once so it loads the new mods.
 
 Credits and licenses: see `NOTICE.md`.

@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif?v=4" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
+  <img src="demo.gif?v=5" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
   <sub>Sidebar đang chạy: các tầng có chấm trạng thái, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao một lúc.</sub>
 </p>
 
@@ -55,8 +55,8 @@ Mỗi chương trình agent là một loài, để bạn nhìn qua là biết ai
 | chương trình khác | cừu | tên của chương trình |
 
 <p align="center">
-  <img src="team.png?v=4" alt="Đội ngũ đang làm việc: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex ở bàn của mình" width="320"><br>
-  <sub>Bốn nhân viên ở bàn: hai chú cua Claude, một chim cánh cụt OpenCode và một robot Codex (robot đang chờ bạn).</sub>
+  <img src="team.png?v=5" alt="Đội ngũ đang làm việc: cua Claude có chồng giấy, robot Codex, chim cánh cụt OpenCode và một chú cua thứ hai, kèm tên branch và cảnh báo clash" width="320"><br>
+  <sub>Bốn nhân viên ở bàn. Cua và robot cùng sửa một file ở hai worktree (thẻ đỏ, tia lửa chấm); hai chú cua có chồng giấy cao dần theo context.</sub>
 </p>
 
 <p align="center">
@@ -76,7 +76,7 @@ Thú cưng, bàn và căn phòng đều được vẽ từ các hình chữ nh�
 ## Ảnh chụp thật
 
 <p align="center">
-  <img src="screenshot.png?v=4" alt="Ảnh chụp thật của Pixel HQ: các tầng trong danh sách Spaces, văn phòng thú cưng pixel bên dưới, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
+  <img src="screenshot.png?v=5" alt="Ảnh chụp thật của Pixel HQ: các tầng trong danh sách Spaces, văn phòng thú cưng pixel bên dưới, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
   <sub>Layout khi đang chạy (chỉ dữ liệu demo).</sub>
 </p>
 
@@ -90,7 +90,7 @@ Hoặc làm tay: chép `layouts/`, `mods/` và `themes/` vào `~/.config/herdr-a
 sau đó chọn **pixel-hq** trong Settings > Look. Layout tự mang theme **pixel-hq**, luôn tối kể cả khi hệ thống đang ở chế độ sáng.
 
 Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 2.000 dòng JavaScript. Các chương trình duy nhất nó chạy là các công cụ cục bộ
-(`mkdir`, `cp`, `open`, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Điều duy nhất nó ghi ra ngoài thư mục của mình là plugin trạng thái OpenCode ở mục bên dưới (chỉ khi máy có OpenCode, một lần, không ghi đè). Request mạng duy nhất là một file công khai rất nhỏ trên GitHub (xem "Thông báo cập nhật"). Hãy đọc code trước khi cài.
+(`mkdir`, `cp`, `open`, `git` để xem mỗi bàn đã sửa gì và tạo worktree khi bạn thuê staff, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Điều duy nhất nó ghi ra ngoài thư mục của mình là plugin trạng thái OpenCode ở mục bên dưới (chỉ khi máy có OpenCode, một lần, không ghi đè). Request mạng duy nhất là một file công khai rất nhỏ trên GitHub (xem "Thông báo cập nhật"). Hãy đọc code trước khi cài.
 
 ## Cập nhật
 
@@ -101,6 +101,29 @@ Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không 
 (Nhớ nói "update": agent không bao giờ ghi đè file có sẵn nếu bạn không bảo nó.) Sau đó thoát và mở lại Herdr một lần nếu cửa sổ chưa làm mới.
 
 Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm trong [UPDATE.md](UPDATE.md) (tiếng Anh).
+
+## Giấy tờ trên bàn
+
+Khi context của agent đầy lên, một chồng giấy cao dần trên bàn của nó: cứ 10% thêm một tờ, quá 80% mấy tờ trên cùng ngả hồng (quá 95% chồng giấy rung). Rê chuột lên để xem phần trăm chính xác. **Bấm vào chồng giấy, rồi bấm lần nữa trong 6 giây**, Pixel HQ sẽ gửi cho agent lệnh `/compact`, vốn đã tự tóm tắt cuộc trò chuyện rồi thay lịch sử bằng bản tóm tắt. Chỉ làm khi agent đang rảnh: agent đang chạy sẽ báo "busy: wait for it", agent đang chờ bạn trả lời báo "answer it first". Lần bấm đầu chỉ lên cò và hiện lời nhắc trên biển tên.
+
+Herdr không biết context của agent đầy bao nhiêu, nên cần status line của Claude Code báo cho nó. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) làm việc đó (gắn nhãn `claude.context` cho terminal); cần `python3`. Nhờ agent của bạn:
+
+> Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
+
+Hiện chỉ Claude Code báo context theo cách này, các agent khác chưa có chồng giấy.
+
+## Làm việc nhóm không giẫm chân nhau
+
+- **Mỗi tầng một văn phòng.** Mỗi space là một văn phòng riêng: các bàn chỉ hiện agent của space bạn đang xem (các tầng khác có thẻ riêng).
+- **Branch trên mọi biển tên.** Dưới tên mỗi bàn là branch mà agent đang ở, kèm biểu tượng git-branch nhỏ.
+- **Cảnh báo đụng nhau.** Cứ vài giây Pixel HQ hỏi git xem mỗi bàn đã sửa gì. Nếu hai worktree của cùng một repo cùng sửa một file, hai pet đều có tia sét đỏ và thẻ đỏ `clash: file`, và một đường tia lửa chấm nối hai bàn lại. Nếu hai agent cùng làm việc trong một thư mục tại cùng lúc, chúng có thẻ vàng `same folder`.
+- **Thuê staff trong worktree riêng.** Dấu **+** ở tiêu đề mở một form nhỏ: tên ticket (ví dụ `UC-1234`), thư mục repo và agent nào sẽ chạy. Pixel HQ chạy `git worktree add -b UC-1234 <repo>/../.worktrees/<repo>-UC-1234` (hoặc dùng lại branch nếu đã có) và mở agent ở đó như một tab mới của space hiện tại, nên hai staff không bao giờ dùng chung một cây làm việc. Worktree không bị xóa khi staff rời đi; dọn bằng `git worktree remove`. Nếu thư mục là workspace chứa nhiều repo, form sẽ cho bạn biết có những repo nào để bạn gõ đường dẫn một repo.
+
+<p align="center">
+  <img src="clash.png" alt="Hai bàn cùng sửa một file: tia sét đỏ, thẻ clash đỏ và tên branch" width="200">
+  <img src="piles.png" alt="Một bàn có chồng giấy cao, mấy tờ trên cùng màu hồng vì context gần đầy" width="200"><br>
+  <sub>Trái: cảnh báo clash kèm branch trên biển tên. Phải: context gần đầy, mấy tờ hồng nằm trên cùng.</sub>
+</p>
 
 ## OpenCode trong văn phòng
 

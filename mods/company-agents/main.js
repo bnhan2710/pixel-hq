@@ -3,11 +3,12 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, nextCommand, hc } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
+import { snapshot, clashes, hire } from "./crew.js";
 
 // The figure editor, as a dialog; `space` opens it on that space's pick.
 const openFigures = (space) => openOverlay({ mod: "company-agents", kind: "dialog", width: 860, height: 640, props: { figures: true, ...(space ? { space } : {}) } });
@@ -112,6 +113,20 @@ export default class Agents extends View {
     this.searchInput.on("submit", () => { if (this.firstHit) run("pane.focus", { pane: this.firstHit }); });
     this.searchInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.searchInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    // Hiring: a new staff member gets their own git worktree and branch, named after the ticket.
+    this.hiring = { open: false, program: "claude", busy: false, error: "" };
+    this.ticketInput = InputState.new({ placeholder: "Ticket, e.g. UC-1234" });
+    this.repoInput = InputState.new({ placeholder: "Repo folder" });
+    this.ticketInput.on("submit", (_e, cx) => this.doHire(cx));
+    this.repoInput.on("submit", (_e, cx) => this.doHire(cx));
+    // Who is about to step on whom: every few seconds, ask git what each desk has changed.
+    this.clash = new Map();
+    this.clashSig = "";
+    this.scanning = false;
+    this.scan(cx);
+    cx.timer.every(6000, (cx) => this.scan(cx));
+    // `company-agents.hire` (a key binding, or herdr-app do) opens the hire form.
+    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "hire") this.openHire(cx); } });
     // OpenCode 1.x does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
     // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Only ever replaces Pixel HQ's own older copy;
     // deleting the file removes it for good.
@@ -126,8 +141,10 @@ export default class Agents extends View {
     this.out = null;
     this.breakerList = [];
     this.nextAt = Date.now() + 6000;
+    this.hint = null;
     cx.timer.every(1000, (cx) => {
       const now = Date.now();
+      if (this.hint && now > this.hint.until) { this.hint = null; cx.notify(); }
       if (this.out) {
         if (now >= this.out.until) { this.out = null; this.nextAt = now + 14000 + Math.random() * 18000; cx.notify(); }
         return;
@@ -285,6 +302,64 @@ export default class Agents extends View {
     return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
   }
 
+  async scan(cx) {
+    if (this.scanning) return;
+    this.scanning = true;
+    try {
+      const remote = new Set(spaces().filter((x) => x.machine).map((x) => x.id));
+      const paneBy = new Map(panes().map((p) => [p.pane, p]));
+      const ags = agents().filter((a) => !remote.has(a.space));
+      const snap = await snapshot(exec, ags.map((a) => ({ address: a.address, cwd: paneBy.get(a.pane)?.cwd })).filter((i) => i.cwd));
+      const status = new Map(ags.map((a) => [a.address, a.status]));
+      const next = clashes(snap, (addr) => status.get(addr) === "working");
+      const sig = JSON.stringify([...next].map(([k, v]) => [k, v.kind, v.others, v.files]));
+      if (sig !== this.clashSig) { this.clashSig = sig; this.clash = next; cx.notify(); }
+    } catch { /* git missing or a folder vanished: keep the last answer */ }
+    this.scanning = false;
+  }
+
+  openHire(cx) {
+    const h = this.hiring;
+    h.open = !h.open;
+    h.error = "";
+    if (h.open) {
+      const sp = spaces().find((x) => x.active);
+      const cwd = panes().find((p) => p.focused)?.cwd;
+      this.repoInput.set_value(sp?.folder || cwd || "");
+      this.ticketInput.set_value("");
+    }
+    cx.notify();
+  }
+
+  async doHire(cx) {
+    const h = this.hiring;
+    if (h.busy) return;
+    h.busy = true;
+    h.error = "";
+    cx.notify();
+    try {
+      const { path, branch } = await hire(exec, { ticket: this.ticketInput.value(), repo: this.repoInput.value() });
+      const argv = { claude: ["claude"], codex: ["codex"], opencode: ["opencode"], agy: ["agy"] }[h.program] ?? [h.program];
+      run("tab.new", { name: branch, folder: path, argv, space: spaces().find((x) => x.active)?.id });
+      h.open = false;
+      this.ticketInput.set_value("");
+    } catch (e) { h.error = String(e?.message ?? e); }
+    h.busy = false;
+    cx.notify();
+  }
+
+  // The paper pile on a desk: the first click arms it, the second (within 6 s) sends the agent /compact (which already summarizes).
+  // Only when the agent is idle, so nothing is typed into a busy terminal.
+  pileClick(a, cx) {
+    const now = Date.now();
+    if (a.status === "working" || a.status === "blocked") { this.hint = { addr: a.address, text: a.status === "working" ? "busy: wait for it" : "answer it first", until: now + 3000 }; cx.notify(); return; }
+    if (this.hint?.armed && this.hint.addr === a.address && now < this.hint.until) {
+      this.hint = { addr: a.address, text: "compacting...", until: now + 8000 };
+      hc(["send", a.address, "/compact"]).catch(() => null);
+    } else this.hint = { addr: a.address, text: "click the papers again to /compact", armed: true, until: now + 6000 };
+    cx.notify();
+  }
+
   async checkUpdate(cx) {
     try {
       const mine = JSON.parse(await readTextFile(`${appHome()}/mods/company-agents/version.json`));
@@ -340,6 +415,9 @@ export default class Agents extends View {
     // it, it gets no row of its own, unless it's pinned.
     const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
     list = list.filter((a) => a.pinned || !nested.has(a.address));
+    // Each floor is its own office: only the agents of the shown space sit here.
+    const activeId = spaces().find((x) => x.active)?.id;
+    if (activeId) list = list.filter((a) => a.space === activeId);
     const tabCounts = new Map();
     for (const a of list) tabCounts.set(a.tab, (tabCounts.get(a.tab) ?? 0) + 1);
     const byPriority = sort.id === "priority";
@@ -539,8 +617,10 @@ export default class Agents extends View {
     const horizon = yHorizon(sz.height);
     const fieldTop = horizon + 20;
     const nAgents = list.length;
+    const paneBy = new Map(panes().map((p) => [p.pane, p]));
+    const withBranch = list.some((a) => paneBy.get(a.pane)?.branch);
     const plan = (sc) => {
-      const P = Math.round(46 * sc), pw = duckWidth(P), cw = Math.max(pw + Math.round(24 * sc), 76), ch = P + Math.round(28 * sc) + 26;
+      const P = Math.round(46 * sc), pw = duckWidth(P), cw = Math.max(pw + Math.round(24 * sc), 76), ch = P + Math.round(28 * sc) + 26 + (withBranch ? 15 : 0);
       return { sc, P, pw, cw, ch, cols: Math.max(1, Math.floor((sz.width - 8) / cw)), rows: Math.max(1, Math.floor((sz.height - fieldTop - 4) / ch)) };
     };
     const P0 = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.42].map(plan);
@@ -571,6 +651,8 @@ export default class Agents extends View {
     const colsUsed = Math.min(pick.cols, Math.max(2, Math.ceil(seated.length / pick.rows)));
     const rowsUsed = Math.ceil(seated.length / colsUsed);
     const hidden = list.length - seated.length;
+    const posOf = new Map();
+    const monoF = "JetBrains Mono";
     const pets = seated.map((a, i) => {
       // A pet keeps its desk: slots follow a stable order, not the status sort.
       const slot = order.indexOf(a.address);
@@ -580,8 +662,15 @@ export default class Agents extends View {
       const own = this.petpos[a.address];
       const left = own ? own[0] * sz.width : Math.max(2, Math.min(sz.width - petW - 2, sz.width * Math.min(0.92, sx + lap) - petW / 2));
       const top = own ? own[1] * sz.height : fieldTop + fieldH * Math.min(1, sy + lap);
+      posOf.set(a.address, { x: left + petW / 2, y: top + PET * 0.5 });
+      const ctxPct = contextOf.get(a.address)?.pct ?? null;
       const more = detail.get(a.address);
       const text = more ?? a.space_name ?? label(a);
+      // The desk's branch (its own worktree, ideally) and whether another desk is about to step on it.
+      const branch = paneBy.get(a.pane)?.branch ?? null;
+      const cl = this.clash.get(a.address) ?? null;
+      const clText = cl ? (cl.kind === "file" ? `clash: ${String(cl.files[0] ?? "").split("/").pop()}${cl.files.length > 1 ? ` +${cl.files.length - 1}` : ""}` : "same folder") : "";
+      const clTip = cl ? (cl.kind === "file" ? `Another desk also changed ${cl.files.join(", ")}` : "Another desk is working in this same folder") : "";
       const when = this.since(a);
       const hot = a.status === "blocked";
       // The pet sits on a chair behind a wooden desk (the MacBook is part of the pet).
@@ -617,6 +706,9 @@ export default class Agents extends View {
         .child(div().absolute().left(-kk(9)).top(PET * 0.34).w(kk(2)).h(PET * 0.62).bg("#aab1d2"))
         .child(div().absolute().left(petW + kk(4)).top(PET * 0.34).w(kk(5)).h(PET * 0.62).bg("#8b92b4"))
         .child(div().absolute().left(petW + kk(7)).top(PET * 0.34).w(kk(2)).h(PET * 0.62).bg("#6f7698"))
+        .when(Boolean(cl), (el) => el.child(div().absolute().left(petW - kk(8)).top(-kk(26)).w(kk(12)).h(kk(18))
+          .children([[6, 0, 6, 4], [3, 4, 6, 4], [0, 8, 10, 4], [4, 12, 5, 4], [2, 16, 4, 2]].map(([x, y, w, h]) => div().absolute().left(kk(x)).top(kk(y)).w(kk(w)).h(kk(h)).bg(cl.kind === "file" ? "#ff5370" : "#f9b84a")))
+          .loop("opacity", { from: 0.25, to: 1, period: 520, easing: "ease-in-out" })))
         .child(div().id(`walker-${a.address}`).absolute()
           .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
@@ -631,7 +723,20 @@ export default class Agents extends View {
         .child(div().absolute().left(-kk(6)).top(PET * 0.84 + kk(9)).w(petW + kk(12)).h(kk(3)).bg("#454a68"))
         .child(div().absolute().left(-kk(3)).top(PET * 0.84 + kk(12)).w(petW + kk(6)).h(kk(10)).bg("#3b3f5a"))
         .child(div().absolute().left(ctr - kk(8)).top(PET * 0.84 + kk(15)).w(kk(16)).h(kk(3)).bg("#262a40"))
-        .child(div().absolute().left(petW - kk(6)).top(PET * 0.84 - kk(4)).w(kk(7)).h(kk(4)).rounded(2).bg("#c9cee6"));
+        .child(div().absolute().left(petW - kk(6)).top(PET * 0.84 - kk(4)).w(kk(7)).h(kk(4)).rounded(2).bg("#c9cee6"))
+        // Papers pile up on the desk as the agent's context fills: one sheet per 10%, the top ones turn pink past 80%.
+        .when(Boolean(ctxPct != null && ctxPct >= 5), (el) => {
+          const n = Math.max(1, Math.min(10, Math.ceil(ctxPct / 10)));
+          const sh = Math.max(2, kk(3)), hot = ctxPct >= 80, full = ctxPct >= 95;
+          const sheets = Array.from({ length: n }, (_, k) => div().absolute().left(kk(1) + ((k * 7) % 3 - 1) * kk(1)).top((n - 1 - k) * sh + kk(2)).w(kk(15)).h(sh)
+            .bg(k >= n - 2 && hot ? (k === n - 1 ? "#f5b8c0" : "#f0cbd0") : k % 2 ? "#e9e2d4" : "#f6f1e7").border_b(1).border_color("#b9b19f"));
+          const pile = div().id(`pile-${a.address}`).absolute().left(petW - kk(25)).top(PET * 0.84 - n * sh - kk(4)).w(kk(18)).h(n * sh + kk(6)).cursor_pointer()
+            .tooltip(`Context ${ctxPct}% used · click to /compact`)
+            .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
+            .on_click((_e, cx) => { cx.stop_propagation(); this.pileClick(a, cx); })
+            .children(sheets);
+          return el.child(full ? pile.loop("top", { from: PET * 0.84 - n * sh - kk(4), to: PET * 0.84 - n * sh - kk(6), period: 600, easing: "ease-in-out" }) : pile);
+        });
       return v_flex()
         .id(`pet-${a.address}`)
         .absolute()
@@ -647,13 +752,28 @@ export default class Agents extends View {
         })
         .on_mouse_up("left", (_e, cx) => endDrag(cx))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openFigures(a.space_name); })
-        .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text} · drag to move`)
+        .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""} · drag to move`)
         .child(seat)
         .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center().rounded(3)
-          .bg(a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
-          .text_size(10.5).text_color(a.focused || (q && hitOf(a)) ? "#2a1a14" : "#ffffff").truncate()
-          .child(`${text}${when && cellW >= 90 ? ` · ${duration(now - when)}` : ""}`));
+          .bg(this.hint?.addr === a.address ? "#cba6f7" : cl ? (cl.kind === "file" ? "#ff5370" : "#f9b84a") : a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
+          .text_size(10.5).text_color(this.hint?.addr === a.address ? "#1e1233" : cl ? "#2a0f16" : a.focused || (q && hitOf(a)) ? "#2a1a14" : "#ffffff").truncate()
+          .child(this.hint?.addr === a.address ? this.hint.text : cl ? clText : `${text}${when && cellW >= 90 ? ` · ${duration(now - when)}` : ""}`))
+        // The branch on the desk's nameplate, with a small git-branch glyph.
+        .when(Boolean(branch), (el) => el.child(h_flex().mt(2).gap(3).items_center().max_w(Math.max(petW + 22, cellW - 4)).text_size(9.5)
+          .child(div().relative().w(8).h(10).flex_none().children([[0, 0, 2, 2], [0, 8, 2, 2], [5, 2, 2, 2], [0, 2, 1, 6], [1, 4, 5, 1]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg("#89b4fa"))))
+          .child(div().min_w(0).truncate().font_family(monoF).text_color("#89b4fa").child(branch))));
     });
+    // A dotted line of sparks between two desks that are about to clash.
+    const links = [];
+    for (const [addr, c] of this.clash) {
+      for (const o of c.others) {
+        const A = posOf.get(addr), B = posOf.get(o);
+        if (addr >= o || !A || !B) continue;
+        const n = Math.max(3, Math.min(40, Math.floor(Math.hypot(B.x - A.x, B.y - A.y) / 10)));
+        for (let k = 1; k < n; k++) links.push(div().absolute().left(A.x + ((B.x - A.x) * k) / n - 2).top(A.y + ((B.y - A.y) * k) / n - 2).w(4).h(4).bg(c.kind === "file" ? "#ff5370" : "#f9b84a")
+          .loop("opacity", { from: 0.1, to: 1, period: 700 + (k % 4) * 140, easing: "ease-in-out" }));
+      }
+    }
     const farm = div().id("farm-area").relative().flex_1().min_h(0).overflow_hidden()
       .on_mouse_move((e, cx) => {
         const d = this.drag;
@@ -671,11 +791,12 @@ export default class Agents extends View {
         if (!this.size || Math.abs(s.width - this.size.width) > 2 || Math.abs(s.height - this.size.height) > 2) { this.size = s; cx.notify(); }
       })
       .child(scene(sz.width, sz.height))
-      .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No agents yet. They show up here when they report a status.")))
+      .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
       .when(Boolean(this.update || this.notice), (el) => el.child(div().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(4).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4").cursor_pointer()
         .on_click((_e, cx) => { if (this.update) localStorage.setItem("upd-dismissed", this.update.version); this.update = null; this.notice = null; cx.notify(); })
         .child(this.update ? `Pixel HQ ${this.update.version} is out${this.update.notes ? ` · ${this.update.notes}` : ""}. Ask your agent: "update Pixel HQ from github.com/bnhan2710/pixel-hq, overwriting is OK" (click to hide)` : this.notice)))
       .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
+      .children(links)
       .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);
 
     // Pixel UI: notched 2px frames, a hard bottom shadow, a mono caps title and a hand-drawn magnifier.
@@ -703,10 +824,14 @@ export default class Agents extends View {
             .children(frame("#45475a", "#181825"))
             .child(h_flex().size_full().px(10).gap(8).items_center().justify_between()
               .child(h_flex().min_w(0).gap(7).items_center().child(corgi)
-                .child(div().min_w(0).truncate().font_family(mono).font_bold().text_size(10).text_color("#89b4fa").child("THE ENGINEERING FLOOR")))
+                .child(div().min_w(0).truncate().font_family(mono).font_bold().text_size(10).text_color("#89b4fa").child("ENGINEERING FLOOR")))
               .child(h_flex().gap(10).items_center().flex_none()
                 .when(Boolean(this.fileError), (el) => el.child(div().id("ag-file-error").text_size(11).font_bold().text_color(t.blocked)
                   .tooltip(`${this.fileError}. Using the last good figures.`).child("!")))
+                .child(div().id("ag-hire").relative().w(14).h(14).flex_none().cursor_pointer()
+                  .tooltip("Hire staff: a new agent in its own git worktree")
+                  .on_click((_e, cx) => this.openHire(cx))
+                  .children([[6, 0, 2, 14], [0, 6, 14, 2]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg(this.hiring.open ? "#f9e2af" : "#89b4fa"))))
                 .child(div()
                   .id("ag-figures")
                   .text_color(t.dim)
@@ -726,6 +851,23 @@ export default class Agents extends View {
                 ))),
         )),
       )
+      .when(!collapsed && this.hiring.open, (el) => {
+        const h = this.hiring;
+        const box = (state) => div().w_full().h(26).px(8).flex().items_center().bg("#181825").border_1().border_color("#45475a")
+          .child(Input.new(state).h_full().w_full().text_size(11.5).font_family(mono).text_color(t.foreground));
+        const btn = (id, text, fill, ink, act) => div().id(id).px(10).h(24).flex().items_center().cursor_pointer().bg(fill).text_size(10.5).font_family(mono).font_bold().text_color(ink).on_click(act).child(text);
+        return el.child(div().relative().mx(10).mt(8).flex_none().children(frame("#89b4fa", "#11111b"))
+          .child(v_flex().px(12).py(10).gap(6)
+            .child(div().font_family(mono).font_bold().text_size(10).text_color("#89b4fa").child("HIRE STAFF · NEW WORKTREE"))
+            .child(box(this.ticketInput))
+            .child(box(this.repoInput))
+            .child(h_flex().gap(4).children(["claude", "codex", "opencode", "agy"].map((pg) => div().id(`hire-${pg}`).px(8).h(22).flex().items_center().cursor_pointer().border_1()
+              .border_color(h.program === pg ? "#89b4fa" : "#45475a").bg(h.program === pg ? "#89b4fa22" : "#181825").text_size(10.5).font_family(mono).text_color(h.program === pg ? "#89b4fa" : "#a6adc8")
+              .on_click((_e, cx) => { h.program = pg; cx.notify(); }).child(pg))))
+            .when(Boolean(h.error), (e2) => e2.child(div().text_size(10.5).text_color("#ff5370").child(h.error)))
+            .child(h_flex().gap(6).child(btn("hire-go", h.busy ? "Creating..." : "Hire", "#89b4fa", "#11111b", (_e, cx) => this.doHire(cx)))
+              .child(btn("hire-cancel", "Cancel", "#313244", "#cdd6f4", (_e, cx) => this.openHire(cx))))));
+      })
       .when(!collapsed, (el) => el.child(div().id("staff-search").relative().mx(10).mt(4).mb(8).h(32).flex_none()
         .child(div().absolute().left(2).right(2).bottom(-2).h(2).bg("#11111b"))
         .children(frame(this.typing ? "#89b4fa" : "#45475a", "#11111b"))

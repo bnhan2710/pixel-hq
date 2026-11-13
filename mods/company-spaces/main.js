@@ -26,7 +26,7 @@ function place(s, ps) {
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
 // A space is one floor: a small pixel room, the name, the branch and who is aboard, and a status dot.
-const CARD = 52;
+const CARD = 66;
 const rowHeight = ({ tree }) => (tree ? 28 : CARD);
 const RAIL_CELL = 32;
 const railCell = (el) => h_flex().flex_none().justify_center().child(el);
@@ -41,23 +41,45 @@ const FALLBACK = 60000;
 const MARK = { ansi6: "#22a99a", ansi3: "#e3814f", ansi4: "#5b8def", ansi5: "#8b7cf6", ansi2: "#3fae6a", ansi1: "#d9649a" };
 
 const MONO = "JetBrains Mono";
+// A strong space color toned toward the layout's pale lavender, so frames and bars sit in the same soft palette.
+const soften = (c, k = 0.3) => {
+  if (!/^#[0-9a-f]{6}$/i.test(c)) return c;
+  const [a, b] = [c, "#cdd6f4"].map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * k).toString(16).padStart(2, "0")).join("");
+};
 const GUTTER = 22;
-const LINES = [MARK.ansi3, MARK.ansi4, MARK.ansi6, MARK.ansi5, MARK.ansi2, MARK.ansi1];
+// The metro lines wear soft pastels from the layout's own blue-violet tone (periwinkle first), not the strong space colors.
+const LINES = ["#8fa3f0", "#7aa7e8", "#6fc7bd", "#b394f0", "#8fcf94", "#e49ac8"];
 
 function grip(color) {
   return div().absolute().left(1).top(9).w(5).h(10).children([0, 4, 8].flatMap((y) => [0, 3].map((x) => div().absolute().left(x).top(y).size(2).bg(color))));
 }
 
+// A solid pixel block with notched corners.
+const pix = (c, w, h) => [div().absolute().left(2).top(0).w(w - 4).h(h).bg(c), div().absolute().left(0).top(2).w(w).h(h - 4).bg(c)];
+
+// The track: a thick line with dark sleepers, a square station with notched corners (pulsing where you are or where an agent needs you),
+// and a little train that rides while someone works.
 function rail(t, line, h, { stop = null, here = false, last = false, crew = [] } = {}) {
   const c = Math.round(h / 2);
   const blocked = crew.some((a) => a.status === "blocked");
   const moving = blocked || crew.some((a) => a.status === "working");
-  const lamp = div().absolute().left(2).top(1).w(4).h(2).bg(blocked ? "#f38ba8" : "#89b4fa");
+  const lamp = div().absolute().left(3).top(10).w(4).h(2).bg(blocked ? "#f38ba8" : "#f9e2af");
+  const end = last ? c : h;
+  const sleepers = [];
+  for (let y = 2; y < end; y += 8) sleepers.push(div().absolute().left(5).top(y).w(10).h(2).bg("#00000038"));
+  const node = div().absolute().left(3).top(c - 7).w(14).h(14).children(pix(line, 14, 14))
+    .child(div().absolute().left(3).top(3).w(8).h(8).bg(blocked ? "#f38ba8" : here ? "#f9e2af" : "#ffffff"));
   return div().relative().w(GUTTER).h(h).flex_none()
-    .child(div().absolute().left(8).top(0).w(4).h(last ? c : h).bg(line))
-    .when(stop === "station", (el) => el.child(div().absolute().left(3).top(c - 7).size(14).rounded_full().border_2().border_color(line).bg(here ? "#f9e2af" : "#ffffff")))
-    .when(stop === "end", (el) => el.child(div().absolute().left(5).top(c - 5).size(10).rounded_full().border_2().border_dashed().border_color(line).bg(t.chrome)))
+    .child(div().absolute().left(8).top(0).w(4).h(end).bg(line))
+    .child(div().absolute().left(8).top(0).w(1).h(end).bg("#ffffff40"))
+    .children(sleepers)
+    .when(stop === "station" && (here || blocked), (el) => el.child(div().absolute().left(0).top(c - 10).w(20).h(20).children(pix(blocked ? "#f38ba8" : "#f9e2af", 20, 20)).opacity(0.28)
+      .loop("opacity", { from: 0.1, to: 0.45, period: blocked ? 800 : 1800, easing: "ease-in-out" })))
+    .when(stop === "station", (el) => el.child(node))
+    .when(stop === "end", (el) => el.child(div().absolute().left(4).top(c - 6).w(12).h(12).rounded(2).border_2().border_dashed().border_color(line).bg(t.chrome)))
     .when(moving, (el) => el.child(div().absolute().left(5).w(10).h(14).rounded(2).border_1().border_color("#2a2c40").bg("#e8ecf8")
+      .child(div().absolute().left(1).top(2).w(6).h(3).bg("#2a2c40"))
       .child(blocked ? lamp.loop("opacity", { from: 0.3, to: 1, period: 700, easing: "linear" }) : lamp)
       .loop("top", { from: c - 25, to: c - 19, period: 2400 })));
 }
@@ -358,15 +380,16 @@ export default class Spaces extends View {
       const folded = this.folded.has(m);
       const line = connected ? LINES[n % LINES.length] : t.dim;
       const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t, line));
-      const bullet = h_flex().relative().size(20).flex_none().rounded_full().border_2().border_color("#ffffff33").bg(line)
-        .items_center().justify_center().font_family(MONO).font_bold().text_size(9).text_color("#ffffff")
-        .child([...(m ?? "this computer")][0].toUpperCase())
-        .when(!folded && !rebuilt && !login && (mine.length > 0 || !loading(m)), (el) => el.child(div().absolute().left(6).top(16).w(4).h(10).bg(line)));
+      const bullet = div().relative().w(20).h(20).flex_none().children(pix(line, 20, 20))
+        .child(h_flex().absolute().left(0).top(0).size(20).items_center().justify_center().font_family(MONO).font_bold().text_size(10).text_color("#11111b")
+          .child([...(m ?? "this computer")][0].toUpperCase()))
+        .when(!folded && !rebuilt && !login && (mine.length > 0 || !loading(m)), (el) => el.child(div().absolute().left(8).top(18).w(4).h(10).bg(line)));
       const icon = svg(`mods/workspace-chrome/${m ? "server" : "monitor"}.svg`).size(13).flex_none();
       const badge = div().absolute().right(-3).bottom(-2).size(6).rounded(3).border_1().border_color(t.chrome).bg(connected ? t.ansi2 : t.dim);
       const head = h_flex().relative().id(`machine-${m ?? "local"}`).h(collapsed ? 26 : 28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
         .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().rounded(6).tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
         .when(collapsed, el => el.cursor_pointer())
+        .when(!collapsed, el => el.bg("#181825").mb(2).h(30).child(div().absolute().left(0).right(0).bottom(0).h(2).bg(line)))
         .hover(s => s.bg(t.hover))
         .on_click((_e, cx) => {
           if (renaming) return;
@@ -521,8 +544,8 @@ export default class Spaces extends View {
     const R = (x, y, w, h, c) => div().absolute().left(x).top(y).w(w).h(h).bg(c);
     const lit = working > 0, any = crew.length > 0;
     const skin = (a) => { const k = String(a.program?.key ?? "").toLowerCase(); return k.includes("claude") ? ["#D97757", "#D97757"] : k.includes("codex") ? ["#5B6CF0", "#5B6CF0"] : k.includes("opencode") ? ["#4A5B80", "#F7F4EC"] : (k.includes("antigravity") || k === "agy") ? ["#F6A03A", "#3186FF"] : ["#F1E7D3", "#F1E7D3"]; };
-    const room = div().relative().w(54).h(40).flex_none().rounded(6).overflow_hidden().border_1().border_color("#0c0e1c")
-      .child(R(0, 0, 54, 24, any ? "#2a2f52" : "#20243d")).child(R(0, 0, 54, 3, fill)).child(R(0, 3, 54, 1, "#ffffff22"))
+    const room = div().relative().w(54).h(40).flex_none().overflow_hidden()
+      .child(R(0, 0, 54, 24, any ? "#2a2f52" : "#20243d")).child(R(0, 0, 54, 3, soften(fill))).child(R(0, 3, 54, 1, "#ffffff22"))
       .child(R(4, 7, 22, 15, "#0c0e1c")).child(R(5, 8, 20, 13, lit ? "#1a2350" : "#0e1226"))
       .child(R(6, 15, 4, 6, "#121733")).child(R(11, 12, 5, 9, "#121733")).child(R(17, 16, 6, 5, "#121733"))
       .child(R(12, 14, 1, 1, "#f5e9b0")).child(R(14, 17, 1, 1, "#f5e9b0")).child(R(7, 17, 1, 1, "#e0b94a")).child(R(19, 18, 1, 1, "#e0b94a"))
@@ -537,22 +560,42 @@ export default class Spaces extends View {
         const mark = a && a.status === "blocked" ? [R(x + 12, 20, 2, 5, "#f9e2af").loop("opacity", { from: 0.2, to: 1, period: 700, easing: "linear" }), R(x + 12, 26, 2, 2, "#f9e2af")] : a && a.status === "done" ? [R(x + 11, 21, 2, 2, "#a6e3a1"), R(x + 2, 20, 2, 2, "#f9e2af")] : [];
         return [...pet, R(x, 32, 14, 3, "#646a8c"), R(x, 32, 14, 1, "#8a91b6"), glow, ...mark];
       }));
+    // The room sits in a notched frame in the space's own color.
+    const tile = div().relative().w(60).h(46).flex_none().children(pix(soften(fill), 60, 46)).child(div().absolute().left(3).top(3).child(room));
     const raw = g?.branch ?? null;
     const place = raw ?? base(w.folder ?? "");
-    const staff = crew.length ? `${crew.length} aboard` : "no service";
+    const done = count("done");
+    const idle = crew.length - blocked - working - done;
     const dot = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : null;
-    return h_flex().size_full().gap(10).items_center().px(4)
-      .child(room)
-      .child(v_flex().flex_1().min_w(0).gap(1)
-        .child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(w.name))
-        .child(h_flex().gap(5).items_center().text_size(11).text_color(t.dim)
-          .child(div().min_w(0).truncate().child([place, staff].filter(Boolean).join(" \u00b7 ")))
+    const chip = (text, color, pulse) => {
+      const c = h_flex().flex_none().px(5).h(15).items_center().rounded(2).border_1().border_color(color + "77").bg(color + "26")
+        .font_family(MONO).font_bold().text_size(9.5).text_color(color).child(text);
+      return pulse ? c.loop("opacity", { from: 0.55, to: 1, period: 900, easing: "ease-in-out" }) : c;
+    };
+    // Most urgent first, so a narrow card loses the least important chip.
+    const chips = [
+      ...(blocked > 0 ? [chip(`${blocked} needs you`, "#f38ba8", true)] : []),
+      ...(working > 0 ? [chip(`${working} typing`, "#89b4fa")] : []),
+      ...(done > 0 ? [chip(`${done} shipped`, "#a6e3a1")] : []),
+      ...(idle > 0 ? [chip(`${idle} break`, "#9399b2")] : []),
+    ];
+    const glyph = div().relative().w(8).h(10).flex_none().children([[0, 0, 2, 2], [0, 8, 2, 2], [5, 2, 2, 2], [0, 2, 1, 6], [1, 4, 5, 1]].map(([x, y, w2, h2]) => div().absolute().left(x).top(y).w(w2).h(h2).bg(raw ? "#89b4fa" : t.dim)));
+    return h_flex().size_full().gap(11).items_center().px(4)
+      .child(tile)
+      .child(v_flex().flex_1().min_w(0).gap(3)
+        .child(h_flex().gap(6).items_center()
+          .child(div().min_w(0).truncate().font_semibold().text_size(13.5).text_color(t.foreground).child(w.name))
+          .when(Boolean(dot), (el) => {
+            const d = div().flex_none().size(7).bg(dot);
+            return el.child(blocked > 0 ? d.loop("opacity", { from: 0.3, to: 1, period: 800, easing: "ease-in-out" }) : d);
+          }))
+        .child(h_flex().gap(5).items_center().text_size(10.5).font_family(MONO).text_color(t.dim)
+          .child(glyph)
+          .child(div().min_w(0).truncate().text_color(raw ? "#89b4fa" : t.dim).child(place))
+          .child(div().flex_none().child(`\u00b7 ${crew.length ? `${crew.length} aboard` : "no service"}`))
           .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
-          .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)))))
-      .when(Boolean(dot), (el) => {
-        const d = div().flex_none().size(8).rounded(4).bg(dot).mr(4);
-        return el.child(blocked > 0 ? d.loop("opacity", { from: 0.4, to: 1, period: 900, easing: "ease-in-out" }) : d);
-      });
+          .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`))))
+        .child(h_flex().gap(4).items_center().min_w(0).overflow_hidden().tooltip(`${working} typing · ${blocked} need you · ${done} shipped · ${idle} on break`).children(chips.length ? chips : [div().text_size(10).font_family(MONO).text_color(t.dim).child("dark floor")])));
   }
 
   row({ w, i, g, tree }, t, line) {
@@ -569,7 +612,7 @@ export default class Spaces extends View {
       .flex_none()
       .justify_center()
       .rounded(8)
-      .when(on, (el) => el.bg(t.selected))
+      .when(on, (el) => el.bg(t.selected).child(div().absolute().left(0).top(12).bottom(12).w(3).bg(line)))
       .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
       .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
@@ -643,7 +686,7 @@ export default class Spaces extends View {
     if (!collapsed) {
       const lines = new Set([null, ...sp.map((x) => x.machine ?? null), ...this.machines.map((m) => m.name), ...Object.keys(this.reconnecting)]);
       const open = sp.filter((x) => !this.folded.has(x.machine ?? null)).length;
-      const heads = [...lines].reduce((sum, m) => sum + (this.folded.has(m) ? 28 : 56), 0);
+      const heads = [...lines].reduce((sum, m) => sum + (this.folded.has(m) ? 32 : 60), 0);
       const want = Math.max(100, Math.min(380, 31 + open * (CARD + 2) + 20 + heads));
       if (this.appliedPx !== want) { this.appliedPx = want; run("layout.resize", { id: "spaces", px: want }); }
     }

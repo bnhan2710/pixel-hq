@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="demo.gif?v=4" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
+  <img src="demo.gif?v=5" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
   <sub>The sidebar, live: floors with a status dot, pets typing at their desks and stepping out for a while on a break.</sub>
 </p>
 
@@ -55,8 +55,8 @@ One species per agent program, so you can tell who is who at a glance:
 | anything else | sheep | the program's name |
 
 <p align="center">
-  <img src="team.png?v=4" alt="The team at work: two Claude crabs, an OpenCode penguin and a Codex robot at their desks" width="320"><br>
-  <sub>Four staff at their desks: two Claude crabs, an OpenCode penguin and a Codex robot (the robot is waiting for you).</sub>
+  <img src="team.png?v=5" alt="The team at work: a Claude crab with papers piling up, a Codex robot, an OpenCode penguin and a second crab, with branch tags and a clash warning" width="320"><br>
+  <sub>Four staff at their desks. The crab and the robot changed the same file in two worktrees (red tags, dotted sparks); the crabs have papers piled up as their context grows.</sub>
 </p>
 
 <p align="center">
@@ -76,7 +76,7 @@ The pets, desks and room are drawn from rectangles and animated with Herdr's nat
 ## A real screenshot
 
 <p align="center">
-  <img src="screenshot.png?v=4" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
+  <img src="screenshot.png?v=5" alt="A real screenshot of Pixel HQ: floors in the Spaces list, an office of pixel pets below it, desk nameplates on every pane and a team status bar" width="900"><br>
   <sub>The layout as it runs (demo data only).</sub>
 </p>
 
@@ -90,7 +90,7 @@ Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, 
 then pick **pixel-hq** in Settings > Look. It brings its own **pixel-hq** theme, dark even when your system is in light mode.
 
 Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. The only programs it runs are local helpers
-(`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). Its only network request is a tiny public file on GitHub (see "Update notices"). Read it before you install it.
+(`mkdir`, `cp`, `open`, `git` to see what each desk changed and to make worktrees when you hire, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). Its only network request is a tiny public file on GitHub (see "Update notices"). Read it before you install it.
 
 ## Update
 
@@ -101,6 +101,29 @@ Herdr installs a shared layout as a plain copy, so it does not update by itself.
 (Say "update": an agent never overwrites existing files unless you tell it to.) Then quit and reopen Herdr once if the window does not refresh.
 
 What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
+
+## Papers on the desk
+
+As an agent's context fills up, a pile of paper grows on its desk: one sheet per 10%, and past 80% the top sheets turn pink (past 95% the pile trembles). Hover it for the exact percentage. **Click the pile, then click it again within 6 seconds**, and Pixel HQ sends the agent `/compact`, which already summarizes the conversation and swaps the history for that summary. It only does this when the agent is idle: a working agent answers "busy: wait for it", a blocked one "answer it first". The first click just arms it and says so on the nameplate.
+
+Herdr does not know how full an agent's context is, so a Claude Code status line has to tell it. [`claude-statusline.sh`](mods/company-agents/claude-statusline.sh) does that (it labels the terminal with `claude.context`); it needs `python3`. Ask your agent:
+
+> Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
+
+Only Claude Code reports its context this way for now, so other agents have no pile.
+
+## Teamwork without collisions
+
+- **One floor, one office.** Each space is its own office: the desks show only the agents of the space you are looking at (the other floors have their own cards).
+- **Branch on every nameplate.** Under each desk's name tag is the branch its agent is on, with a small git-branch glyph.
+- **Clash warnings.** Every few seconds Pixel HQ asks git what each desk has changed. If two worktrees of the same repo both changed the same file, both pets get a red lightning bolt and a red `clash: file` tag, and a dotted line of sparks joins their desks. If two agents are working in one and the same folder at the same time, they get an amber `same folder` tag instead.
+- **Hire staff in their own worktree.** The **+** in the header opens a small form: a ticket name (say `UC-1234`), the repo folder and which agent to start. Pixel HQ runs `git worktree add -b UC-1234 <repo>/../.worktrees/<repo>-UC-1234` (or reuses the branch if it exists) and opens the agent there as a new tab of the current space, so two staff never share a working tree. Worktrees are not removed when the staff leaves; clean them with `git worktree remove`. If the folder is a workspace of several repos, the form tells you which ones are inside so you can type one.
+
+<p align="center">
+  <img src="clash.png" alt="Two desks that changed the same file: a red lightning bolt, a red clash tag and the branch name" width="200">
+  <img src="piles.png" alt="A desk with a tall pile of papers, the top sheets pink because the context is almost full" width="200"><br>
+  <sub>Left: a clash warning with the branch on the nameplate. Right: a nearly full context, the pink sheets on top.</sub>
+</p>
 
 ## OpenCode in the office
 

@@ -60,6 +60,10 @@ The back wall is a slate night office, left to right: a potted plant, a window w
 
 Desks adapt to the team. Up to four agents get full-size desks in two staggered columns; more agents shrink every desk (never below 0.42x) and add columns and rows until all fit, with each name label as wide as its column (full text in the tooltip). Nobody is ever hidden unless the panel is too small even at the smallest size, then a badge counts the rest.
 
+## OpenCode status plugin
+
+OpenCode does not report a status, so Herdr would not list it as an agent. `mods/company-agents/opencode-status.js` is an OpenCode plugin that writes the OSC 7501 sequence (`ESC ] 7501 ; state=<working|idle|blocked>:app=opencode ESC \`) to `/dev/tty`: idle when it loads, working on session status `busy` or tool calls, blocked on a permission or question, idle on `session.idle`; sub-agent sessions are ignored. On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XDG_CONFIG_HOME/opencode/plugins/` (default `~/.config/opencode/plugins/`) when that folder exists and the file does not, records that in `localStorage` (`oc-plugin`), and shows a dismissible note: "OpenCode plugin added · restart OpenCode to see it here". On Windows the same copy is done with `powershell` (config folder `%XDG_CONFIG_HOME%\opencode`, else `%USERPROFILE%\.config\opencode`) and the plugin writes to `\\.\CONOUT$` instead of `/dev/tty`. The Windows path has not been tested on a real Windows machine.
+
 ## Built from
 
 - **The layout** (`layouts/pixel-hq.json`): a root `row` with `padding: 8`, `gap: 8`, `background: #11111b`,

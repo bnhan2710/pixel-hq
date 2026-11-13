@@ -3,7 +3,7 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
@@ -112,6 +112,10 @@ export default class Agents extends View {
     this.searchInput.on("submit", () => { if (this.firstHit) run("pane.focus", { pane: this.firstHit }); });
     this.searchInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.searchInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    // OpenCode does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
+    // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Never overwrites; deleting the file removes it for good.
+    this.notice = null;
+    this.setupOpenCode(cx);
     // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
     this.out = null;
     this.breakerList = [];
@@ -273,6 +277,22 @@ export default class Agents extends View {
     // Idle: a ring; done: a dot.
     if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(4).border(1.5).border_color(t.idle ?? t.dim);
     return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
+  }
+
+  async setupOpenCode(cx) {
+    if (localStorage.getItem("oc-plugin")) return;
+    const src = `${appHome()}/mods/company-agents/opencode-status.js`;
+    // Exit codes: 0 added, 3 no OpenCode folder, 4 already there.
+    const sh = 'D="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; [ -d "$D" ] || exit 3; mkdir -p "$D/plugins" || exit 1; [ -e "$D/plugins/opencode-status.js" ] && exit 4; cp "$1" "$D/plugins/opencode-status.js" || exit 1';
+    const ps = "param($src); $c = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }; $d = Join-Path $c 'opencode'; "
+      + "if (-not (Test-Path -LiteralPath $d)) { exit 3 }; $p = Join-Path $d 'plugins'; New-Item -ItemType Directory -Force -Path $p | Out-Null; "
+      + "$t = Join-Path $p 'opencode-status.js'; if (Test-Path -LiteralPath $t) { exit 4 }; Copy-Item -LiteralPath $src -Destination $t -ErrorAction Stop";
+    const r = await (window()?.platform === "windows"
+      ? exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}'`])
+      : exec("sh", ["-c", sh, "sh", src])).catch(() => null);
+    if (!r || r.code === 3 || (r.code !== 0 && r.code !== 4)) return; // no OpenCode here (yet), or a failed copy: try again next launch
+    localStorage.setItem("oc-plugin", "1");
+    if (r.code === 0) { this.notice = "OpenCode plugin added · restart OpenCode to see it here"; cx.notify(); }
   }
 
   render(cx) {
@@ -625,6 +645,8 @@ export default class Agents extends View {
       })
       .child(scene(sz.width, sz.height))
       .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No agents yet. They show up here when they report a status.")))
+      .when(Boolean(this.notice), (el) => el.child(div().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(4).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4").cursor_pointer()
+        .on_click((_e, cx) => { this.notice = null; cx.notify(); }).child(this.notice)))
       .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
       .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);
 

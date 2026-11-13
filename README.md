@@ -89,7 +89,7 @@ Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, 
 then pick **pixel-hq** in Settings > Look and the **pixel-hq** theme.
 
 Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. It makes no network requests; the only programs it runs are local helpers
-(`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). Read it before you install it.
+(`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). Read it before you install it.
 
 ## Update
 
@@ -103,11 +103,7 @@ What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
 ## OpenCode in the office
 
-Herdr only counts a program as an agent when it reports a status. Claude Code does, OpenCode does not by itself, so an OpenCode pane gets its pet in the header but no desk in the office. [`extras/opencode-status.js`](extras/opencode-status.js) is a small OpenCode plugin that reports it. Ask your agent:
-
-> Install the OpenCode plugin from github.com/bnhan2710/pixel-hq: copy `extras/opencode-status.js` to `~/.config/opencode/plugins/`, then tell me to restart OpenCode.
-
-OpenCode appears in the office once it has started (it can take a while to load its skills). Delete the file to remove it.
+Herdr only counts a program as an agent when it reports a status. Claude Code does, OpenCode does not by itself, so on its own an OpenCode pane would get its pet in the header but no desk in the office. The first time the layout runs, if OpenCode is installed, it adds one small plugin ([`opencode-status.js`](mods/company-agents/opencode-status.js)) to OpenCode's plugins folder (`~/.config/opencode/plugins/`) that reports the status. It shows a note in the office, you restart OpenCode once, and OpenCode gets its desk. It never overwrites an existing file, and it does this once only: delete the plugin file to remove it for good. This works on macOS and Linux; Windows is supported through PowerShell but has not been tested on a real Windows machine yet, so please open an issue if OpenCode does not show up there.
 
 ## Make it yours
 

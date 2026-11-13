@@ -103,11 +103,7 @@ Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm tron
 
 ## OpenCode trong văn phòng
 
-Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, còn OpenCode thì không, nên pane OpenCode có pet ở header nhưng không có bàn trong văn phòng. [`extras/opencode-status.js`](extras/opencode-status.js) là plugin OpenCode nhỏ để báo trạng thái. Nhờ agent của bạn:
-
-> Install the OpenCode plugin from github.com/bnhan2710/pixel-hq: copy `extras/opencode-status.js` to `~/.config/opencode/plugins/`, then tell me to restart OpenCode.
-
-OpenCode sẽ hiện trong văn phòng sau khi khởi động xong (nó có thể nạp skill khá lâu). Xóa file là gỡ.
+Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, còn OpenCode thì không, nên nếu không có gì hỗ trợ thì pane OpenCode chỉ có pet ở header mà không có bàn trong văn phòng. Lần đầu layout chạy, nếu máy có OpenCode, nó thêm một plugin nhỏ ([`opencode-status.js`](mods/company-agents/opencode-status.js)) vào thư mục plugin của OpenCode (`~/.config/opencode/plugins/`) để báo trạng thái. Văn phòng hiện một dòng thông báo, bạn mở lại OpenCode một lần là OpenCode có bàn. Nó không bao giờ ghi đè file có sẵn và chỉ làm một lần: xóa file plugin là gỡ hẳn. Cách này chạy trên macOS và Linux; Windows được hỗ trợ qua PowerShell nhưng chưa được thử trên máy Windows thật, nếu OpenCode không hiện ở đó bạn hãy mở issue giúp mình.
 
 ## Tuỳ biến theo ý bạn
 

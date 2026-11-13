@@ -9,7 +9,8 @@ import fs from "node:fs";
 
 const APP = "opencode";
 let tty;
-try { tty = fs.openSync("/dev/tty", "w"); } catch { tty = undefined; }
+// The terminal itself, not stdout (OpenCode owns that): /dev/tty on macOS and Linux, the console output buffer on Windows.
+try { tty = fs.openSync(process.platform === "win32" ? "\\\\.\\CONOUT$" : "/dev/tty", "w"); } catch { tty = undefined; }
 let last;
 const report = (state) => {
   if (tty === undefined || state === last) return;

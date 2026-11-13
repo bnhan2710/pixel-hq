@@ -86,7 +86,7 @@ Nhờ agent của bạn:
 > Read ~/.config/herdr-app/AGENTS.md, then add this layout: herdr.dev/layouts/bnhan2710/pixel-hq
 
 Hoặc làm tay: chép `layouts/`, `mods/` và `themes/` vào `~/.config/herdr-app/`, thoát rồi mở lại Herdr một lần,
-sau đó chọn **pixel-hq** trong Settings > Look và chọn theme **pixel-hq**.
+sau đó chọn **pixel-hq** trong Settings > Look. Layout tự mang theme **pixel-hq**, luôn tối kể cả khi hệ thống đang ở chế độ sáng.
 
 Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 2.000 dòng JavaScript. Nó không gửi request mạng nào; các chương trình duy nhất nó chạy là các công cụ cục bộ
 (`mkdir`, `cp`, `open`, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Hãy đọc code trước khi cài.
@@ -103,7 +103,7 @@ Những gì cập nhật sẽ ghi đè và cách quay lại bản cũ nằm tron
 
 ## OpenCode trong văn phòng
 
-Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, còn OpenCode thì không, nên nếu không có gì hỗ trợ thì pane OpenCode chỉ có pet ở header mà không có bàn trong văn phòng. Lần đầu layout chạy, nếu máy có OpenCode, nó thêm một plugin nhỏ ([`opencode-status.js`](mods/company-agents/opencode-status.js)) vào thư mục plugin của OpenCode (`~/.config/opencode/plugins/`) để báo trạng thái. Văn phòng hiện một dòng thông báo, bạn mở lại OpenCode một lần là OpenCode có bàn. Nó không bao giờ ghi đè file có sẵn và chỉ làm một lần: xóa file plugin là gỡ hẳn. Cách này chạy trên macOS và Linux; Windows được hỗ trợ qua PowerShell nhưng chưa được thử trên máy Windows thật, nếu OpenCode không hiện ở đó bạn hãy mở issue giúp mình.
+Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Claude Code tự báo, OpenCode từ bản 2.0.29 cũng tự báo. OpenCode 1.x thì không, nên nếu không có gì hỗ trợ thì pane OpenCode 1.x chỉ có pet ở header mà không có bàn trong văn phòng. Lần đầu layout chạy, nếu máy có OpenCode, nó thêm một plugin nhỏ ([`opencode-status.js`](mods/company-agents/opencode-status.js)) vào thư mục plugin của OpenCode (`~/.config/opencode/plugins/`): trên 1.x plugin báo trạng thái, trên 2.x thì đứng yên. Văn phòng hiện một dòng thông báo, bạn mở lại OpenCode một lần là OpenCode có bàn. Nó không bao giờ ghi đè file của người khác và chỉ làm một lần: xóa file plugin là gỡ hẳn. Ngoại lệ duy nhất là bản plugin đầu tiên của chính Pixel HQ, bản mà OpenCode 2.x từ chối nạp ("1 plugin failed"): nếu còn bản đó, nó được thay một lần bằng bản hiện tại. Cách này chạy trên macOS và Linux; Windows được hỗ trợ qua PowerShell nhưng chưa được thử trên máy Windows thật, nếu OpenCode không hiện ở đó bạn hãy mở issue giúp mình.
 
 ## Tuỳ biến theo ý bạn
 

@@ -62,11 +62,19 @@ Desks adapt to the team. Up to four agents get full-size desks in two staggered 
 
 ## OpenCode status plugin
 
-OpenCode does not report a status, so Herdr would not list it as an agent. `mods/company-agents/opencode-status.js` is an OpenCode plugin that writes the OSC 7501 sequence (`ESC ] 7501 ; state=<working|idle|blocked>:app=opencode ESC \`) to `/dev/tty`: idle when it loads, working on session status `busy` or tool calls, blocked on a permission or question, idle on `session.idle`; sub-agent sessions are ignored. On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XDG_CONFIG_HOME/opencode/plugins/` (default `~/.config/opencode/plugins/`) when that folder exists and the file does not, records that in `localStorage` (`oc-plugin`), and shows a dismissible note: "OpenCode plugin added · restart OpenCode to see it here". On Windows the same copy is done with `powershell` (config folder `%XDG_CONFIG_HOME%\opencode`, else `%USERPROFILE%\.config\opencode`) and the plugin writes to `\\.\CONOUT$` instead of `/dev/tty`. The Windows path has not been tested on a real Windows machine.
+OpenCode 1.x does not report a status, so Herdr would not list it as an agent; OpenCode 2.0.29 and later report it themselves. `mods/company-agents/opencode-status.js` is an OpenCode plugin that, on 1.x, writes the OSC 7501 sequence (`ESC ] 7501 ; state=<working|idle|blocked>:app=opencode ESC \`) to `/dev/tty`: idle when it loads, working on session status `busy` or tool calls, blocked on a permission or question, idle on `session.idle`; sub-agent sessions are ignored.
+
+One file loads on every OpenCode. It exports the 1.x factory as `PixelHqStatus` and a default object `{ id: "pixel-hq-status", server, setup }`:
+
+- OpenCode 2.x needs a default object with `id` and `setup` (it rejects a function) and ignores other keys. `setup` does nothing, and the terminal is never opened.
+- 1.3.13 to 1.19 see a default object with `id` and run its `server`.
+- 1.0 to 1.3.1 call every export: `PixelHqStatus` runs, then calling the object logs one load error.
+
+On first run the `company-agents` mod copies it, with `exec("sh", ...)`, to `$XDG_CONFIG_HOME/opencode/plugins/` (default `~/.config/opencode/plugins/`) when that folder exists and the file does not, records that in `localStorage` (`oc-plugin-v2`), and shows a dismissible note: "OpenCode plugin added · restart OpenCode to see it here". A file there that has the first release's `PixelHqStatus` but not `pixel-hq-status` is Pixel HQ's own old copy, which 2.x refuses to load: it is replaced, with the note "OpenCode plugin updated · …". Any other file is left alone, and when the first release's record (`oc-plugin`) exists a missing file is not added back, since the person removed it. On Windows the same copy is done with `powershell` (config folder `%XDG_CONFIG_HOME%\opencode`, else `%USERPROFILE%\.config\opencode`) and the plugin writes to `\\.\CONOUT$` instead of `/dev/tty`. The PowerShell copy has been run on Windows; the plugin's `\\.\CONOUT$` output has not been tested on a real Windows machine.
 
 ## Built from
 
-- **The layout** (`layouts/pixel-hq.json`): a root `row` with `padding: 8`, `gap: 8`, `background: #11111b`,
+- **The layout** (`layouts/pixel-hq.json`): a root `row` with `theme: "pixel-hq"`, `padding: 8`, `gap: 8`, `background: #11111b`,
   `titlebar: "none"`, `traffic_lights: [12, 16]` and these `colors`: accent `#89b4fa`, chrome `#181825`,
   canvas `#11111b`, background `#1e1e2e`, surface `#262637`, raised `#313244`, border `#ffffff14`.
   Children: a `sidebar` column (brand block 46px, spaces block, agents block, footer block) and a `work`
@@ -74,7 +82,10 @@ OpenCode does not report a status, so Herdr would not list it as an agent. `mods
   The pane frame: radius 14, gap 8, background `#1e1e2e`, 1px border, focus border `#89b4fa`,
   header `{ mod: "company-pane", height: 40 }`.
 - **Theme** (`themes/pixel-hq.json`): background `#1e1e2e`, foreground `#cdd6f4`, cursor `#89b4fa`, the Catppuccin Mocha 16-color ANSI set.
-- **`mods/company-brand/`**: the shipped `workspace-chrome` header with the logo tile and two-line name.
+  The layout names it as a single theme, not a `{light, dark}` pair: its panels are painted dark, so with the system (or `appearance`)
+  in light mode a light theme would put dark text on them.
+- **`mods/company-brand/`**: the shipped `workspace-chrome` header with the logo tile and two-line name. Its search and sidebar-toggle
+  icons (`search.svg`, `sidebar.svg`) are copies of `workspace-chrome`'s, so the mod does not depend on another mod's files.
 - **`mods/company-pane/`**: a pane header. Reads `panes()` for its terminal; draws the pet with `duckMood`
   from its own `duck.js`; chip colors come from the status.
 - **`mods/company-status/`**: counts from `agents()` by status.
@@ -88,7 +99,7 @@ OpenCode does not report a status, so Herdr would not list it as an agent. `mods
 
 ## Install
 
-Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **pixel-hq** in Settings > Look
-and the **pixel-hq** theme. Quit and reopen Herdr once so it loads the new mods.
+Copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, then pick **pixel-hq** in Settings > Look;
+it brings its own **pixel-hq** theme. Quit and reopen Herdr once so it loads the new mods.
 
 Credits and licenses: see `NOTICE.md`.

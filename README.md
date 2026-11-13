@@ -86,7 +86,7 @@ Ask your agent:
 > Read ~/.config/herdr-app/AGENTS.md, then add this layout: herdr.dev/layouts/bnhan2710/pixel-hq
 
 Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, quit and reopen Herdr once,
-then pick **pixel-hq** in Settings > Look and the **pixel-hq** theme.
+then pick **pixel-hq** in Settings > Look. It brings its own **pixel-hq** theme, dark even when your system is in light mode.
 
 Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. It makes no network requests; the only programs it runs are local helpers
 (`mkdir`, `cp`, `open`, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). Read it before you install it.
@@ -103,7 +103,7 @@ What an update overwrites, and how to go back, is in [UPDATE.md](UPDATE.md).
 
 ## OpenCode in the office
 
-Herdr only counts a program as an agent when it reports a status. Claude Code does, OpenCode does not by itself, so on its own an OpenCode pane would get its pet in the header but no desk in the office. The first time the layout runs, if OpenCode is installed, it adds one small plugin ([`opencode-status.js`](mods/company-agents/opencode-status.js)) to OpenCode's plugins folder (`~/.config/opencode/plugins/`) that reports the status. It shows a note in the office, you restart OpenCode once, and OpenCode gets its desk. It never overwrites an existing file, and it does this once only: delete the plugin file to remove it for good. This works on macOS and Linux; Windows is supported through PowerShell but has not been tested on a real Windows machine yet, so please open an issue if OpenCode does not show up there.
+Herdr only counts a program as an agent when it reports a status. Claude Code does, and so does OpenCode from 2.0.29 on. OpenCode 1.x does not, so on its own an OpenCode 1.x pane would get its pet in the header but no desk in the office. The first time the layout runs, if OpenCode is installed, it adds one small plugin ([`opencode-status.js`](mods/company-agents/opencode-status.js)) to OpenCode's plugins folder (`~/.config/opencode/plugins/`) that reports the status on 1.x and stays quiet on 2.x. It shows a note in the office, you restart OpenCode once, and OpenCode gets its desk. It never overwrites someone else's file, and it does this once only: delete the plugin file to remove it for good. The one exception is Pixel HQ's own first plugin, which OpenCode 2.x refuses to load ("1 plugin failed"): if that copy is there, it is replaced once with the current one. This works on macOS and Linux; Windows is supported through PowerShell but has not been tested on a real Windows machine yet, so please open an issue if OpenCode does not show up there.
 
 ## Make it yours
 

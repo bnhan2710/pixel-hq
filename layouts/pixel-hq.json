@@ -1,6 +1,7 @@
 {
   "id": "root",
   "type": "row",
+  "theme": "pixel-hq",
   "children": [
     {
       "id": "sidebar",

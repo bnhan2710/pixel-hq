@@ -1,10 +1,10 @@
-// Workspace spaces: stable colored avatars, worktrees under their checkout,
-// grouped by machine when more than one is known. After a space's name, the repo
+// Workspace spaces as metro stations: each machine is a line, each space a stop on it,
+// worktrees under their checkout. After a space's name, the repo
 // its first terminal is in now, only where unusual: branch, ahead/behind. Agent state lives in the agents list, not here. Click to
 // switch, right-click for its menu, drag to reorder.
 
 import { View, div, svg } from "gpui-kit";
-import { v_flex, h_flex } from "gpui-base";
+import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { spaces, machines, panes, agents, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, window, layout } from "herdr";
 
 function find(node, id) {
@@ -25,7 +25,7 @@ function place(s, ps) {
   const tabs = new Set((s.tabs ?? []).map((c) => c.id));
   return ps.find((p) => tabs.has(p.tab) && p.cwd)?.cwd || s.folder;
 }
-// A space is one floor: a small pixel room, the name, the branch and staff count, and a status dot.
+// A space is one floor: a small pixel room, the name, the branch and who is aboard, and a status dot.
 const CARD = 52;
 const rowHeight = ({ tree }) => (tree ? 28 : CARD);
 const RAIL_CELL = 32;
@@ -39,6 +39,28 @@ const FALLBACK = 60000;
 // What a stored color name looks like on an avatar (the same in every mod
 // that draws space avatars): one strong color per hue, light and dark alike.
 const MARK = { ansi6: "#22a99a", ansi3: "#e3814f", ansi4: "#5b8def", ansi5: "#8b7cf6", ansi2: "#3fae6a", ansi1: "#d9649a" };
+
+const MONO = "JetBrains Mono";
+const GUTTER = 22;
+const LINES = [MARK.ansi3, MARK.ansi4, MARK.ansi6, MARK.ansi5, MARK.ansi2, MARK.ansi1];
+
+function grip(color) {
+  return div().absolute().left(1).top(9).w(5).h(10).children([0, 4, 8].flatMap((y) => [0, 3].map((x) => div().absolute().left(x).top(y).size(2).bg(color))));
+}
+
+function rail(t, line, h, { stop = null, here = false, last = false, crew = [] } = {}) {
+  const c = Math.round(h / 2);
+  const blocked = crew.some((a) => a.status === "blocked");
+  const moving = blocked || crew.some((a) => a.status === "working");
+  const lamp = div().absolute().left(2).top(1).w(4).h(2).bg(blocked ? "#f38ba8" : "#89b4fa");
+  return div().relative().w(GUTTER).h(h).flex_none()
+    .child(div().absolute().left(8).top(0).w(4).h(last ? c : h).bg(line))
+    .when(stop === "station", (el) => el.child(div().absolute().left(3).top(c - 7).size(14).rounded_full().border_2().border_color(line).bg(here ? "#f9e2af" : "#ffffff")))
+    .when(stop === "end", (el) => el.child(div().absolute().left(5).top(c - 5).size(10).rounded_full().border_2().border_dashed().border_color(line).bg(t.chrome)))
+    .when(moving, (el) => el.child(div().absolute().left(5).w(10).h(14).rounded(2).border_1().border_color("#2a2c40").bg("#e8ecf8")
+      .child(blocked ? lamp.loop("opacity", { from: 0.3, to: 1, period: 700, easing: "linear" }) : lamp)
+      .loop("top", { from: c - 25, to: c - 19, period: 2400 })));
+}
 
 // A space speaks up only when something in it needs you.
 export function glyph(status) {
@@ -69,6 +91,13 @@ export default class Spaces extends View {
     this.reconnecting = JSON.parse(localStorage.getItem("machines.reconnecting") ?? "{}");
     for (const state of Object.values(this.reconnecting)) state.busy = false;
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
+    this.order = JSON.parse(localStorage.getItem("machines.order") ?? "[]");
+    this.dragLine = null;
+    this.overLine = null;
+    this.hoverLine = null;
+    this.renaming = null;
+    this.renameError = null;
+    this.lineNames = [];
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
     // Refresh only when the refs could have changed (see `due`).
@@ -296,10 +325,9 @@ export default class Spaces extends View {
     return out.filter(r => this.shown.has(r.w.id));
   }
 
-  // The rows, under a header per machine once one isn't this computer.
+  // The rows, one metro line per machine, each ending in a stop that opens a new space.
   grouped(t, collapsed) {
     const rows = this.ordered();
-    const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
     const remote = [...new Set([...rows.map(r => r.w.machine).filter(Boolean), ...this.machines.map(m => m.name), ...Object.keys(this.reconnecting)])].sort();
     const loading = m => {
       const layout = machines().find(k => k.name === m)?.layout;
@@ -307,9 +335,20 @@ export default class Spaces extends View {
         || spaces().some(s => (s.machine ?? null) === m && !this.shown.has(s.id));
     };
     const loadingRow = m => h_flex().id(`machine-loading-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).items_center().when(collapsed, el => el.justify_center()).text_size(12).text_color(t.dim).child(collapsed ? "…" : "Loading…");
-    if (!remote.length) return loading(null) && !rows.length ? [loadingRow(null)] : rows.map(draw);
-    const machineNames = [null, ...remote];
+    if (!remote.length && collapsed) return loading(null) && !rows.length ? [loadingRow(null)] : rows.map((r) => this.compact(r, t));
+    const rank = (m) => (this.order.includes(m) ? this.order.indexOf(m) : Infinity);
+    const byDefault = [null, ...remote];
+    const machineNames = [...byDefault].sort((a, b) => rank(a) - rank(b) || byDefault.indexOf(a) - byDefault.indexOf(b));
+    this.lineNames = machineNames;
     return machineNames.flatMap((m) => {
+      const n = byDefault.indexOf(m);
+      const at = machineNames.indexOf(m);
+      const from = this.dragLine ? machineNames.indexOf(this.dragLine.m) : -1;
+      const target = !collapsed && from !== -1 && from !== at && this.overLine?.m === m;
+      const hovered = !collapsed && !this.dragLine && this.hoverLine?.m === m;
+      const lineKey = m ?? "local";
+      const dropBar = (el, end) => el.child(div().absolute().left(0).right(0).h(2).bg(t.accent).when(end, bar => bar.bottom(0)).when(!end, bar => bar.top(0)));
+      const renaming = !collapsed && Boolean(m) && this.renaming?.m === m;
       const mine = rows.filter((r) => (r.w.machine ?? null) === m);
       const repair = this.reconnecting[m];
       const machine = this.machines.find(k => k.name === m) ?? repair?.machine;
@@ -317,20 +356,47 @@ export default class Spaces extends View {
       const rebuilt = this.rebuilt(machine) || !!repair;
       const login = machine?.state === "needs_login" ? `hc machine login ${m}` : null;
       const folded = this.folded.has(m);
+      const line = connected ? LINES[n % LINES.length] : t.dim;
+      const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t, line));
+      const bullet = h_flex().relative().size(20).flex_none().rounded_full().border_2().border_color("#ffffff33").bg(line)
+        .items_center().justify_center().font_family(MONO).font_bold().text_size(9).text_color("#ffffff")
+        .child([...(m ?? "this computer")][0].toUpperCase())
+        .when(!folded && !rebuilt && !login && (mine.length > 0 || !loading(m)), (el) => el.child(div().absolute().left(6).top(16).w(4).h(10).bg(line)));
       const icon = svg(`mods/workspace-chrome/${m ? "server" : "monitor"}.svg`).size(13).flex_none();
       const badge = div().absolute().right(-3).bottom(-2).size(6).rounded(3).border_1().border_color(t.chrome).bg(connected ? t.ansi2 : t.dim);
-      const head = h_flex().id(`machine-${m ?? "local"}`).h(26).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
+      const head = h_flex().relative().id(`machine-${m ?? "local"}`).h(collapsed ? 26 : 28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
         .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().rounded(6).tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
-        .cursor_pointer().hover(s => s.bg(t.hover))
+        .when(collapsed, el => el.cursor_pointer())
+        .hover(s => s.bg(t.hover))
         .on_click((_e, cx) => {
+          if (renaming) return;
           if (collapsed && login) { run("app.settings", { section: "machines" }); return; }
           folded ? this.folded.delete(m) : this.folded.add(m);
           localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
           cx.notify();
         })
-        .when(!collapsed, el => el.child(icon))
+        .when(!collapsed, el => el
+          .when(Boolean(this.dragLine), el => el.cursor_grabbing())
+          .when(!this.dragLine, el => el.cursor_grab())
+          .tooltip(m ? "Click to fold · drag to reorder lines · right-click to rename" : "Click to fold · drag to reorder lines")
+          .when(Boolean(m), el => el.on_mouse_down("right", (_e, cx) => this.startRename(m, cx)))
+          .on_key_down((e, cx) => { if (renaming && e.key === "escape") { this.renaming = null; cx.stop_propagation(); cx.notify(); } })
+          .on_hover((on, cx) => {
+            if (on) this.hoverLine = { m };
+            else if (this.hoverLine?.m === m) this.hoverLine = null;
+            cx.notify();
+          })
+          .on_mouse_down("left", () => { if (!renaming) this.dragLine = { m }; })
+          .on_mouse_move((_e, cx) => this.overLineAt(m, cx))
+          .on_mouse_up("left", (_e, cx) => { this.dropLine(m); cx.notify(); })
+          .when(this.dragLine?.m === m && this.overLine && this.overLine.m !== m, el => el.opacity(0.5))
+          .when(target, el => el.bg(t.hover))
+          .when(target && from > at, el => dropBar(el, false))
+          .when(hovered, el => el.child(grip(t.dim))))
+        .when(!collapsed, el => el.child(bullet))
         .when(collapsed, el => el.child(div().relative().flex_none().child(icon).when(Boolean(m), el => el.child(badge))))
-        .when(!collapsed, el => el.child(div().flex_1().truncate().child(m ?? "This computer"))
+        .when(!collapsed, el => el.child(div().flex_1().truncate().font_family(MONO).font_bold().text_size(10).text_color(connected ? t.foreground : t.dim).when(!renaming, el => el.child(`${(m ?? "this computer").toUpperCase()} LINE`))
+          .when(renaming, el => el.child(Input.new(this.renaming.input).h(22).text_size(11).font_family(MONO).text_color(t.foreground))))
           .when(!connected && !rebuilt && !login, el => el.child(div().flex_none().child((machine?.state ?? "asleep").replace(/_/g, " "))))
           .when(rebuilt, el => el.child(h_flex().flex_none().gap(3).items_center()
             .child(div().max_w(140).truncate().child(repair?.error || "rebuilt ·"))
@@ -339,19 +405,21 @@ export default class Spaces extends View {
               .tooltip(repair?.error || "This machine was rebuilt or replaced. Click to connect to the new one.")
               .on_click((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); })
               .child(repair?.busy ? "Connecting…" : "Connect"))))
-          .when(connected, el => el.child(div().id(`machine-add-${m ?? "local"}`).flex_none().px(4).rounded(4).hover(s => s.bg(t.hover).text_color(t.foreground))
+          .when(hovered && connected, el => el.child(div().id(`machine-add-${lineKey}`).flex_none().px(4).rounded(4).hover(s => s.bg(t.hover).text_color(t.foreground))
+            .tooltip(`New station on ${m ?? "this computer"}`)
             .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", { machine: m ?? "" }); }).child("+")))
-          .child(div().size(6).rounded(3).flex_none().bg(connected ? t.ansi2 : t.dim))
+          .child(div().flex_none().child(`${mine.length} ${mine.length === 1 ? "station" : "stations"}`))
           .child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none()));
       const empty = h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(7)
-        .text_size(12).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
-        .on_click(() => run("space.new", { machine: m ?? "" }))
+        .text_size(12).text_color(t.dim)
+        .when(collapsed || connected, el => el.hover(s => s.bg(t.hover).text_color(t.foreground)).on_click(() => run("space.new", { machine: m ?? "" })))
         .when(collapsed, el => el.w(RAIL_CELL).rounded(6).justify_center().tooltip(`New space on ${m ?? "this computer"}`)
           .child(h_flex().size(18).rounded(5).border_1().border_color(t.dim).items_center().justify_center()
             .child(svg("mods/workspace-chrome/plus.svg").size(10))))
-        .when(!collapsed, el => el.child(svg("mods/workspace-chrome/plus.svg").size(12)).child("New space there"));
+        .when(!collapsed, el => el.h(26).gap(6).text_size(11.5).child(rail(t, line, 26, { stop: "end", last: true })).child("new station"));
       if (!collapsed && rebuilt) return [head];
       const cell = collapsed ? railCell : (el) => el;
+      const failed = !collapsed && this.renameError?.m === m ? [div().px(8).pl(36).pb(4).flex_none().text_size(11).text_color(t.blocked).child(this.renameError.message)] : [];
       const guidance = !collapsed && login ? [v_flex().px(8).pb(6).gap(3).flex_none()
         .child(div().text_size(11).text_color(t.blocked).child("needs a login: run"))
         .child(h_flex().gap(5).items_center()
@@ -360,8 +428,65 @@ export default class Spaces extends View {
             .text_size(11).text_color(t.foreground).bg(t.raised).cursor_pointer().hover(s => s.bg(t.hover))
             .on_click((_e, cx) => { cx.stop_propagation(); cx.write_to_clipboard(login); this.copiedLogin = login; cx.notify(); })
             .child(this.copiedLogin === login ? "Copied" : "Copy")))] : [];
-      return [cell(head), ...guidance, ...(folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : cell(empty)])];
+      const tail = collapsed && mine.length ? [] : [!mine.length && loading(m) ? loadingRow(m) : cell(empty)];
+      if (collapsed) return [cell(head), ...guidance, ...(folded ? [] : [...mine.map(draw), ...tail])];
+      const zone = (el) => el.relative().on_mouse_move((_e, cx) => this.overLineAt(m, cx)).on_mouse_up("left", (_e, cx) => { if (this.dragLine) { this.dropLine(m); cx.notify(); } });
+      const items = [head, ...failed, ...guidance.map(zone), ...(folded ? [] : [...mine.map(draw), ...tail.map(zone)])];
+      if (target && from < at) dropBar(items[items.length - 1], true);
+      return items;
     });
+  }
+
+  startRename(m, cx) {
+    const input = InputState.new({ value: m });
+    input.set_selected_range({ start: 0, end: m.length });
+    input.on("submit", (_e, cx) => this.rename(m, input.value().trim(), cx));
+    input.on("blur", (_e, cx) => { if (this.renaming?.input === input) { this.renaming = null; cx.notify(); } });
+    this.renaming = { m, input };
+    this.renameError = null;
+    input.focus();
+    cx.timer.after(50, () => input.focus());
+    cx.notify();
+  }
+
+  rename(from, to, cx) {
+    this.renaming = null;
+    cx.notify();
+    if (!to || to === from) return;
+    cx.spawn(async (cx) => {
+      const r = await hc(["machine", "rename", from, to, "--json"]);
+      if (r.code !== 0) {
+        let message;
+        try { message = JSON.parse(r.stdout || r.stderr).error?.message; } catch {}
+        this.renameError = { m: from, message: message || r.stderr || r.stdout || "Couldn't rename this machine." };
+      } else {
+        const swap = (x) => (x === from ? to : x);
+        this.order = this.order.map(swap);
+        localStorage.setItem("machines.order", JSON.stringify(this.order));
+        this.folded = new Set([...this.folded].map(swap));
+        localStorage.setItem("machines.folded", JSON.stringify([...this.folded]));
+      }
+      this.refreshMachines(cx);
+      cx.notify();
+    });
+  }
+
+  overLineAt(m, cx) {
+    if (this.dragLine && this.overLine?.m !== m) { this.overLine = { m }; cx.notify(); }
+  }
+
+  dropLine(m) {
+    const dragged = this.dragLine;
+    this.dragLine = null;
+    this.overLine = null;
+    if (dragged && dragged.m !== m) this.moveLine(dragged.m, m, this.lineNames);
+  }
+
+  moveLine(from, to, names) {
+    const list = names.filter((x) => x !== from);
+    list.splice(list.indexOf(to) + (names.indexOf(from) < names.indexOf(to) ? 1 : 0), 0, from);
+    this.order = list;
+    localStorage.setItem("machines.order", JSON.stringify(list));
   }
 
   // Only what's unusual, after the name: "herdr \u00b7 spike \u21912 \u21931". The repo or
@@ -414,14 +539,14 @@ export default class Spaces extends View {
       }));
     const raw = g?.branch ?? null;
     const place = raw ?? base(w.folder ?? "");
-    const staff = crew.length ? `${crew.length} staff` : "empty";
+    const staff = crew.length ? `${crew.length} aboard` : "no service";
     const dot = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : null;
     return h_flex().size_full().gap(10).items_center().px(4)
       .child(room)
       .child(v_flex().flex_1().min_w(0).gap(1)
         .child(div().min_w(0).truncate().font_semibold().text_color(t.foreground).child(w.name))
         .child(h_flex().gap(5).items_center().text_size(11).text_color(t.dim)
-          .child(div().min_w(0).truncate().child(`${place} \u00b7 ${staff}`))
+          .child(div().min_w(0).truncate().child([place, staff].filter(Boolean).join(" \u00b7 ")))
           .when(g?.ahead > 0, (el) => el.child(div().flex_none().text_color(t.ansi2).child(`\u2191${g.ahead}`)))
           .when(g?.behind > 0, (el) => el.child(div().flex_none().text_color(t.ansi1).child(`\u2193${g.behind}`)))))
       .when(Boolean(dot), (el) => {
@@ -430,7 +555,7 @@ export default class Spaces extends View {
       });
   }
 
-  row({ w, i, g, tree }, t) {
+  row({ w, i, g, tree }, t, line) {
     const on = w.active;
     const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
     const colors = shared("space.colors") ?? {};
@@ -449,14 +574,15 @@ export default class Spaces extends View {
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
       .when(this.pressed !== null && this.over === w.id && this.pressed !== w.id, (el) => el.child(
         div().absolute().left(0).right(0).h(2).bg(t.accent)
-          .when(fromIndex < i, line => line.bottom(0))
-          .when(fromIndex > i, line => line.top(0)),
+          .when(fromIndex < i, bar => bar.bottom(0))
+          .when(fromIndex > i, bar => bar.top(0)),
       ))
       .on_mouse_down("left", () => {
         this.pressed = w.id;
         this.over = w.id;
       })
       .on_mouse_move((_e, cx) => {
+        if (this.dragLine) { this.overLineAt(w.machine ?? null, cx); return; }
         const source = spaces().find(s => s.id === this.pressed);
         const over = source && (source.machine ?? null) === (w.machine ?? null) ? w.id : null;
         if (this.pressed !== null && this.over !== over) {
@@ -465,6 +591,7 @@ export default class Spaces extends View {
         }
       })
       .on_mouse_up("left", (_e, cx) => {
+        if (this.dragLine) { this.dropLine(w.machine ?? null); cx.notify(); return; }
         const from = this.pressed;
         const over = this.over;
         this.pressed = null;
@@ -476,14 +603,16 @@ export default class Spaces extends View {
         cx.notify();
       })
       .on_mouse_down("right", () => this.menu(w))
-      .child(!tree ? this.card(w, i, g, fill, t) :
+      .child(h_flex().size_full().items_center()
+        .child(rail(t, line, rowHeight({ tree }), { stop: tree ? null : "station", here: on, crew: tree ? [] : this.crew?.get(w.id) ?? [] }))
+        .child(div().flex_1().min_w(0).h_full().flex().items_center().child(!tree ? this.card(w, i, g, fill, t) :
         h_flex()
           .gap(9)
           .items_center()
-          .when(Boolean(tree), el => el.pl(22).child(svg("mods/workspace-chrome/branch.svg").size(13).text_color(t.dim)))
+          .when(Boolean(tree), el => el.pl(4).child(svg("mods/workspace-chrome/branch.svg").size(13).text_color(t.dim)))
           .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(5).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
           .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(w.name))
-          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
+          .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()))),
       );
   }
 
@@ -512,7 +641,10 @@ export default class Spaces extends View {
     for (const a of agents()) { if (!this.crew.has(a.space)) this.crew.set(a.space, []); this.crew.get(a.space).push(a); }
     // The block is as tall as its floors, so the office below gets the rest (it scrolls past five floors).
     if (!collapsed) {
-      const want = Math.max(100, Math.min(380, 31 + sp.length * (CARD + 2) + 20 + new Set(sp.map((x) => x.machine).filter(Boolean)).size * 56));
+      const lines = new Set([null, ...sp.map((x) => x.machine ?? null), ...this.machines.map((m) => m.name), ...Object.keys(this.reconnecting)]);
+      const open = sp.filter((x) => !this.folded.has(x.machine ?? null)).length;
+      const heads = [...lines].reduce((sum, m) => sum + (this.folded.has(m) ? 28 : 56), 0);
+      const want = Math.max(100, Math.min(380, 31 + open * (CARD + 2) + 20 + heads));
       if (this.appliedPx !== want) { this.appliedPx = want; run("layout.resize", { id: "spaces", px: want }); }
     }
     const ids = new Set(sp.map(p => p.id));
@@ -532,7 +664,7 @@ export default class Spaces extends View {
         .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
           .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14))))
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always")
-        .on_mouse_up("left", (_e, cx) => { this.pressed = null; cx.notify(); })
+        .on_mouse_up("left", (_e, cx) => { this.pressed = null; this.dragLine = null; this.overLine = null; cx.notify(); })
         .children(this.grouped(t, collapsed)));
   }
 }

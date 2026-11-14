@@ -12,7 +12,6 @@
 </p>
 
 <p align="center">
-  <b>Repo traffic</b>: how many people have viewed and cloned Pixel HQ (live GitHub numbers, updated every day)<br>
   <img src="stats.svg" alt="Pixel HQ repo traffic: total clones, page views, stars and forks, a growth chart of total views and clones, the star history, and where visitors come from" width="100%">
 </p>
 

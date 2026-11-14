@@ -144,7 +144,7 @@ Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixe
 ## Ảnh chụp thật
 
 <p align="center">
-  <img src="screenshot.png?v=6" alt="Pixel HQ đang làm việc: đường tàu các tầng, văn phòng với bốn agent trong lưới pane 2x2, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
+  <img src="screenshot.png?v=7" alt="Pixel HQ đang làm việc: đường tàu các tầng, văn phòng với sáu agent (Claude Code, Codex, OpenCode, Antigravity) đang làm việc trong lưới pane, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
   <sub>Cả văn phòng đang làm việc: hai Claude, một Codex đang chờ bạn và một OpenCode đang nghỉ, mỗi agent một git worktree, giấy tờ chất dần trên bàn (dữ liệu demo).</sub>
 </p>
 

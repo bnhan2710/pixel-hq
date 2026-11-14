@@ -144,7 +144,7 @@ When a newer version of Pixel HQ is out, the office shows a small note ("Pixel H
 ## A real screenshot
 
 <p align="center">
-  <img src="screenshot.png?v=6" alt="Pixel HQ at work: the metro line of floors, the office with four agents in a 2x2 grid of panes, desk nameplates on every pane and a team status bar" width="900"><br>
+  <img src="screenshot.png?v=7" alt="Pixel HQ at work: the metro line of floors, the office with six agents (Claude Code, Codex, OpenCode, Antigravity) working in a grid of panes, desk nameplates on every pane and a team status bar" width="900"><br>
   <sub>The whole office at work: two Claude, a Codex waiting for you and an OpenCode on a break, one git worktree each, with papers piling up on the desks (demo data only).</sub>
 </p>
 

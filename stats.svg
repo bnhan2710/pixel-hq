@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="590" viewBox="0 0 900 590" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="604" viewBox="0 0 900 604" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" shape-rendering="crispEdges">
 <title>Pixel HQ repo traffic: 550 page views and 418 clones since launch</title>
-<rect width="900" height="590" fill="#11111b"/>
-<rect x="1" y="1" width="898" height="588" fill="none" stroke="#45475a" stroke-width="2"/>
+<rect width="900" height="604" fill="#11111b"/>
+<rect x="1" y="1" width="898" height="602" fill="none" stroke="#45475a" stroke-width="2"/>
 <text x="24" y="38" font-size="15" font-weight="700" fill="#89b4fa" letter-spacing="1">REPO TRAFFIC · HOW MANY PEOPLE USE PIXEL HQ</text>
 <text x="876" y="38" font-size="11" fill="#7f849c" text-anchor="end">since Nov 11, 2026 · updated daily</text>
 <rect x="24" y="56" width="204" height="92" fill="#181825" stroke="#45475a" stroke-width="2"/>
@@ -17,7 +17,7 @@
 <rect x="456" y="56" width="204" height="92" fill="#181825" stroke="#45475a" stroke-width="2"/>
 <rect x="456" y="56" width="4" height="92" fill="#f9e2af"/>
 <text x="476" y="82" font-size="11" fill="#cdd6f4" letter-spacing="1" font-weight="700">GITHUB STARS</text>
-<text x="476" y="120" font-size="34" font-weight="700" fill="#f9e2af">20</text>
+<text x="476" y="120" font-size="34" font-weight="700" fill="#f9e2af">21</text>
 <text x="476" y="138" font-size="10" fill="#7f849c">people who starred it</text>
 <rect x="672" y="56" width="204" height="92" fill="#181825" stroke="#45475a" stroke-width="2"/>
 <rect x="672" y="56" width="4" height="92" fill="#cba6f7"/>
@@ -25,7 +25,7 @@
 <text x="692" y="120" font-size="34" font-weight="700" fill="#cba6f7">3</text>
 <text x="692" y="138" font-size="10" fill="#7f849c">copies made to remix it</text>
 <text x="24" y="186" font-size="11" fill="#cdd6f4" letter-spacing="1" font-weight="700">GROWTH · TOTAL VIEWS AND CLONES OVER TIME</text>
-<rect x="32" y="188" width="538" height="206" fill="#181825" stroke="#45475a" stroke-width="2"/>
+<rect x="32" y="188" width="538" height="220" fill="#181825" stroke="#45475a" stroke-width="2"/>
 <line x1="62" x2="562" y1="346.0" y2="346.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
 <text x="54" y="350.0" font-size="10" fill="#7f849c" text-anchor="end">0</text>
 <line x1="62" x2="562" y1="296.0" y2="296.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
@@ -35,27 +35,29 @@
 <line x1="62" x2="562" y1="196.0" y2="196.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
 <text x="54" y="200.0" font-size="10" fill="#7f849c" text-anchor="end">600</text>
 <text x="74.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">10/11</text>
-<text x="232.7" y="362" font-size="10" fill="#7f849c" text-anchor="middle">11/11</text>
-<text x="391.3" y="362" font-size="10" fill="#7f849c" text-anchor="middle">12/11</text>
-<text x="550.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">13/11</text>
+<text x="193.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">11/11</text>
+<text x="312.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">12/11</text>
+<text x="431.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">13/11</text>
+<text x="550.0" y="362" font-size="10" fill="#7f849c" text-anchor="middle">14/11</text>
 <g shape-rendering="geometricPrecision">
-<polygon points="74.0,346 74.0,346.0 232.7,285.5 391.3,208.5 550.0,208.5 550.0,346" fill="#89b4fa" opacity="0.16"/>
-<polyline points="74.0,346.0 232.7,285.5 391.3,208.5 550.0,208.5" fill="none" stroke="#89b4fa" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="74.0,346 74.0,346.0 193.0,285.5 312.0,208.5 312.0,346" fill="#89b4fa" opacity="0.16"/>
+<polyline points="74.0,346.0 193.0,285.5 312.0,208.5" fill="none" stroke="#89b4fa" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="74.0" cy="346.0" r="4" fill="#11111b" stroke="#89b4fa" stroke-width="2"><title>2026-11-10: 0 total views</title></circle>
-<circle cx="232.7" cy="285.5" r="4" fill="#11111b" stroke="#89b4fa" stroke-width="2"><title>2026-11-11: 242 total views</title></circle>
-<circle cx="391.3" cy="208.5" r="4" fill="#11111b" stroke="#89b4fa" stroke-width="2"><title>2026-11-12: 550 total views</title></circle>
-<polygon points="74.0,346 74.0,346.0 232.7,306.8 391.3,241.5 550.0,241.5 550.0,346" fill="#a6e3a1" opacity="0.16"/>
-<polyline points="74.0,346.0 232.7,306.8 391.3,241.5 550.0,241.5" fill="none" stroke="#a6e3a1" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="193.0" cy="285.5" r="4" fill="#11111b" stroke="#89b4fa" stroke-width="2"><title>2026-11-11: 242 total views</title></circle>
+<circle cx="312.0" cy="208.5" r="4" fill="#11111b" stroke="#89b4fa" stroke-width="2"><title>2026-11-12: 550 total views</title></circle>
+<polygon points="74.0,346 74.0,346.0 193.0,306.8 312.0,241.5 312.0,346" fill="#a6e3a1" opacity="0.16"/>
+<polyline points="74.0,346.0 193.0,306.8 312.0,241.5" fill="none" stroke="#a6e3a1" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="74.0" cy="346.0" r="4" fill="#11111b" stroke="#a6e3a1" stroke-width="2"><title>2026-11-10: 0 total clones</title></circle>
-<circle cx="232.7" cy="306.8" r="4" fill="#11111b" stroke="#a6e3a1" stroke-width="2"><title>2026-11-11: 157 total clones</title></circle>
-<circle cx="391.3" cy="241.5" r="4" fill="#11111b" stroke="#a6e3a1" stroke-width="2"><title>2026-11-12: 418 total clones</title></circle>
+<circle cx="193.0" cy="306.8" r="4" fill="#11111b" stroke="#a6e3a1" stroke-width="2"><title>2026-11-11: 157 total clones</title></circle>
+<circle cx="312.0" cy="241.5" r="4" fill="#11111b" stroke="#a6e3a1" stroke-width="2"><title>2026-11-12: 418 total clones</title></circle>
 </g>
-<text x="540.0" y="204.0" font-size="12" font-weight="700" fill="#89b4fa" text-anchor="end">550 views</text>
-<text x="540.0" y="231.5" font-size="12" font-weight="700" fill="#a6e3a1" text-anchor="end">418 clones</text>
+<text x="302.0" y="204.0" font-size="12" font-weight="700" fill="#89b4fa" text-anchor="end">550 views</text>
+<text x="302.0" y="231.5" font-size="12" font-weight="700" fill="#a6e3a1" text-anchor="end">418 clones</text>
 <rect x="62" y="376" width="9" height="9" fill="#89b4fa"/><text x="76" y="384" font-size="10" fill="#cdd6f4">page views, running total</text>
+<text x="62" y="404" font-size="10" fill="#7f849c">GitHub publishes traffic with about a day's delay</text>
 <rect x="252" y="376" width="9" height="9" fill="#a6e3a1"/><text x="266" y="384" font-size="10" fill="#cdd6f4">clones, running total</text>
 <text x="596" y="186" font-size="11" fill="#cdd6f4" letter-spacing="1" font-weight="700">TRAFFIC SOURCES · 14 DAYS</text>
-<rect x="596" y="188" width="280" height="206" fill="#181825" stroke="#45475a" stroke-width="2"/>
+<rect x="596" y="188" width="280" height="220" fill="#181825" stroke="#45475a" stroke-width="2"/>
 <text x="610" y="219" font-size="12" fill="#cdd6f4">Herdr gallery</text>
 <rect x="610" y="224" width="200" height="6" fill="#f9e2af"/>
 <text x="862" y="219" font-size="12" fill="#7f849c" text-anchor="end">133 views</text>
@@ -68,28 +70,30 @@
 <text x="610" y="306" font-size="12" fill="#cdd6f4">Zalo</text>
 <rect x="610" y="311" width="6" height="6" fill="#89b4fa"/>
 <text x="862" y="306" font-size="12" fill="#7f849c" text-anchor="end">4 views</text>
-<text x="610" y="384" font-size="10" fill="#7f849c">where visitors came from, by platform</text>
-<text x="24" y="430" font-size="11" fill="#cdd6f4" letter-spacing="1" font-weight="700">STAR HISTORY · 20 PEOPLE STARRED PIXEL HQ</text>
-<rect x="24" y="440" width="852" height="126" fill="#181825" stroke="#45475a" stroke-width="2"/>
-<line x1="62" x2="852" y1="532.0" y2="532.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
-<text x="54" y="536.0" font-size="10" fill="#7f849c" text-anchor="end">0</text>
-<line x1="62" x2="852" y1="506.7" y2="506.7" stroke="#45475a" stroke-width="1" opacity="0.5"/>
-<text x="54" y="510.7" font-size="10" fill="#7f849c" text-anchor="end">10</text>
-<line x1="62" x2="852" y1="481.3" y2="481.3" stroke="#45475a" stroke-width="1" opacity="0.5"/>
-<text x="54" y="485.3" font-size="10" fill="#7f849c" text-anchor="end">20</text>
-<line x1="62" x2="852" y1="456.0" y2="456.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
-<text x="54" y="460.0" font-size="10" fill="#7f849c" text-anchor="end">30</text>
-<text x="74.0" y="548" font-size="10" fill="#7f849c" text-anchor="middle">10/11</text>
-<text x="329.3" y="548" font-size="10" fill="#7f849c" text-anchor="middle">11/11</text>
-<text x="584.7" y="548" font-size="10" fill="#7f849c" text-anchor="middle">12/11</text>
-<text x="840.0" y="548" font-size="10" fill="#7f849c" text-anchor="middle">13/11</text>
+<text x="610" y="404" font-size="10" fill="#7f849c">where visitors came from, by platform</text>
+<text x="24" y="444" font-size="11" fill="#cdd6f4" letter-spacing="1" font-weight="700">STAR HISTORY · 21 PEOPLE STARRED PIXEL HQ</text>
+<rect x="24" y="454" width="852" height="126" fill="#181825" stroke="#45475a" stroke-width="2"/>
+<line x1="62" x2="852" y1="546.0" y2="546.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
+<text x="54" y="550.0" font-size="10" fill="#7f849c" text-anchor="end">0</text>
+<line x1="62" x2="852" y1="520.7" y2="520.7" stroke="#45475a" stroke-width="1" opacity="0.5"/>
+<text x="54" y="524.7" font-size="10" fill="#7f849c" text-anchor="end">10</text>
+<line x1="62" x2="852" y1="495.3" y2="495.3" stroke="#45475a" stroke-width="1" opacity="0.5"/>
+<text x="54" y="499.3" font-size="10" fill="#7f849c" text-anchor="end">20</text>
+<line x1="62" x2="852" y1="470.0" y2="470.0" stroke="#45475a" stroke-width="1" opacity="0.5"/>
+<text x="54" y="474.0" font-size="10" fill="#7f849c" text-anchor="end">30</text>
+<text x="74.0" y="562" font-size="10" fill="#7f849c" text-anchor="middle">10/11</text>
+<text x="265.5" y="562" font-size="10" fill="#7f849c" text-anchor="middle">11/11</text>
+<text x="457.0" y="562" font-size="10" fill="#7f849c" text-anchor="middle">12/11</text>
+<text x="648.5" y="562" font-size="10" fill="#7f849c" text-anchor="middle">13/11</text>
+<text x="840.0" y="562" font-size="10" fill="#7f849c" text-anchor="middle">14/11</text>
 <g shape-rendering="geometricPrecision">
-<polygon points="74.0,532 74.0,532.0 329.3,511.7 584.7,494.0 840.0,481.3 840.0,532" fill="#f9e2af" opacity="0.14"/>
-<polyline points="74.0,532.0 329.3,511.7 584.7,494.0 840.0,481.3" fill="none" stroke="#f9e2af" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="74.0" cy="532.0" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-10: 0 stars</title></circle>
-<circle cx="329.3" cy="511.7" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-11: 8 stars</title></circle>
-<circle cx="584.7" cy="494.0" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-12: 15 stars</title></circle>
-<circle cx="840.0" cy="481.3" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-13: 20 stars</title></circle>
+<polygon points="74.0,546 74.0,546.0 265.5,525.7 457.0,508.0 648.5,495.3 840.0,492.8 840.0,546" fill="#f9e2af" opacity="0.14"/>
+<polyline points="74.0,546.0 265.5,525.7 457.0,508.0 648.5,495.3 840.0,492.8" fill="none" stroke="#f9e2af" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="74.0" cy="546.0" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-10: 0 stars</title></circle>
+<circle cx="265.5" cy="525.7" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-11: 8 stars</title></circle>
+<circle cx="457.0" cy="508.0" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-12: 15 stars</title></circle>
+<circle cx="648.5" cy="495.3" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-13: 20 stars</title></circle>
+<circle cx="840.0" cy="492.8" r="4" fill="#11111b" stroke="#f9e2af" stroke-width="2"><title>2026-11-14: 21 stars</title></circle>
 </g>
-<text x="834.0" y="463.3" font-size="12" font-weight="700" fill="#f9e2af" text-anchor="end">20 stars</text>
+<text x="834.0" y="474.8" font-size="12" font-weight="700" fill="#f9e2af" text-anchor="end">21 stars</text>
 </svg>

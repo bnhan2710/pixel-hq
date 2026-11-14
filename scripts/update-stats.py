@@ -76,11 +76,13 @@ days = [(today - timedelta(days=n - 1 - i)).isoformat() for i in range(n)]
 def running(key, day):
     return sum(v[key] for k, v in history.items() if k <= day)
 series = [(d, running("views", d), running("clones", d)) for d in days]
+last_day = max(history) if history else days[0]  # GitHub publishes a day late: nothing is drawn after this
+last_i = max([0] + [i for i, (d, _, _) in enumerate(series) if d <= last_day])
 peak = max([1] + [max(v, c) for _, v, c in series])
 step = next(st for st in (10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000) if peak / st <= 5)
 top_val = ((peak + step - 1) // step) * step
 
-W, H = 900, 590
+W, H = 900, 604
 BG, CARD, LINE, TEXT, DIM = "#11111b", "#181825", "#45475a", "#cdd6f4", "#7f849c"
 VIEWS, CLONES, YELLOW, MAUVE = "#89b4fa", "#a6e3a1", "#f9e2af", "#cba6f7"
 FONT = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
@@ -106,7 +108,7 @@ for i, (label, hint, value, color) in enumerate(tiles):
 # growth chart (running totals)
 cx0, cy0, cw, ch = 62, 196, 500, 150  # plot area
 o += [f'<text x="24" y="186" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">GROWTH · TOTAL VIEWS AND CLONES OVER TIME</text>',
-      f'<rect x="{cx0-30}" y="{cy0-8}" width="{cw+38}" height="{ch+56}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
+      f'<rect x="{cx0-30}" y="{cy0-8}" width="{cw+38}" height="{ch+70}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
 for v in range(0, top_val + 1, step):
     y = cy0 + ch - ch * v / top_val
     o += [f'<line x1="{cx0}" x2="{cx0+cw}" y1="{y:.1f}" y2="{y:.1f}" stroke="{LINE}" stroke-width="1" opacity="0.5"/>',
@@ -119,26 +121,27 @@ for i, (d, v, c) in enumerate(series):
         o.append(f'<text x="{px_of(i):.1f}" y="{cy0 + ch + 16}" font-size="10" fill="{DIM}" text-anchor="middle">{datetime.fromisoformat(d).strftime("%-d/%-m")}</text>')
 o.append('<g shape-rendering="geometricPrecision">')
 for idx, color in ((1, VIEWS), (2, CLONES)):
-    pts = [(px_of(i), py_of(row[idx])) for i, row in enumerate(series)]
+    pts = [(px_of(i), py_of(row[idx])) for i, row in enumerate(series[:last_i + 1])]
     line = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
     base = cy0 + ch
     o.append(f'<polygon points="{pts[0][0]:.1f},{base} {line} {pts[-1][0]:.1f},{base}" fill="{color}" opacity="0.16"/>')
     o.append(f'<polyline points="{line}" fill="none" stroke="{color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>')
     for i, (x, y) in enumerate(pts):
-        if i == 0 or series[i][idx] != series[i - 1][idx]:
+        if i == 0 or i == last_i or series[i][idx] != series[i - 1][idx]:
             o.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{BG}" stroke="{color}" stroke-width="2"><title>{series[i][0]}: {series[i][idx]} total {"views" if idx == 1 else "clones"}</title></circle>')
 o.append("</g>")
-lx = px_of(n - 1)
-vy, cy_ = py_of(series[-1][1]), py_of(series[-1][2])
-o += [f'<text x="{lx-10:.1f}" y="{max(cy0+8, vy-10):.1f}" font-size="12" font-weight="700" fill="{VIEWS}" text-anchor="end">{series[-1][1]:,} views</text>',
-      f'<text x="{lx-10:.1f}" y="{min(cy0+ch-6, cy_+(18 if abs(vy-cy_) < 22 else -10)):.1f}" font-size="12" font-weight="700" fill="{CLONES}" text-anchor="end">{series[-1][2]:,} clones</text>']
+lx = px_of(last_i)
+vy, cy_ = py_of(series[last_i][1]), py_of(series[last_i][2])
+o += [f'<text x="{lx-10:.1f}" y="{max(cy0+8, vy-10):.1f}" font-size="12" font-weight="700" fill="{VIEWS}" text-anchor="end">{series[last_i][1]:,} views</text>',
+      f'<text x="{lx-10:.1f}" y="{min(cy0+ch-6, cy_+(18 if abs(vy-cy_) < 22 else -10)):.1f}" font-size="12" font-weight="700" fill="{CLONES}" text-anchor="end">{series[last_i][2]:,} clones</text>']
 o += [f'<rect x="{cx0}" y="{cy0+ch+30}" width="9" height="9" fill="{VIEWS}"/><text x="{cx0+14}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">page views, running total</text>',
+      f'<text x="{cx0}" y="{cy0+ch+58}" font-size="10" fill="{DIM}">GitHub publishes traffic with about a day\'s delay</text>',
       f'<rect x="{cx0+190}" y="{cy0+ch+30}" width="9" height="9" fill="{CLONES}"/><text x="{cx0+204}" y="{cy0+ch+38}" font-size="10" fill="{TEXT}">clones, running total</text>']
 
 # where visitors come from
 px, pw = 596, W - 24 - 596
 o += [f'<text x="{px}" y="186" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">TRAFFIC SOURCES · 14 DAYS</text>',
-      f'<rect x="{px}" y="{cy0-8}" width="{pw}" height="{ch+56}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
+      f'<rect x="{px}" y="{cy0-8}" width="{pw}" height="{ch+70}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
 most = max([1] + [c for _, c in top])
 for i, (name, count) in enumerate(top):
     y = cy0 + 14 + i * 29
@@ -148,10 +151,10 @@ for i, (name, count) in enumerate(top):
 if not top:
     o.append(f'<text x="{px+14}" y="{cy0+30}" font-size="12" fill="{DIM}">no referrers yet</text>')
 
-o.append(f'<text x="{px+14}" y="{cy0+ch+38}" font-size="10" fill="{DIM}">where visitors came from, by platform</text>')
+o.append(f'<text x="{px+14}" y="{cy0+ch+58}" font-size="10" fill="{DIM}">where visitors came from, by platform</text>')
 
 # star history: the running count of stars, full width under the other charts
-sy0 = 440  # top of the panel
+sy0 = 454  # top of the panel
 o += [f'<text x="24" y="{sy0-10}" font-size="11" fill="{TEXT}" letter-spacing="1" font-weight="700">STAR HISTORY · {len(star_log)} PEOPLE STARRED PIXEL HQ</text>',
       f'<rect x="24" y="{sy0}" width="{W-48}" height="{H-sy0-24}" fill="{CARD}" stroke="{LINE}" stroke-width="2"/>']
 s0 = date.fromisoformat(star_log[0]) - timedelta(days=1) if star_log else today - timedelta(days=3)

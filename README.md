@@ -16,6 +16,13 @@
   <img src="stats.svg" alt="Pixel HQ repo traffic: total clones, page views, stars and forks, a growth chart of total views and clones, the star history, and where visitors come from" width="100%">
 </p>
 
+## A real screenshot
+
+<p align="center">
+  <img src="screenshot.png?v=7" alt="Pixel HQ at work: the metro line of floors, the office with six agents (Claude Code, Codex, OpenCode, Antigravity) working in a grid of panes, desk nameplates on every pane and a team status bar" width="900"><br>
+  <sub>The whole office at work: two Claude Code, two Codex (one waiting for you), an OpenCode and an Antigravity, one git worktree each, with papers piling up on the desks (demo data only).</sub>
+</p>
+
 <p align="center">
   <img src="demo.gif?v=5" alt="The sidebar in motion: floors with live status, pets typing at their desks and stepping out beside them on a break" width="320"><br>
   <sub>The sidebar, live: floors with a status dot, pets typing at their desks and stepping out for a while on a break.</sub>
@@ -140,13 +147,6 @@ When a newer version of Pixel HQ is out, the office shows a small note ("Pixel H
 - Right-click a pet to change its figures, or right-click empty floor to put every desk back.
 - `RECIPE.md` is the brief this layout was built from. Hand it to your agent to rebuild or remix it.
 - Drawings live in `mods/company-agents/duck.js` (the pets) and `scene.js` (the room).
-
-## A real screenshot
-
-<p align="center">
-  <img src="screenshot.png?v=7" alt="Pixel HQ at work: the metro line of floors, the office with six agents (Claude Code, Codex, OpenCode, Antigravity) working in a grid of panes, desk nameplates on every pane and a team status bar" width="900"><br>
-  <sub>The whole office at work: two Claude, a Codex waiting for you and an OpenCode on a break, one git worktree each, with papers piling up on the desks (demo data only).</sub>
-</p>
 
 ## Credits and license
 

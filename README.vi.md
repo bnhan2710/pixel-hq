@@ -16,6 +16,13 @@
   <img src="stats.svg" alt="Lưu lượng truy cập repo Pixel HQ: tổng lượt clone, lượt xem, sao và fork, biểu đồ tăng trưởng tổng lượt xem và clone, lịch sử số sao, và nguồn truy cập" width="100%">
 </p>
 
+## Ảnh chụp thật
+
+<p align="center">
+  <img src="screenshot.png?v=7" alt="Pixel HQ đang làm việc: đường tàu các tầng, văn phòng với sáu agent (Claude Code, Codex, OpenCode, Antigravity) đang làm việc trong lưới pane, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
+  <sub>Cả văn phòng đang làm việc: hai Claude Code, hai Codex (một con đang chờ bạn), một OpenCode và một Antigravity, mỗi agent một git worktree, giấy tờ chất dần trên bàn (dữ liệu demo).</sub>
+</p>
+
 <p align="center">
   <img src="demo.gif?v=5" alt="Sidebar đang chạy: các tầng có trạng thái trực tiếp, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao bên cạnh bàn" width="320"><br>
   <sub>Sidebar đang chạy: các tầng có chấm trạng thái, thú cưng gõ phím ở bàn và thỉnh thoảng đứng dậy nghỉ giải lao một lúc.</sub>
@@ -140,13 +147,6 @@ Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixe
 - Chuột phải vào một thú cưng để đổi figures của nó, hoặc chuột phải vào chỗ sàn trống để đưa mọi bàn về chỗ cũ.
 - `RECIPE.md` là bản brief dùng để dựng layout này. Đưa nó cho agent của bạn để dựng lại hoặc remix.
 - Phần vẽ nằm ở `mods/company-agents/duck.js` (thú cưng) và `scene.js` (căn phòng).
-
-## Ảnh chụp thật
-
-<p align="center">
-  <img src="screenshot.png?v=7" alt="Pixel HQ đang làm việc: đường tàu các tầng, văn phòng với sáu agent (Claude Code, Codex, OpenCode, Antigravity) đang làm việc trong lưới pane, bảng tên trên mọi pane và thanh trạng thái của team" width="900"><br>
-  <sub>Cả văn phòng đang làm việc: hai Claude, một Codex đang chờ bạn và một OpenCode đang nghỉ, mỗi agent một git worktree, giấy tờ chất dần trên bàn (dữ liệu demo).</sub>
-</p>
 
 ## Ghi công và giấy phép
 

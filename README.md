@@ -118,7 +118,7 @@ Herdr does not know how full an agent's context is, so each agent has its own wa
 
 > Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
 
-Antigravity (agy) has no pile yet: I found no way to read its context.
+- **Antigravity (`agy`):** nothing to set up. Pixel HQ finds the conversation transcript in `~/.gemini/antigravity-cli/brain/` (via its presence lock or workspace history) and reads token usage (`input_tokens + cache_read_tokens`) against its 1M token context window every few seconds. macOS and Linux.
 
 ## Teamwork without collisions
 

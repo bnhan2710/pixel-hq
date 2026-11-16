@@ -105,6 +105,26 @@ fi
 [ -n "$f" ] || exit 3
 tail -n 600 "$f" | grep '"type":"token_count"' | tail -1`;
 
+// Finds an Antigravity terminal's transcript file and prints its last planner response with token usage.
+const AGY_SH = `home="\${AGY_HOME:-$HOME/.gemini/antigravity-cli}"
+pids="$1"; for i in 1 2 3; do pids="$pids $(for p in $pids; do pgrep -P "$p" 2>/dev/null; done)"; done
+cid=""
+if [ -n "$1" ]; then
+  lock=$(lsof -p "$(echo $pids | tr -s ' ' ',')" 2>/dev/null | grep -o '/presence/.*\\.lock' | head -1)
+  [ -n "$lock" ] && cid=$(basename "$lock" .lock)
+fi
+if [ -z "$cid" ] && [ -f "$home/history.jsonl" ]; then
+  cid=$(grep -F "\"workspace\":\"$2\"" "$home/history.jsonl" 2>/dev/null | tail -1 | grep -o '"conversationId":"[^"]*"' | cut -d'"' -f4)
+fi
+if [ -z "$cid" ]; then
+  lock=$(find "$home/presence" -name '*.lock' -mmin -720 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
+  [ -n "$lock" ] && cid=$(basename "$lock" .lock)
+fi
+[ -n "$cid" ] || exit 3
+f="$home/brain/$cid/.system_generated/logs/transcript.jsonl"
+[ -f "$f" ] || exit 3
+tail -n 300 "$f" | grep '"input_tokens":' | tail -1`;
+
 export default class Agents extends View {
   init(_props, cx) {
     if (props()?.sortMenu) return;
@@ -142,7 +162,7 @@ export default class Agents extends View {
     this.scanning = false;
     this.scan(cx);
     cx.timer.every(6000, (cx) => this.scan(cx));
-    // Codex does not report its context, but it writes it to its session file: read it for each Codex desk.
+    // Codex & Antigravity do not report context via OSC, but write session/transcript files: read them for each desk.
     this.ctxRead = new Map();
     this.scanCodex(cx);
     cx.timer.every(8000, (cx) => this.scanCodex(cx));
@@ -356,9 +376,20 @@ export default class Agents extends View {
         const used = ev?.payload?.info?.last_token_usage?.total_tokens, win = ev?.payload?.info?.model_context_window;
         if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: null });
       }
+      for (const a of agents().filter((x) => (String(x.program?.key ?? "").toLowerCase().includes("antigravity") || x.program?.key === "agy") && !remote.has(x.space))) {
+        const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
+        const pid = info?.foreground?.pid;
+        const cwd = paneBy.get(a.pane)?.cwd;
+        if (!pid && !cwd) continue;
+        const r = await exec("sh", ["-c", AGY_SH, "sh", String(pid ?? ""), cwd ?? "/dev/null/none"], { timeout: 8000 }).catch(() => null);
+        const ev = r?.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
+        const used = (ev?.input_tokens ?? 0) + (ev?.cache_read_tokens ?? 0);
+        const win = 1000000;
+        if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: ev?.model ?? "agy" });
+      }
       const sig = JSON.stringify([...next]);
       if (sig !== JSON.stringify([...this.ctxRead])) { this.ctxRead = next; cx.notify(); }
-    } catch { /* no codex, no lsof, odd output: no pile */ }
+    } catch { /* no codex/agy, no lsof, odd output: no pile */ }
     this.scanningCodex = false;
   }
 
@@ -400,7 +431,7 @@ export default class Agents extends View {
     const sp = spaces().find((x) => x.active);
     const here = agents().find((a) => a.address === focused()?.agent);
     const key = String(here?.program?.key ?? "").toLowerCase();
-    const argv = key.includes("codex") ? ["codex"] : key.includes("opencode") ? ["opencode"] : ["claude"];
+    const argv = key.includes("codex") ? ["codex"] : key.includes("opencode") ? ["opencode"] : (key.includes("antigravity") || key === "agy") ? ["agy"] : ["claude"];
     if (this.update) localStorage.setItem("upd-dismissed", this.update.version);
     this.update = null;
     run("tab.new", { name: "update Pixel HQ", folder: appHome(), argv, task: UPDATE_PROMPT, space: sp?.id });

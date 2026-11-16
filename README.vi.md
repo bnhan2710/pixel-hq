@@ -118,7 +118,7 @@ Herdr không biết context của agent đầy bao nhiêu, nên mỗi agent có 
 
 > Set my Claude Code status line (`statusLine` in `~/.claude/settings.json`) to `sh ~/.config/herdr-app/mods/company-agents/claude-statusline.sh`, keeping the rest of my settings. If I already have a status line, tell me first.
 
-Antigravity (agy) chưa có chồng giấy: mình chưa tìm ra cách đọc context của nó.
+- **Antigravity (`agy`):** không cần cài gì. Pixel HQ đọc file transcript cuộc trò chuyện trong `~/.gemini/antigravity-cli/brain/` (tìm qua presence lock hoặc lịch sử workspace) và tính số token (`input_tokens + cache_read_tokens`) so với cửa sổ context 1M token mỗi vài giây. macOS và Linux.
 
 ## Làm việc nhóm không giẫm chân nhau
 

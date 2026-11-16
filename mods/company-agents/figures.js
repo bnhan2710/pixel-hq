@@ -17,7 +17,7 @@
 import { div, image } from "gpui-kit";
 import { appHome, readTextFile, writeTextFile, shared, setShared, exec, window } from "herdr";
 import * as fs from "fs/promises";
-import { duckMood, duckWidth, DUCK_CENTER, BLOCKED_SCOWL } from "./duck.js";
+import { duckMood, duckWidth, DUCK_CENTER, BLOCKED_SCOWL, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
 import { PLAYS, svgAnimates } from "./animate.js";
 
 export const SLOTS = [
@@ -26,6 +26,8 @@ export const SLOTS = [
   { id: "waiting", label: "Still waiting", hint: "Needs you for over a minute" },
   { id: "done", label: "Done", hint: "Finished while you looked away" },
   { id: "idle", label: "Idle", hint: "Nothing going on" },
+  { id: "snooze", label: "Snoozing", hint: "Idle for over 2 minutes" },
+  { id: "urge", label: "Urge", hint: "Idle for over 5 minutes" },
 ];
 
 export const MOTIONS = [
@@ -43,13 +45,16 @@ export const OWN_MOTION = { id: "own", label: "Own animation" };
 export const SHIPPED = {
   classic: {
     name: "Classic duck",
-    slots: { working: { duck: "stab" }, blocked: { duck: "angry" }, waiting: { duck: "scowl" }, done: { duck: "happy" }, idle: { duck: "content" } },
+    slots: {
+      working: { duck: "stab" }, blocked: { duck: "angry" }, waiting: { duck: "scowl" },
+      done: { duck: "happy" }, idle: { duck: "content" }, snooze: { duck: "snooze" }, urge: { duck: "urge" },
+    },
   },
   "classic-still": {
     name: "Classic duck (still)",
     slots: {
       working: { duck: "stab", still: true }, blocked: { duck: "angry", still: true }, waiting: { duck: "scowl", still: true },
-      done: { duck: "happy", still: true }, idle: { duck: "content", still: true },
+      done: { duck: "happy", still: true }, idle: { duck: "content", still: true }, snooze: { duck: "snooze", still: true }, urge: { duck: "urge", still: true },
     },
   },
   emoji: {
@@ -59,7 +64,9 @@ export const SHIPPED = {
       blocked: { text: ["🙋"], motion: "hop" },
       waiting: { text: ["😤", "😠"], ms: 600, motion: "shake" },
       done: { text: ["🎉", "✨"], ms: 400, motion: "hop" },
-      idle: { text: ["💤"], motion: "pulse" },
+      idle: { text: ["☕"], motion: "bob" },
+      snooze: { text: ["💤", "😴"], ms: 800, motion: "pulse" },
+      urge: { text: ["⏰", "⚡"], ms: 300, motion: "shake" },
     },
   },
 };
@@ -97,12 +104,14 @@ export function slotOf(status, waited = 0) {
   if (status === "working") return "working";
   if (status === "blocked") return waited < BLOCKED_SCOWL ? "blocked" : "waiting";
   if (status === "done") return "done";
+  if (waited >= IDLE_URGE) return "urge";
+  if (waited >= IDLE_SNOOZE) return "snooze";
   return "idle";
 }
 
 // A slot left empty falls back: still waiting looks like needs you, the rest like the classic duck.
 export function specFor(set, slot) {
-  return set?.slots?.[slot] ?? (slot === "waiting" ? set?.slots?.blocked : null) ?? SHIPPED.classic.slots[slot];
+  return set?.slots?.[slot] ?? (slot === "waiting" ? set?.slots?.blocked : null) ?? (slot === "urge" || slot === "snooze" ? set?.slots?.idle : null) ?? SHIPPED.classic.slots[slot];
 }
 
 // What an agent in this space and state looks like, `height` px tall.

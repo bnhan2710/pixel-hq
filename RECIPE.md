@@ -52,7 +52,7 @@ a lanyard; the robot has its own chest screen and wears none.
 | working | sits behind a silver MacBook: the lid faces us with a glowing white apple, the screen's light tints its face, claws take turns typing, body bobs | "typing" blue, spinner |
 | blocked | waves its right claw, an amber `!` blinks beside it (`!!`, faster, after a minute) | "needs you" |
 | done | claws up, hops, amber sparkles twinkle, and seven pixel confetti pieces (yellow, pink, green, blue, violet, orange, teal) fall over the desk until someone looks | "shipped" green |
-| idle | stays at its desk, eyes closed, a mug with steam beside it. Every 14 to 32 s one idle pet (picked at random, never two at once) glides out beside its desk (one pet-width plus about 30px sideways, clear of the cubicle panels, and a step toward the viewer, 0.8 s), stays out for about 8 s and glides back. A one-second timer only decides when; it redraws only when a pet leaves or returns. A pet being dragged stays put | "on break" dim |
+| idle | stays at its desk, eyes closed, a mug with steam beside it. Every 14 to 32 s one idle pet (picked at random, never two at once, only if idle under 5 m) glides out beside its desk (one pet-width plus about 30px sideways, clear of the cubicle panels, and a step toward the viewer, 0.8 s), stays out for about 8 s and glides back. Past 2 m it snoozes with floating pixel Zzz; past 5 m a retro alarm clock rings beside the desk, the pet fidgets nervously with a sweat drop, and its nameplate turns peach urging work. Clicking a snoozing or urged pet nudges it awake (a hop, sparkles flash and a brief "nudged! ⚡" chip) and focuses its pane. A pet being dragged stays put | "on break" dim |
 
 ## The office
 

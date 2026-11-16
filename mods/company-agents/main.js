@@ -5,7 +5,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, nextCommand, hc } from "herdr";
 import { figureFor, load } from "./figures.js";
-import { agentOf, speciesOf, duckWidth, DUCK_CENTER } from "./duck.js";
+import { agentOf, speciesOf, duckWidth, DUCK_CENTER, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
 import { snapshot, clashes, hire } from "./crew.js";
@@ -163,9 +163,14 @@ export default class Agents extends View {
     this.breakerList = [];
     this.nextAt = Date.now() + 6000;
     this.hint = null;
+    this.nudged = new Map();
     cx.timer.every(1000, (cx) => {
       const now = Date.now();
       if (this.hint && now > this.hint.until) { this.hint = null; cx.notify(); }
+      if (this.nudged.size) {
+        for (const [addr, until] of this.nudged) if (now > until) this.nudged.delete(addr);
+        cx.notify();
+      }
       if (this.out) {
         if (now >= this.out.until) { this.out = null; this.nextAt = now + 14000 + Math.random() * 18000; cx.notify(); }
         return;
@@ -416,6 +421,15 @@ export default class Agents extends View {
       this.hint = { addr: a.address, text: "compacting...", until: now + 8000 };
       hc(["send", a.address, "/compact"]).catch(() => null);
     } else this.hint = { addr: a.address, text: "click the papers again to /compact", armed: true, until: now + 6000 };
+    cx.notify();
+  }
+
+  // Nudge an idle or snoozing agent back to work: focuses their pane and wakes the pet up.
+  nudge(a, cx) {
+    const now = Date.now();
+    this.hint = { addr: a.address, text: "nudged! ⚡", until: now + 3500 };
+    this.nudged.set(a.address, now + 3000);
+    run("pane.focus", { pane: a.pane });
     cx.notify();
   }
 
@@ -694,17 +708,21 @@ export default class Agents extends View {
       const d = this.drag;
       if (!d) return;
       this.drag = null;
-      if (!d.moved) run("pane.focus", { pane: d.pane });
-      else localStorage.setItem("petpos", JSON.stringify(this.petpos));
+      if (!d.moved) {
+        const clicked = list.find((x) => x.address === d.addr);
+        const isLongIdle = clicked?.status === "idle" && (now - this.since(clicked) >= IDLE_SNOOZE);
+        if (isLongIdle) this.nudge(clicked, cx);
+        else run("pane.focus", { pane: d.pane });
+      } else localStorage.setItem("petpos", JSON.stringify(this.petpos));
       cx.notify();
     };
     const ROLES = (a) => (agentOf(a.program?.key)?.role ?? "").toLowerCase();
-    const STATE = { working: "typing working busy", idle: "idle break coffee", done: "shipped done finished", blocked: "needs you blocked waiting" };
+    const STATE = { working: "typing working busy", idle: "idle break coffee snooze urge sleeping", done: "shipped done finished", blocked: "needs you blocked waiting" };
     const q = this.query.trim().toLowerCase();
     const hitOf = (a) => !q || q.split(/\s+/).every((w) => [detail.get(a.address), a.space_name, label(a), a.program?.name, ROLES(a), STATE[a.status]].join(" ").toLowerCase().includes(w));
     const hits = list.filter(hitOf);
     this.firstHit = q ? hits[0]?.pane ?? null : null;
-    const breakers = list.filter((x) => x.status === "idle" && !x.focused).map((x) => x.address);
+    const breakers = list.filter((x) => x.status === "idle" && !x.focused && (now - this.since(x) < IDLE_URGE)).map((x) => x.address);
     this.breakerList = breakers;
     const stable = list.map((x) => x.address).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
     const seated = list.slice(0, pick.cols * pick.rows);
@@ -734,7 +752,12 @@ export default class Agents extends View {
       const clText = cl ? (cl.kind === "file" ? `clash: ${String(cl.files[0] ?? "").split("/").pop()}${cl.files.length > 1 ? ` +${cl.files.length - 1}` : ""}` : "same folder") : "";
       const clTip = cl ? (cl.kind === "file" ? `Another desk also changed ${cl.files.join(", ")}` : "Another desk is working in this same folder") : "";
       const when = this.since(a);
+      const waited = now - when;
       const hot = a.status === "blocked";
+      const isIdle = a.status === "idle";
+      const isUrge = isIdle && waited >= IDLE_URGE;
+      const isSnooze = isIdle && waited >= IDLE_SNOOZE && !isUrge;
+      const isNudged = this.nudged.has(a.address);
       // The pet sits on a chair behind a wooden desk (the MacBook is part of the pet).
       const ctr = DUCK_CENTER * petW;
       const k = breakers.indexOf(a.address);
@@ -775,7 +798,7 @@ export default class Agents extends View {
           .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
           .when(this.drag?.addr !== a.address, (el) => el.transition("left", 800).transition("top", 800))
-          .child(figureFor(a.space_name, away ? "idle" : a.status, PET, now - when, speciesOf(a.program?.key))))
+          .child(figureFor(a.space_name, isNudged ? "done" : away ? "idle" : a.status, PET, waited, speciesOf(a.program?.key))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
           .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))
@@ -814,12 +837,12 @@ export default class Agents extends View {
         })
         .on_mouse_up("left", (_e, cx) => endDrag(cx))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openFigures(a.space_name); })
-        .tooltip(`${a.program?.name ?? ""} · ${a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""} · drag to move`)
+        .tooltip(`${a.program?.name ?? ""} · ${isUrge ? `idle for ${duration(waited)} · click to urge back to work` : isSnooze ? `snoozing (${duration(waited)}) · click to wake up` : a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""} · drag to move`)
         .child(seat)
         .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center().rounded(3)
-          .bg(this.hint?.addr === a.address ? "#cba6f7" : cl ? (cl.kind === "file" ? "#ff5370" : "#f9b84a") : a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : "#0f111acc")
-          .text_size(10.5).text_color(this.hint?.addr === a.address ? "#1e1233" : cl ? "#2a0f16" : a.focused || (q && hitOf(a)) ? "#2a1a14" : "#ffffff").truncate()
-          .child(this.hint?.addr === a.address ? this.hint.text : cl ? clText : `${text}${when && cellW >= 90 ? ` · ${duration(now - when)}` : ""}`))
+          .bg(this.hint?.addr === a.address ? "#cba6f7" : cl ? (cl.kind === "file" ? "#ff5370" : "#f9b84a") : a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : isUrge ? "#fab387" : isSnooze ? "#45475a" : "#0f111acc")
+          .text_size(10.5).text_color(this.hint?.addr === a.address ? "#1e1233" : cl ? "#2a0f16" : a.focused || (q && hitOf(a)) ? "#2a1a14" : isUrge ? "#1e1e2e" : isSnooze ? "#cdd6f4" : "#ffffff").truncate()
+          .child(this.hint?.addr === a.address ? this.hint.text : cl ? clText : `${text}${when && cellW >= 90 ? (isUrge ? ` · idle ${duration(waited)} ⏰` : isSnooze ? ` · zzz ${duration(waited)}` : ` · ${duration(waited)}`) : ""}`))
         // The branch on the desk's nameplate, with a small git-branch glyph.
         .when(Boolean(branch), (el) => el.child(h_flex().mt(2).gap(3).items_center().max_w(Math.max(petW + 22, cellW - 4)).text_size(9.5)
           .child(div().relative().w(8).h(10).flex_none().children([[0, 0, 2, 2], [0, 8, 2, 2], [5, 2, 2, 2], [0, 2, 1, 6], [1, 4, 5, 1]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg("#89b4fa"))))

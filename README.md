@@ -33,7 +33,7 @@
 - **Every machine is a metro line.** Each machine gets its own colored line with a lettered badge (`WSL LINE`, `THIS COMPUTER LINE`) and its station count. Its spaces are stops on the track: the one you are in has a yellow stop, a little train waits above any stop where an agent is typing (its lamp blinks pink when an agent needs you), and the line ends in a `new station` stop that opens a new space on that machine. A machine that is away greys its line out. Drag a line by its header to put it where you want it, for example your WSL or server line on top: a grip shows on hover, the whole target line lights up as a drop zone, and the order is remembered. Right-click a line header to rename that machine in place (Enter saves, Esc cancels).
 - **An office in your sidebar.** A night office with windows, a clock, a water cooler and LED screens with a hologram of the world. Every agent is a pixel pet on an office chair at its own desk, with a MacBook.
   Drag a pet to move its desk anywhere; click to jump to that agent. Add more agents and the desks shrink to fit, so everyone stays visible and readable.
-- **Pets that live their day.** When an agent goes idle its pet mostly stays at the desk; every so often one steps out beside it, stands there for a while, and comes back. When work arrives it types. When an agent ships, pixel confetti rains over its desk until you look.
+- **Pets that live their day.** When an agent goes idle its pet mostly stays at the desk; every so often one steps out beside it, stands there for a while, and comes back. When left idle for over 2 minutes it snoozes with floating pixel Zzz; after 5 minutes a retro pixel alarm clock rings and urges it back to work. Click an idle pet anytime to nudge it awake. When work arrives it types. When an agent ships, pixel confetti rains over its desk until you look.
 - **Desk nameplates on every pane.** The pane header shows the pet, its job title and a live status chip:
   `typing`, `needs you`, `shipped` or `on break`.
 - **Find staff.** A search bar above the office: type a name, a job title (`reviewer`, `engineer`), a status (`typing`, `break`) or a space, and everyone who does not match fades out while matches get a yellow nameplate. Enter jumps to the first match.
@@ -80,7 +80,7 @@ One species per agent program, so you can tell who is who at a glance:
 | working | sits behind a MacBook with a glowing apple logo and types |
 | needs you | waves a claw, a yellow `!` blinks beside it |
 | shipped | claws up, hops, sparkles |
-| idle | eyes closed, a mug of coffee steaming at the desk |
+| idle | eyes closed, a mug of coffee steaming at the desk; snoozes with drifting Zzz after 2m; retro alarm clock rings and urges to work after 5m (click to nudge awake) |
 
 The pets, desks and room are drawn from rectangles and animated with Herdr's native `.loop()`. The only picture is the logo, and the only timer is a one-second tick that decides when a pet steps out.
 

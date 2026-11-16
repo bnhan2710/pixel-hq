@@ -113,11 +113,15 @@ const HEIGHT = 240;
 const BOB = { period: 1200, easing: "ease-out" };
 
 export const BLOCKED_SCOWL = 60 * 1000;
+export const IDLE_SNOOZE = 120 * 1000; // 2 minutes: snoozing with Zzz
+export const IDLE_URGE = 300 * 1000;   // 5 minutes: idle too long, urge effect!
 
 export function mood(status, waited = 0) {
   if (status === "working") return "stab";
   if (status === "blocked") return waited < BLOCKED_SCOWL ? "angry" : "scowl";
   if (status === "done") return "happy";
+  if (waited >= IDLE_URGE) return "urge";
+  if (waited >= IDLE_SNOOZE) return "snooze";
   return "content";
 }
 
@@ -132,6 +136,8 @@ export const MOODS = [
   { id: "scowl", label: "Waving, urgent" },
   { id: "happy", label: "Celebrating" },
   { id: "content", label: "Coffee break" },
+  { id: "snooze", label: "Snoozing" },
+  { id: "urge", label: "Urge / Wake up" },
 ];
 
 export function duck(status, height, waited = 0) {
@@ -151,31 +157,39 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
   const waving = m === "angry" || m === "scowl";
   const urgent = m === "scowl";
   const cheer = m === "happy";
-  const rest = m === "content";
+  const rest = m === "content" || m === "snooze" || m === "urge";
+  const snoozing = m === "snooze";
+  const urging = m === "urge";
 
-  // Eyes: open slots; arches when cheering; closed lines on a break.
+  // Eyes: open slots; arches when cheering; closed lines on a break; wide and sweat drop on urge.
   const arch = (x, y) => [rect(x, y + 5, 10, 15, EYE), rect(x + 25, y + 5, 10, 15, EYE), rect(x + 5, y, 25, 10, EYE)];
   const eyes = cheer
     ? [...arch(48, 52), ...arch(157, 52)]
-    : rest
-      ? [rect(52, 66, 36, 8, EYE), rect(152, 66, 36, 8, EYE)]
-      : sp.bot
-        ? [rect(64, 48, 12, 12, EYE), rect(76, 60, 12, 12, EYE), rect(88, 72, 12, 12, EYE), rect(76, 84, 12, 12, EYE), rect(64, 96, 12, 12, EYE), motion(rect(120, 90, 38, 10, EYE), "opacity", { from: 0.15, to: 1, period: 600, easing: "linear" })]
-        : [rect(55, 42, 20, 30, EYE), rect(164, 42, 20, 30, EYE)];
+    : urging
+      ? [rect(52, 38, 26, 34, EYE), rect(152, 38, 26, 34, EYE), rect(56, 42, 10, 12, "#ffffff"), rect(156, 42, 10, 12, "#ffffff"), rect(194, 28, 10, 14, "#89dceb"), rect(196, 22, 6, 6, "#89dceb")]
+      : rest
+        ? [rect(52, 66, 36, 8, EYE), rect(152, 66, 36, 8, EYE)]
+        : sp.bot
+          ? [rect(64, 48, 12, 12, EYE), rect(76, 60, 12, 12, EYE), rect(88, 72, 12, 12, EYE), rect(76, 84, 12, 12, EYE), rect(64, 96, 12, 12, EYE), motion(rect(120, 90, 38, 10, EYE), "opacity", { from: 0.15, to: 1, period: 600, easing: "linear" })]
+          : [rect(55, 42, 20, 30, EYE), rect(164, 42, 20, 30, EYE)];
 
   // Antigravity: big glossy eyes with blush on the wide face, .
   const WH = "#ffffff";
   const archFace = cheer
     ? [rect(122, 80, 24, 7, EYE), rect(127, 73, 14, 7, EYE), rect(164, 80, 24, 7, EYE), rect(169, 73, 14, 7, EYE)]
-    : rest
-      ? [rect(122, 84, 26, 7, EYE), rect(162, 84, 26, 7, EYE)]
-      : [rect(122, 66, 24, 32, EYE), rect(162, 66, 24, 32, EYE), rect(127, 91, 14, 7, "#2a6fdc"), rect(167, 91, 14, 7, "#2a6fdc"), rect(128, 70, 9, 9, WH), rect(168, 70, 9, 9, WH)];
+    : urging
+      ? [rect(122, 62, 26, 34, EYE), rect(162, 62, 26, 34, EYE), rect(126, 66, 10, 10, WH), rect(166, 66, 10, 10, WH), rect(198, 52, 8, 12, "#89dceb")]
+      : rest
+        ? [rect(122, 84, 26, 7, EYE), rect(162, 84, 26, 7, EYE)]
+        : [rect(122, 66, 24, 32, EYE), rect(162, 66, 24, 32, EYE), rect(127, 91, 14, 7, "#2a6fdc"), rect(167, 91, 14, 7, "#2a6fdc"), rect(128, 70, 9, 9, WH), rect(168, 70, 9, 9, WH)];
   const roundFace = [
     ...(cheer
       ? [rect(84, 80, 6, 10, EYE), rect(102, 80, 6, 10, EYE), rect(88, 74, 16, 6, EYE), rect(144, 80, 6, 10, EYE), rect(162, 80, 6, 10, EYE), rect(148, 74, 16, 6, EYE)]
-      : rest
-        ? [rect(84, 84, 24, 5, EYE), rect(144, 84, 24, 5, EYE)]
-        : [rect(86, 68, 20, 28, EYE), rect(146, 68, 20, 28, EYE), rect(89, 71, 8, 8, WH), rect(149, 71, 8, 8, WH), rect(99, 87, 4, 4, "#ffffffaa"), rect(159, 87, 4, 4, "#ffffffaa")]),
+      : urging
+        ? [rect(84, 64, 22, 30, EYE), rect(144, 64, 22, 30, EYE), rect(88, 68, 8, 8, WH), rect(148, 68, 8, 8, WH), rect(174, 52, 8, 12, "#89dceb")]
+        : rest
+          ? [rect(84, 84, 24, 5, EYE), rect(144, 84, 24, 5, EYE)]
+          : [rect(86, 68, 20, 28, EYE), rect(146, 68, 20, 28, EYE), rect(89, 71, 8, 8, WH), rect(149, 71, 8, 8, WH), rect(99, 87, 4, 4, "#ffffffaa"), rect(159, 87, 4, 4, "#ffffffaa")]),
     rect(114, 100, 22, 7, "#F5A623"), rect(118, 107, 14, 6, "#E0861C"), rect(62, 102, 18, 8, "#F49AA8"), rect(170, 102, 18, 8, "#F49AA8"),
   ];
   const eyes2 = sp.arch
@@ -196,6 +210,9 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
   } else if (cheer) {
     leftClaw = motion(rect(LX, 60, CW, 80, SHADE), "top", { from: px(50), to: px(70), period: 300, easing: "ease-in-out" });
     rightClaw = motion(rect(RX, 60, CW, 80, SHADE), "top", { from: px(70), to: px(50), period: 300, easing: "ease-in-out" });
+  } else if (urging) {
+    leftClaw = motion(rect(LX, 120, CW, 40, SHADE), "top", { from: px(120), to: px(112), period: 180, easing: "ease-in-out" });
+    rightClaw = motion(rect(RX, 112, CW, 40, SHADE), "top", { from: px(112), to: px(120), period: 180, easing: "ease-in-out" });
   }
 
   // Desk props in the room on the left.
@@ -228,13 +245,64 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     const sparks = div().absolute().left(0).top(0).w(px(1)).h(px(1)).children([...star(-80, 20), ...star(-46, 78)]);
     props = motion(sparks, "opacity", { from: 0.2, to: 1, period: 420, easing: "ease-in-out" });
   } else if (rest) {
-    const steam = motion(div().absolute().left(0).top(0).w(px(1)).h(px(1))
-      .child(rect(-76, 96, 8, 28, STEAM)).child(rect(-56, 84, 8, 36, STEAM)), "opacity", { from: 0.1, to: 0.8, period: 1500, easing: "ease-in-out" });
-    props = div().absolute().left(0).top(0).w(px(1)).h(px(1))
-      .child(steam)
-      .child(rect(-86, 132, 56, 54, MUG))
-      .child(rect(-30, 142, 16, 28, MUG))
-      .child(rect(-76, 142, 36, 8, "#6B3F2A"));
+    if (urging) {
+      // Urgent retro pixel alarm clock ringing frantically beside the desk!
+      const ALARM = "#fab387", DARK = "#181825", BELL = "#f9e2af", LEG = "#b5593b";
+      const clockBody = [
+        rect(-84, 120, 52, 48, ALARM),
+        rect(-78, 114, 40, 60, ALARM),
+        rect(-76, 122, 36, 44, DARK),
+        rect(-60, 132, 4, 16, BELL),
+        rect(-56, 140, 12, 4, BELL),
+        rect(-60, 140, 4, 4, "#ff5370"),
+        rect(-86, 102, 18, 10, BELL),
+        rect(-82, 96, 10, 6, ALARM),
+        rect(-38, 102, 18, 10, BELL),
+        rect(-34, 96, 10, 6, ALARM),
+        rect(-62, 100, 12, 8, "#cdd6f4"),
+        rect(-82, 172, 8, 14, LEG),
+        rect(-34, 172, 8, 14, LEG),
+      ];
+      const soundWaves = [
+        rect(-94, 124, 4, 14, BELL),
+        rect(-102, 118, 4, 26, ALARM),
+        rect(-16, 124, 4, 14, BELL),
+        rect(-8, 118, 4, 26, ALARM),
+      ];
+      const clockEl = motion(div().absolute().left(0).top(0).w(px(1)).h(px(1)).children(clockBody), "left", { from: px(-3), to: px(3), period: 100, easing: "linear" });
+      const wavesEl = motion(div().absolute().left(0).top(0).w(px(1)).h(px(1)).children(soundWaves), "opacity", { from: 0.2, to: 1, period: 200, easing: "linear" });
+      props = div().absolute().left(0).top(0).w(px(1)).h(px(1)).child(clockEl).child(wavesEl);
+    } else if (snoozing) {
+      // Snoozing: cold coffee mug and pixel "Zzz" drifting up
+      const z = (x, y, w, col) => [
+        rect(x, y, w, Math.max(2, Math.round(w * 0.22)), col),
+        rect(x + Math.round(w * 0.52), y + Math.round(w * 0.22), Math.max(2, Math.round(w * 0.26)), Math.max(2, Math.round(w * 0.26)), col),
+        rect(x + Math.round(w * 0.24), y + Math.round(w * 0.48), Math.max(2, Math.round(w * 0.26)), Math.max(2, Math.round(w * 0.26)), col),
+        rect(x, y + Math.round(w * 0.74), w, Math.max(2, Math.round(w * 0.22)), col),
+      ];
+      const zzz = motion(
+        div().absolute().left(0).top(0).w(px(1)).h(px(1)).children([
+          ...z(-72, 84, 16, "#b4befe"),
+          ...z(-52, 54, 22, "#cdd6f4"),
+          ...z(-28, 20, 28, "#89b4fa"),
+        ]),
+        "top", { from: px(0), to: px(-16), period: 1800, easing: "ease-out" }
+      );
+      props = div().absolute().left(0).top(0).w(px(1)).h(px(1))
+        .child(zzz)
+        .child(rect(-86, 132, 56, 54, MUG))
+        .child(rect(-30, 142, 16, 28, MUG))
+        .child(rect(-76, 142, 36, 8, "#3c3836"));
+    } else {
+      // Normal coffee break: hot coffee mug with rising steam
+      const steam = motion(div().absolute().left(0).top(0).w(px(1)).h(px(1))
+        .child(rect(-76, 96, 8, 28, STEAM)).child(rect(-56, 84, 8, 36, STEAM)), "opacity", { from: 0.1, to: 0.8, period: 1500, easing: "ease-in-out" });
+      props = div().absolute().left(0).top(0).w(px(1)).h(px(1))
+        .child(steam)
+        .child(rect(-86, 132, 56, 54, MUG))
+        .child(rect(-30, 142, 16, 28, MUG))
+        .child(rect(-76, 142, 36, 8, "#6B3F2A"));
+    }
   }
 
   // The body group: everything but the legs. It bobs, or hops when cheering.
@@ -259,7 +327,11 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .when(Boolean(props), (el) => el.child(props));
   group = cheer
     ? motion(group, "top", { from: 0, to: px(-18), period: 300, easing: "ease-in-out" })
-    : motion(group, "top", { from: 0, to: px(typing ? 3 : 7), ...(typing ? { period: 480, easing: "ease-in-out" } : BOB) });
+    : urging
+      ? motion(group, "top", { from: 0, to: px(3), period: 160, easing: "linear" })
+      : snoozing
+        ? motion(group, "top", { from: 0, to: px(8), period: 1800, easing: "ease-in-out" })
+        : motion(group, "top", { from: 0, to: px(typing ? 3 : 7), ...(typing ? { period: 480, easing: "ease-in-out" } : BOB) });
 
   // Four little legs.
   let legs = sp.round

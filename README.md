@@ -94,11 +94,11 @@ Or by hand: copy `layouts/`, `mods/` and `themes/` into `~/.config/herdr-app/`, 
 then pick **pixel-hq** in Settings > Look. It brings its own **pixel-hq** theme, dark even when your system is in light mode.
 
 Mods are trusted code and Herdr does not sandbox them. This repo is about 2,000 lines of JavaScript. The only programs it runs are local helpers
-(`mkdir`, `cp`, `open`, `git` to see what each desk changed and to make worktrees when you hire, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). Its only network request is a tiny public file on GitHub (see "Update notices"). Read it before you install it.
+(`mkdir`, `cp`, `open`, `git` to see what each desk changed and to make worktrees when you hire, and Chrome/ImageMagick when you convert an animated picture in the figures editor). The one thing it writes outside its own folders is the OpenCode status plugin described below (only if OpenCode is installed, once, never overwriting). It only talks to GitHub: the update check reads one tiny public file, and pressing **Update now** downloads this repo's files (see "Update"). Nothing about you is sent. Read it before you install it.
 
 ## Update
 
-Herdr installs a shared layout as a plain copy, so it does not update by itself. When a new version is out, Pixel HQ shows an **Update now** button in the office: it opens a new tab with an agent (the one you are in, else Claude) that starts on the prompt below. You can also ask any agent yourself:
+Herdr installs a shared layout as a plain copy, so it does not update by itself. When a new version is out, Pixel HQ shows an **Update now** button in the office. It opens a small window that downloads the latest files of this repo's `main` branch straight from GitHub (the file list comes from the GitHub API, with a built-in list as fallback), shows the progress, and then overwrites only the installed Pixel HQ files that changed: `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods. No agent is involved. It always installs the newest version, even if you skipped a few. If a download fails, the window offers **Retry Auto-Update** or **Use Agent Tab**, which opens a new tab with an agent (the one you are in, else Claude) on the prompt below. You can also ask any agent yourself:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -139,7 +139,7 @@ Herdr only counts a program as an agent when it reports a status. Claude Code do
 
 ## Update notices
 
-When a newer version of Pixel HQ is out, the office shows a small note ("Pixel HQ 1.4.0 is out · what's new") with an **Update now** button (it opens an agent on the update prompt) and a **Later** button that hides it until the next version. To do this the `company-agents` mod reads one tiny public file, `mods/company-agents/version.json` on this repo's `main` branch, at start and every 6 hours, and compares it with the copy in your install. It sends nothing about you. To turn it off, delete `mods/company-agents/version.json` from your install (an update puts it back).
+When a newer version of Pixel HQ is out, the office shows a small note ("Pixel HQ 1.4.0 is out · what's new") with an **Update now** button (it downloads and installs the new files, see "Update") and a **Later** button that hides it until the next version. To do this the `company-agents` mod reads one tiny public file, `mods/company-agents/version.json` on this repo's `main` branch, at start and every 6 hours, and compares it with the copy in your install. It sends nothing about you. To turn it off, delete `mods/company-agents/version.json` from your install (an update puts it back).
 
 ## Make it yours
 

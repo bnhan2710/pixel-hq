@@ -1,4 +1,4 @@
 {
-  "version": "1.4.4",
-  "notes": "Idle alarm restarts after you look at an agent; snoozing pets doze with Zzz at their desk"
+  "version": "1.4.5",
+  "notes": "Update banner now sits above the pets instead of under them"
 }

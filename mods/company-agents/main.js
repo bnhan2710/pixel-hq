@@ -944,9 +944,13 @@ export default class Agents extends View {
       })
       .child(scene(sz.width, sz.height))
       .when(list.length === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
+      .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
+      .children(links)
+      .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets)
       .when(Boolean(this.update || this.notice), (el) => {
         const btn = (id, text, fill, ink, act) => div().id(id).px(10).h(22).flex().items_center().cursor_pointer().bg(fill).text_size(10.5).font_family(monoF).font_bold().text_color(ink).on_click(act).child(text);
-        const box = v_flex().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(6).gap(6).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4");
+        const box = v_flex().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(6).gap(6).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4")
+          .on_mouse_down("left", (_e, cx) => cx.stop_propagation());
         return el.child(this.update
           ? box.child(div().child(`Pixel HQ ${this.update.version} is out${this.update.notes ? ` · ${this.update.notes}` : ""}`))
             .child(h_flex().gap(6)
@@ -958,10 +962,7 @@ export default class Agents extends View {
                 cx.notify();
               })))
           : box.cursor_pointer().on_click((_e, cx) => { this.notice = null; cx.notify(); }).child(this.notice));
-      })
-      .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
-      .children(links)
-      .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets);
+      });
 
     // Pixel UI: notched 2px frames, a hard bottom shadow, a mono caps title and a hand-drawn magnifier.
     const frame = (bc, bg) => [

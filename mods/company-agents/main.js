@@ -116,10 +116,6 @@ fi
 if [ -z "$cid" ] && [ -f "$home/history.jsonl" ]; then
   cid=$(grep -F "\"workspace\":\"$2\"" "$home/history.jsonl" 2>/dev/null | tail -1 | grep -o '"conversationId":"[^"]*"' | cut -d'"' -f4)
 fi
-if [ -z "$cid" ]; then
-  lock=$(find "$home/presence" -name '*.lock' -mmin -720 2>/dev/null | xargs ls -t 2>/dev/null | head -1)
-  [ -n "$lock" ] && cid=$(basename "$lock" .lock)
-fi
 [ -n "$cid" ] || exit 3
 f="$home/brain/$cid/.system_generated/logs/transcript.jsonl"
 [ -f "$f" ] || exit 3
@@ -377,15 +373,19 @@ export default class Agents extends View {
         if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: null });
       }
       for (const a of agents().filter((x) => (String(x.program?.key ?? "").toLowerCase().includes("antigravity") || x.program?.key === "agy") && !remote.has(x.space))) {
-        const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
-        const pid = info?.foreground?.pid;
-        const cwd = paneBy.get(a.pane)?.cwd;
-        if (!pid && !cwd) continue;
-        const r = await exec("sh", ["-c", AGY_SH, "sh", String(pid ?? ""), cwd ?? "/dev/null/none"], { timeout: 8000 }).catch(() => null);
-        const ev = r?.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
-        const used = (ev?.input_tokens ?? 0) + (ev?.cache_read_tokens ?? 0);
-        const win = 1000000;
-        if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: ev?.model ?? "agy" });
+        try {
+          const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
+          const pid = info?.foreground?.pid;
+          const cwd = paneBy.get(a.pane)?.cwd;
+          if (!pid && !cwd) continue;
+          const r = await exec("sh", ["-c", AGY_SH, "sh", String(pid ?? ""), cwd ?? "/dev/null/none"], { timeout: 8000 }).catch(() => null);
+          const ev = r?.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
+          const used = (ev?.input_tokens ?? 0) + (ev?.cache_read_tokens ?? 0);
+          const win = 1000000;
+          if (used > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: ev?.model ?? "agy" });
+        } catch {
+          continue;
+        }
       }
       const sig = JSON.stringify([...next]);
       if (sig !== JSON.stringify([...this.ctxRead])) { this.ctxRead = next; cx.notify(); }

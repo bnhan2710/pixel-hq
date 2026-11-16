@@ -424,7 +424,6 @@ export default class Agents extends View {
     cx.notify();
   }
 
-  // Nudge an idle or snoozing agent back to work: focuses their pane and wakes the pet up.
   nudge(a, cx) {
     const now = Date.now();
     this.hint = { addr: a.address, text: "nudged! ⚡", until: now + 3500 };
@@ -798,7 +797,7 @@ export default class Agents extends View {
           .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
           .when(this.drag?.addr !== a.address, (el) => el.transition("left", 800).transition("top", 800))
-          .child(figureFor(a.space_name, isNudged ? "done" : away ? "idle" : a.status, PET, waited, speciesOf(a.program?.key))))
+          .child(figureFor(a.space_name, isNudged ? "done" : away ? "idle" : a.status, PET, away ? 0 : waited, speciesOf(a.program?.key))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
           .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))
@@ -837,7 +836,7 @@ export default class Agents extends View {
         })
         .on_mouse_up("left", (_e, cx) => endDrag(cx))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openFigures(a.space_name); })
-        .tooltip(`${a.program?.name ?? ""} · ${isUrge ? `idle for ${duration(waited)} · click to urge back to work` : isSnooze ? `snoozing (${duration(waited)}) · click to wake up` : a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""} · drag to move`)
+        .tooltip(`${a.program?.name ?? ""} · ${isUrge ? `idle for ${duration(waited)} · click to focus` : isSnooze ? `snoozing (${duration(waited)}) · click to focus` : a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""} · drag to move`)
         .child(seat)
         .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center().rounded(3)
           .bg(this.hint?.addr === a.address ? "#cba6f7" : cl ? (cl.kind === "file" ? "#ff5370" : "#f9b84a") : a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : isUrge ? "#fab387" : isSnooze ? "#45475a" : "#0f111acc")

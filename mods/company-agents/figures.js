@@ -64,8 +64,8 @@ export const SHIPPED = {
       blocked: { text: ["🙋"], motion: "hop" },
       waiting: { text: ["😤", "😠"], ms: 600, motion: "shake" },
       done: { text: ["🎉", "✨"], ms: 400, motion: "hop" },
-      idle: { text: ["☕"], motion: "bob" },
-      snooze: { text: ["💤", "😴"], ms: 800, motion: "pulse" },
+      idle: { text: ["💤"], motion: "pulse" },
+      snooze: { text: ["😴"], motion: "pulse" },
       urge: { text: ["⏰", "⚡"], ms: 300, motion: "shake" },
     },
   },
@@ -104,8 +104,10 @@ export function slotOf(status, waited = 0) {
   if (status === "working") return "working";
   if (status === "blocked") return waited < BLOCKED_SCOWL ? "blocked" : "waiting";
   if (status === "done") return "done";
-  if (waited >= IDLE_URGE) return "urge";
-  if (waited >= IDLE_SNOOZE) return "snooze";
+  if (status === "idle") {
+    if (waited >= IDLE_URGE) return "urge";
+    if (waited >= IDLE_SNOOZE) return "snooze";
+  }
   return "idle";
 }
 

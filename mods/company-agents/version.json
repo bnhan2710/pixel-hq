@@ -1,4 +1,4 @@
 {
-  "version": "1.4.5",
-  "notes": "Update banner now sits above the pets instead of under them"
+  "version": "1.4.6",
+  "notes": "Updates finish in one pass and show the version actually installed"
 }

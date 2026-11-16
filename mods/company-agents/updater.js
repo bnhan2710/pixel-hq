@@ -54,6 +54,14 @@ export class Updater {
     this.busy = true;
     this.handle = cx.focus_handle();
     this.handle.focus();
+    const finished = shared("pixel-hq.updated");
+    if (finished && Date.now() - Number(finished.at ?? 0) < 60000) {
+      this.version = String(finished.version ?? this.version);
+      this.status = "done";
+      this.message = `Successfully updated to v${this.version}!`;
+      this.busy = false;
+      return;
+    }
     cx.spawn(async (cx) => this.doAutoUpdate(cx));
   }
 
@@ -92,7 +100,7 @@ export class Updater {
 
       this.total = fileList.length;
       this.step = 0;
-      let updatedCount = 0;
+      const changed = [];
       cx.notify();
 
       for (let i = 0; i < fileList.length; i++) {
@@ -106,16 +114,20 @@ export class Updater {
         if (res.status === 404) continue;
         if (!res.ok) throw new Error(`HTTP ${res.status} while fetching ${p}`);
         const content = await res.text();
+        if (p === "mods/company-agents/version.json") {
+          const latest = (() => { try { return JSON.parse(content).version; } catch { return null; } })();
+          if (latest) this.version = String(latest);
+        }
         const targetPath = `${appHome()}/${p}`;
         const current = await readTextFile(targetPath).catch(() => null);
-        if (current !== content) {
-          await writeTextFile(targetPath, content, current);
-          updatedCount++;
-        }
+        if (current !== content) changed.push({ targetPath, content, current });
       }
 
+      for (const f of changed) await writeTextFile(f.targetPath, f.content, f.current);
+      setShared("pixel-hq.updated", { version: this.version, at: Date.now() });
+
       this.status = "done";
-      this.message = updatedCount > 0 ? `Successfully updated to v${this.version}!` : `Pixel HQ is already up to date (v${this.version}).`;
+      this.message = changed.length > 0 ? `Successfully updated to v${this.version}!` : `Pixel HQ is already up to date (v${this.version}).`;
       if (this.version) {
         localStorage.setItem("upd-dismissed", String(this.version));
         setShared("pixel-hq.dismissed-version", String(this.version));

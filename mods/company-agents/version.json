@@ -1,4 +1,4 @@
 {
-  "version": "1.4.3",
-  "notes": "Modal update dialog, multi-agent CLI support, and status sync"
+  "version": "1.4.4",
+  "notes": "Idle alarm restarts after you look at an agent; snoozing pets doze with Zzz at their desk"
 }

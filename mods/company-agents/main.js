@@ -197,6 +197,8 @@ export default class Agents extends View {
     });
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
+    try { this.seen = JSON.parse(localStorage.getItem("seen") ?? "{}"); } catch { this.seen = {}; }
+    this.watching = null;
     this.pendingPins = JSON.parse(localStorage.getItem("pins") ?? "[]");
     if (!this.pendingPins.length) localStorage.removeItem("pins");
     this.migratingPins = new Set();
@@ -242,6 +244,24 @@ export default class Agents extends View {
 
   since(a) {
     return this.changed[a.address]?.at ?? 0;
+  }
+
+  watch(list, now) {
+    const cur = list.find((a) => a.focused)?.address ?? null;
+    if (cur === this.watching) return;
+    if (this.watching) {
+      this.seen[this.watching] = now;
+      for (const k of Object.keys(this.seen)) if (!this.changed[k]) delete this.seen[k];
+      localStorage.setItem("seen", JSON.stringify(this.seen));
+    }
+    this.watching = cur;
+  }
+
+  waitOf(address, status, now) {
+    const at = this.changed[address]?.at ?? now;
+    if (status !== "idle") return now - at;
+    if (address === this.watching) return 0;
+    return now - Math.max(at, this.seen[address] ?? 0);
   }
 
   // Looking at a done agent makes it idle; it stays with Done until you leave
@@ -309,7 +329,7 @@ export default class Agents extends View {
   subRow(t, s, shown, compact, space) {
     const k = s.t;
     const st = kidStatus(k, this.listed);
-    const pic = this.figure(space, st, 27, Date.now() - (this.changed[k.address]?.at ?? Date.now()), `fig-${k.address}`, k.program?.key);
+    const pic = this.figure(space, st, 27, this.waitOf(k.address, st, Date.now()), `fig-${k.address}`, k.program?.key);
     const on = k.address === shown;
     return h_flex()
       .id(`sub-${k.address}`)
@@ -531,6 +551,7 @@ export default class Agents extends View {
     const shown = focused()?.agent;
     const now = Date.now();
     this.track(list, now);
+    this.watch(list, now);
     this.hold(list);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
     // it, it gets no row of its own, unless it's pinned.
@@ -610,7 +631,7 @@ export default class Agents extends View {
     for (const [addr, c] of this.ctxRead) if (!contextOf.has(addr)) contextOf.set(addr, c);
 
     const row = (a, i, subs = []) => {
-      const pic = figureFor(a.space_name, a.status, 45, now - this.since(a), speciesOf(a.program?.key));
+      const pic = figureFor(a.space_name, a.status, 45, this.waitOf(a.address, a.status, now), speciesOf(a.program?.key));
       const ctx = contextOf.get(a.address);
       const more = detail.get(a.address);
       // An agent on another machine (`vps/t7`) says which.
@@ -756,7 +777,7 @@ export default class Agents extends View {
       this.drag = null;
       if (!d.moved) {
         const clicked = list.find((x) => x.address === d.addr);
-        const isLongIdle = clicked?.status === "idle" && (now - this.since(clicked) >= IDLE_SNOOZE);
+        const isLongIdle = clicked?.status === "idle" && this.waitOf(clicked.address, clicked.status, now) >= IDLE_SNOOZE;
         if (isLongIdle) this.nudge(clicked, cx);
         else run("pane.focus", { pane: d.pane });
       } else localStorage.setItem("petpos", JSON.stringify(this.petpos));
@@ -768,7 +789,7 @@ export default class Agents extends View {
     const hitOf = (a) => !q || q.split(/\s+/).every((w) => [detail.get(a.address), a.space_name, label(a), a.program?.name, ROLES(a), STATE[a.status]].join(" ").toLowerCase().includes(w));
     const hits = list.filter(hitOf);
     this.firstHit = q ? hits[0]?.pane ?? null : null;
-    const breakers = list.filter((x) => x.status === "idle" && !x.focused && (now - this.since(x) < IDLE_URGE)).map((x) => x.address);
+    const breakers = list.filter((x) => x.status === "idle" && !x.focused && this.waitOf(x.address, x.status, now) < IDLE_SNOOZE).map((x) => x.address);
     this.breakerList = breakers;
     const stable = list.map((x) => x.address).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
     const seated = list.slice(0, pick.cols * pick.rows);
@@ -799,15 +820,15 @@ export default class Agents extends View {
       const clTip = cl ? (cl.kind === "file" ? `Another desk also changed ${cl.files.join(", ")}` : "Another desk is working in this same folder") : "";
       const when = this.since(a);
       const waited = now - when;
+      const unseen = this.waitOf(a.address, a.status, now);
       const hot = a.status === "blocked";
       const isIdle = a.status === "idle";
-      const isUrge = isIdle && waited >= IDLE_URGE;
-      const isSnooze = isIdle && waited >= IDLE_SNOOZE && !isUrge;
+      const isUrge = isIdle && unseen >= IDLE_URGE;
+      const isSnooze = isIdle && unseen >= IDLE_SNOOZE && !isUrge;
       const isNudged = this.nudged.has(a.address);
       // The pet sits on a chair behind a wooden desk (the MacBook is part of the pet).
       const ctr = DUCK_CENTER * petW;
-      const k = breakers.indexOf(a.address);
-      const away = k >= 0;
+      const away = this.out?.addr === a.address && breakers.includes(a.address);
       // On a break the pet steps out beside its desk for a moment and comes right back, over and over.
       const dir = left + petW / 2 < sz.width / 2 ? 1 : -1;
       const dx = dir * (petW + kk(30));
@@ -841,10 +862,10 @@ export default class Agents extends View {
           .children([[6, 0, 6, 4], [3, 4, 6, 4], [0, 8, 10, 4], [4, 12, 5, 4], [2, 16, 4, 2]].map(([x, y, w, h]) => div().absolute().left(kk(x)).top(kk(y)).w(kk(w)).h(kk(h)).bg(cl.kind === "file" ? "#ff5370" : "#f9b84a")))
           .loop("opacity", { from: 0.25, to: 1, period: 520, easing: "ease-in-out" })))
         .child(div().id(`walker-${a.address}`).absolute()
-          .left(away && this.out?.addr === a.address ? dx : 0).top(away && this.out?.addr === a.address ? dy : 0)
+          .left(away ? dx : 0).top(away ? dy : 0)
           // Glide out and back, but not while it is being dragged, so it follows the pointer exactly.
           .when(this.drag?.addr !== a.address, (el) => el.transition("left", 800).transition("top", 800))
-          .child(figureFor(a.space_name, isNudged ? "done" : away ? "idle" : a.status, PET, away ? 0 : waited, speciesOf(a.program?.key))))
+          .child(figureFor(a.space_name, isNudged ? "done" : a.status, PET, unseen, speciesOf(a.program?.key))))
         // Shipped: pixel confetti rains over the desk until someone looks at it.
         .when(a.status === "done", (el) => el.children([["#f9e2af", 0.10, 900], ["#f38ba8", 0.22, 1300], ["#a6e3a1", 0.34, 1000], ["#89b4fa", 0.46, 1500], ["#cba6f7", 0.58, 1100], ["#fab387", 0.70, 1400], ["#94e2d5", 0.82, 950]]
           .map(([c, fx0, p], j) => div().absolute().left(petW * fx0).top(-20).w(4).h(4).bg(c).loop("top", { from: -22 - (j % 3) * 6, to: PET * 0.55, period: p, easing: "linear" }))))

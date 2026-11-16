@@ -114,7 +114,7 @@ if [ -n "$1" ]; then
   [ -n "$lock" ] && cid=$(basename "$lock" .lock)
 fi
 if [ -z "$cid" ] && [ -f "$home/history.jsonl" ]; then
-  cid=$(grep -F "\"workspace\":\"$2\"" "$home/history.jsonl" 2>/dev/null | tail -1 | grep -o '"conversationId":"[^"]*"' | cut -d'"' -f4)
+  cid=$(grep -F '"workspace":"'"$2"'"' "$home/history.jsonl" 2>/dev/null | tail -1 | grep -o '"conversationId":"[^"]*"' | cut -d'"' -f4)
 fi
 [ -n "$cid" ] || exit 3
 f="$home/brain/$cid/.system_generated/logs/transcript.jsonl"

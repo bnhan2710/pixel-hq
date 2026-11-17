@@ -178,7 +178,11 @@ export class Updater {
     cx.spawn(async (cx) => this.doAutoUpdate(cx));
   }
 
+let isUpdating = false;
+
   async doAutoUpdate(cx) {
+    if (isUpdating) return;
+    isUpdating = true;
     this.busy = true;
     this.status = "updating";
     this.error = "";
@@ -257,6 +261,7 @@ export class Updater {
         const targetPath = `${appHome()}/${p}`;
         const current = await readTextFile(targetPath).catch(() => null);
         if (current !== content) changed.push({ targetPath, content, current });
+        await new Promise((r) => setTimeout(r, 40));
       }
 
       this.message = "Writing updated files...";
@@ -298,6 +303,7 @@ export class Updater {
       });
     } finally {
       this.busy = false;
+      isUpdating = false;
       cx.notify();
     }
   }

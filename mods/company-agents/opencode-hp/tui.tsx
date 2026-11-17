@@ -1,10 +1,10 @@
-// pixel-hq-opencode-hp v2
-// OpenCode TUI plugin for Pixel HQ: keeps this terminal labelled with how full the context window is
-// (agent.context, 0-100) and which model fills it (agent.model), so the office can draw the desk's HP bar.
-// Same math as the sidebar's "Context · N tokens · P% used": the last assistant message after the last
-// completed compaction, its tokens against the model's context window.
-// One file, every generation: 2.x loads `setup` (its plugin API), 1.3.13+ loads `tui`, pre-1.3.13 calls
-// the exported PixelHqHp function. Deleting the folder removes it.
+// pixel-hq-opencode-hp v3
+// OpenCode TUI plugin for Pixel HQ:
+// 1. Keeps this terminal labelled with how full the context window is (agent.context, 0-100)
+//    and which model fills it (agent.model) for the active session, so the office draws the desk's HP bar.
+// 2. Intercepts OpenCode 2.x program status (OSC 7501): forces the terminal's root status to follow the
+//    CURRENTLY ACTIVE tab instead of marking the whole terminal as working whenever any background tab is busy.
+//    Child records (per-session status with status.id) still pass through to Herdr terminal records.
 import { execFile } from "node:child_process";
 
 const ID = "pixel-hq-hp";
@@ -30,6 +30,65 @@ const lastAssistantWithUsage = (messages, boundary) => {
   return undefined;
 };
 
+const getActiveTabStatus = (ctx) => {
+  try {
+    let activeID;
+    const route = ctx.ui?.router?.current?.();
+    if (route?.type === "session" && route.sessionID && route.sessionID !== "dummy") {
+      activeID = route.sessionID;
+    }
+    if (!activeID && ctx.ui?.tabs?.list) {
+      const activeTab = ctx.ui.tabs.list().find((t) => t.active);
+      if (activeTab?.sessionID) activeID = activeTab.sessionID;
+    }
+    if (!activeID) return { state: "idle", app: "opencode" };
+
+    if (ctx.ui?.tabs?.list) {
+      const tab = ctx.ui.tabs.list().find((t) => t.sessionID === activeID || t.active);
+      if (tab) {
+        const title = tab.title || ctx.data?.session?.get?.(activeID)?.title;
+        if (tab.attention) {
+          const kind = (ctx.data?.session?.permission?.list?.(activeID)?.length ?? 0) > 0 ? "permission" : "question";
+          return {
+            state: "blocked",
+            kind,
+            app: "opencode",
+            title,
+            message: kind === "permission" ? "Permission needs input" : "Input needs response",
+          };
+        }
+        if (tab.busy) {
+          return { state: "working", app: "opencode", title };
+        }
+        return { state: "idle", app: "opencode", title };
+      }
+    }
+
+    const session = ctx.data?.session?.get?.(activeID);
+    const title = session?.title;
+    const members = ctx.data?.session?.family?.(activeID) ?? [activeID];
+    const hasPerm = members.some((id) => (ctx.data?.session?.permission?.list?.(id)?.length ?? 0) > 0);
+    if (hasPerm) {
+      return { state: "blocked", kind: "permission", app: "opencode", title, message: "Permission needs input" };
+    }
+    const hasForm = members.some((id) => (ctx.data?.session?.form?.list?.(id)?.length ?? 0) > 0);
+    if (hasForm) {
+      return { state: "blocked", kind: "question", app: "opencode", title, message: "Input needs response" };
+    }
+    const isBusy = members.some(
+      (id) =>
+        ctx.data?.session?.status?.(id) === "running" ||
+        ctx.data?.session?.pending?.list?.(id)?.some((it) => it.type !== "synthetic")
+    );
+    if (isBusy) {
+      return { state: "working", app: "opencode", title };
+    }
+    return { state: "idle", app: "opencode", title };
+  } catch {
+    return { state: "idle", app: "opencode" };
+  }
+};
+
 // OpenCode 2.x: the plugin context from the TUI's own plugin runtime.
 let generation = 0;
 let timer;
@@ -39,6 +98,7 @@ const setup = async (ctx) => {
   const gen = ++generation;
   if (timer) clearInterval(timer);
   const labeled = new Map();
+
   const report = (sessionID) => {
     if (gen !== generation) return;
     try {
@@ -62,21 +122,66 @@ const setup = async (ctx) => {
       /* the store is mid-swap: try again on the next tick */
     }
   };
-  const unlisten = ctx.data.on?.("session.usage.updated", (event) => {
-    const sessionID = event?.data?.sessionID;
-    if (sessionID) report(sessionID);
-  });
+
+  let origSetProgramStatus;
+  let lastRootSig = "";
+  const emitRoot = () => {
+    if (!origSetProgramStatus) return;
+    const current = getActiveTabStatus(ctx);
+    const sig = `${current.state}:${current.kind || ""}:${current.title || ""}:${current.message || ""}`;
+    if (sig === lastRootSig) return;
+    lastRootSig = sig;
+    origSetProgramStatus(current);
+  };
+
+  if (ctx.renderer && typeof ctx.renderer.setProgramStatus === "function") {
+    origSetProgramStatus = ctx.renderer.setProgramStatus.bind(ctx.renderer);
+    ctx.renderer.setProgramStatus = (status) => {
+      // Child records carry status.id (e.g. ses_...) -> pass through unchanged
+      if (status && status.id) {
+        return origSetProgramStatus(status);
+      }
+      // Root record (no status.id) -> force to follow active tab
+      const current = getActiveTabStatus(ctx);
+      lastRootSig = `${current.state}:${current.kind || ""}:${current.title || ""}:${current.message || ""}`;
+      return origSetProgramStatus(current);
+    };
+    emitRoot();
+  }
+
+  const unlistens = [
+    ctx.data.on?.("session.usage.updated", (event) => {
+      const sessionID = event?.data?.sessionID;
+      if (sessionID) report(sessionID);
+    }),
+    ctx.data.on?.("session.execution.started", () => emitRoot()),
+    ctx.data.on?.("session.execution.succeeded", () => emitRoot()),
+    ctx.data.on?.("session.execution.interrupted", () => emitRoot()),
+    ctx.data.on?.("session.execution.failed", () => emitRoot()),
+    ctx.data.on?.("permission.asked", () => emitRoot()),
+    ctx.data.on?.("permission.replied", () => emitRoot()),
+    ctx.data.on?.("form.created", () => emitRoot()),
+    ctx.data.on?.("form.replied", () => emitRoot()),
+    ctx.data.on?.("form.cancelled", () => emitRoot()),
+  ].filter(Boolean);
+
   const localTimer = setInterval(() => {
     const route = ctx.ui?.router?.current?.();
     if (route?.type === "session" && route.sessionID) report(route.sessionID);
-  }, 4000);
+    emitRoot();
+  }, 1500);
   timer = localTimer;
+
   const route = ctx.ui?.router?.current?.();
   if (route?.type === "session" && route.sessionID) report(route.sessionID);
+  emitRoot();
+
   return () => {
     clearInterval(localTimer);
     if (timer === localTimer) timer = undefined;
-    try { unlisten?.(); } catch {}
+    for (const u of unlistens) {
+      try { u?.(); } catch {}
+    }
   };
 };
 

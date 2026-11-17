@@ -35,6 +35,8 @@ const PIXEL_HQ_FILES = [
   "mods/company-agents/scene.js",
   "mods/company-agents/sparkles.svg",
   "mods/company-agents/agy-quota.py",
+  "mods/company-agents/codex-vitals.py",
+  "mods/company-agents/claude-statusline.sh",
   "mods/company-agents/opencode-hp/server.ts",
   "mods/company-agents/opencode-hp/tui.tsx",
   "mods/company-agents/updater.js",

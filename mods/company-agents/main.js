@@ -92,27 +92,55 @@ function vitalsBars(t, ctx, id, width) {
     .when(ctx.quota != null, (el) => el.child(thinBar(t, ctx.quota, spColor(t, ctx.quota), width)));
 }
 
-// Finds a Codex terminal's session file (the one its process, or a child of it, has open; else the newest recent one that began in the
-// same folder) and prints its last token_count event, whose last_token_usage and model_context_window say how full the context is.
-const CODEX_SH = `home="\${CODEX_HOME:-$HOME/.codex}/sessions"
-pids="$1"; for i in 1 2 3; do pids="$pids $(for p in $pids; do pgrep -P "$p" 2>/dev/null; done)"; done
-f=""
-[ -n "$1" ] && f=$(lsof -p "$(echo $pids | tr -s ' ' ',')" -Fn 2>/dev/null | sed -n 's/^n//p' | grep -E '/rollout-[^/]*\\.jsonl$' | head -1)
-if [ -z "$f" ]; then
-  for c in $(find "$home" -name 'rollout-*.jsonl' -mmin -720 2>/dev/null | xargs ls -t 2>/dev/null | head -20); do
-    case "$(head -n 1 "$c")" in *'"cwd":"'"$2"'"'*) f="$c"; break;; esac
-  done
-fi
-[ -n "$f" ] || exit 3
-tail -n 600 "$f" | grep '"type":"token_count"' | tail -1`;
-
 // Reads the Antigravity transcript for a workspace: the last conversation the CLI logged for it, then the last
 // usage line with token counts. Pure file reads through the mod's own file API, so it behaves the same on every
 // platform (the former lsof-based path needed sh and Unix).
 const homeDir = () => process.env.HOME ?? process.env.USERPROFILE ?? "";
 const agyHome = () => process.env.AGY_HOME ?? `${homeDir()}/.gemini/antigravity-cli`;
-const agyTranscriptVitals = async (cwd) => {
+const AGY_VITALS_PY = `import json, os, sys
+cwd = sys.argv[1] if len(sys.argv) > 1 else ""
+home = os.environ.get("AGY_HOME") or os.path.expanduser("~/.gemini/antigravity-cli")
+hist = os.path.join(home, "history.jsonl")
+if os.path.exists(hist):
+  cid = None
+  needle = f'"workspace":"{cwd}"'
+  needle_sp = f'"workspace": "{cwd}"'
+  try:
+    for line in open(hist, "r", encoding="utf-8"):
+      if needle in line or needle_sp in line:
+        try:
+          d = json.loads(line)
+          if d.get("conversationId"): cid = d["conversationId"]
+        except Exception: pass
+  except Exception: pass
+  if cid:
+    tp = os.path.join(home, "brain", cid, ".system_generated", "logs", "transcript.jsonl")
+    if os.path.exists(tp):
+      last = None
+      try:
+        for line in open(tp, "r", encoding="utf-8"):
+          if '"input_tokens":' in line:
+            try: last = json.loads(line)
+            except Exception: pass
+        if last:
+          used = int(last.get("input_tokens") or 0) + int(last.get("cache_read_tokens") or 0)
+          pct = max(0, min(100, round(used * 100 / 1000000)))
+          print(json.dumps({"pct": pct, "model": last.get("model") or "agy"}))
+      except Exception: pass
+`;
+
+const agyTranscriptVitals = async (cwd, machine) => {
   if (!cwd) return null;
+  if (machine) {
+    try {
+      const r = await exec("python3", ["-c", AGY_VITALS_PY, cwd], { on: machine, timeout: 6000 }).catch(() => null);
+      if (r?.code === 0 && r.stdout) {
+        const ev = JSON.parse(r.stdout.trim().split("\n").pop());
+        if (ev && typeof ev.pct === "number") return ev;
+      }
+    } catch {}
+    return null;
+  }
   let hist;
   try { hist = await readTextFile(`${agyHome()}/history.jsonl`); } catch { return null; }
   const needle = `"workspace":${JSON.stringify(cwd)}`;
@@ -191,6 +219,9 @@ export default class Agents extends View {
     // The OpenCode HP plugin (directory package) is auto-discovered by every TUI from the global plugins folder:
     // it labels the terminal with the context fill for the desk's HP bar. Same discipline as the status plugin.
     this.setupOpenCodeHp(cx);
+    // Ensure Claude Code and Antigravity statusLine are configured to report context, model, and quota.
+    this.setupClaude(cx);
+    this.setupAntigravity(cx);
     // Tell the person when a newer Pixel HQ is out: read the tiny version.json from GitHub at start and every 6 hours.
     // Nothing is sent. Deleting this mod's own version.json turns the check off.
     this.update = null;
@@ -468,27 +499,38 @@ export default class Agents extends View {
   async scanCodex(cx) {
     if (this.scanningCodex) return;
     this.scanningCodex = true;
-    const isWin = window()?.platform === "windows";
-    try {
-      const remote = new Set(spaces().filter((x) => x.machine).map((x) => x.id));
       const paneBy = new Map(panes().map((p) => [p.pane, p]));
       const next = new Map();
-      // Codex's session scan needs sh and lsof: POSIX only.
-      for (const a of isWin ? [] : agents().filter((x) => String(x.program?.key ?? "").toLowerCase().includes("codex") && !remote.has(x.space))) {
-        const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
-        const pid = info?.foreground?.pid;
-        const cwd = paneBy.get(a.pane)?.cwd;
-        if (!pid && !cwd) continue;
-        const r = await exec("sh", ["-c", CODEX_SH, "sh", String(pid ?? ""), cwd ?? "/dev/null/none"], { timeout: 8000 }).catch(() => null);
-        const ev = r?.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
-        const used = ev?.payload?.info?.last_token_usage?.total_tokens, win = ev?.payload?.info?.model_context_window;
-        if (used > 0 && win > 0) next.set(a.address, { pct: Math.max(0, Math.min(100, Math.round((used * 100) / win))), model: null });
-      }
-      for (const a of agents().filter((x) => (String(x.program?.key ?? "").toLowerCase().includes("antigravity") || x.program?.key === "agy") && !remote.has(x.space))) {
+      for (const a of agents().filter((x) => /codex/.test(String(x.program?.key ?? x.report?.app ?? x.status?.app ?? x.app ?? x.name ?? "").toLowerCase()))) {
         try {
+          const sp = spaces().find((s) => s.id === a.space);
+          const machine = sp?.machine;
+          const info = JSON.parse((await hc(["get", a.address, "--json"]).catch(() => ({ stdout: "{}" }))).stdout || "{}");
+          const pid = info?.foreground?.pid;
           const cwd = paneBy.get(a.pane)?.cwd;
-          const quota = await this.agyQuota();
-          const vitals = await agyTranscriptVitals(cwd);
+          if (!pid && !cwd) continue;
+          const script = `${appHome()}/mods/company-agents/codex-vitals.py`;
+          const candidates = window()?.platform === "windows" && !machine ? ["python", "python3", "py"] : ["python3", "python"];
+          for (const bin of candidates) {
+            const r = await exec(bin, [script, String(pid ?? ""), cwd ?? ""], { timeout: 8000, on: machine }).catch(() => null);
+            if (!r) continue;
+            const ev = r.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
+            if (ev && (ev.pct != null || ev.model || ev.quota != null)) {
+              next.set(a.address, { pct: ev.pct ?? null, model: ev.model ?? "codex", quota: ev.quota ?? null });
+            }
+            break;
+          }
+        } catch {
+          continue;
+        }
+      }
+      for (const a of agents().filter((x) => /antigravity|agy/.test(String(x.program?.key ?? x.report?.app ?? x.status?.app ?? x.app ?? x.name ?? "").toLowerCase()))) {
+        try {
+          const sp = spaces().find((s) => s.id === a.space);
+          const machine = sp?.machine;
+          const cwd = paneBy.get(a.pane)?.cwd;
+          const quota = await this.agyQuota(machine);
+          const vitals = await agyTranscriptVitals(cwd, machine);
           if (!vitals && quota == null) continue;
           next.set(a.address, { pct: vitals?.pct ?? null, model: vitals?.model ?? "agy", quota });
         } catch {
@@ -501,17 +543,20 @@ export default class Agents extends View {
     this.scanningCodex = false;
   }
 
-  async agyQuota() {
-    const memo = this.agyQuotaMemo;
+  async agyQuota(machine) {
+    const key = machine ?? "local";
+    const memo = this.agyQuotaMemo?.get(key);
     if (memo && Date.now() - memo.at < 60000) return memo.value;
-    if (this.agyQuotaBusy) return memo?.value ?? null;
-    this.agyQuotaBusy = true;
+    if (this.agyQuotaBusy?.has(key)) return memo?.value ?? null;
+    this.agyQuotaBusy ??= new Set();
+    this.agyQuotaBusy.add(key);
+    this.agyQuotaMemo ??= new Map();
     let value = memo?.value ?? null;
     try {
       const script = `${appHome()}/mods/company-agents/agy-quota.py`;
-      const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+      const candidates = window()?.platform === "windows" && !machine ? ["python", "python3", "py"] : ["python3", "python"];
       for (const bin of candidates) {
-        const r = await exec(bin, [script], { timeout: 12000 }).catch(() => null);
+        const r = await exec(bin, [script], { timeout: 12000, on: machine }).catch(() => null);
         if (!r) continue;
         const parsed = r.code === 0 && r.stdout ? JSON.parse(r.stdout.trim().split("\n").pop()) : null;
         if (parsed && typeof parsed.quota === "number" && Number.isFinite(parsed.quota)) {
@@ -520,8 +565,8 @@ export default class Agents extends View {
         break;
       }
     } catch { /* keep the previous answer */ }
-    this.agyQuotaMemo = { at: Date.now(), value };
-    this.agyQuotaBusy = false;
+    this.agyQuotaMemo.set(key, { at: Date.now(), value });
+    this.agyQuotaBusy.delete(key);
     return value;
   }
 
@@ -669,6 +714,66 @@ export default class Agents extends View {
     if (r.code === 5) { this.notice = "OpenCode HP plugin updated"; cx.notify(); }
   }
 
+  async setupClaude(cx) {
+    const src = `${appHome()}/mods/company-agents/claude-statusline.sh`;
+    const sh = 'SRC="$1"; D="$HOME/.claude"; [ -d "$D" ] || exit 3; T="$D/pixel-hq-statusline.sh"; '
+      + 'cp "$SRC" "$T" && chmod +x "$T" || exit 1; '
+      + 'python3 -c \'import json, os; p = os.path.expanduser("~/.claude/settings.json"); '
+      + 'd = json.load(open(p)) if os.path.exists(p) else {}; '
+      + 'cur = d.get("statusLine"); '
+      + 'cmd = "sh " + os.path.expanduser("~/.claude/pixel-hq-statusline.sh"); '
+      + 'if not cur or "pixel-hq" in str(cur) or "claude-statusline" in str(cur): '
+      + '  d["statusLine"] = {"type": "command", "command": cmd}; '
+      + '  json.dump(d, open(p, "w"), indent=2)\' 2>/dev/null || exit 1; exit 0';
+    const ps = "param($src); $d = Join-Path $env:USERPROFILE '.claude'; if (-not (Test-Path -LiteralPath $d)) { exit 3 }; "
+      + "$t = Join-Path $d 'pixel-hq-statusline.sh'; Copy-Item -LiteralPath $src -Destination $t -Force; "
+      + "$cfg = Join-Path $d 'settings.json'; $obj = if (Test-Path -LiteralPath $cfg) { Get-Content -Raw -LiteralPath $cfg | ConvertFrom-Json } else { [pscustomobject]@{} }; "
+      + "$cur = if ($obj.statusLine) { $obj.statusLine.command } else { '' }; "
+      + "if (-not $cur -or $cur -match 'pixel-hq' -or $cur -match 'claude-statusline') { "
+      + "  $cmd = 'sh ' + ($t -replace '\\\\', '/'); "
+      + "  if (-not $obj.statusLine) { $obj | Add-Member -NotePropertyName statusLine -NotePropertyValue ([pscustomobject]@{ type='command'; command=$cmd }) } else { $obj.statusLine.command = $cmd }; "
+      + "  $obj | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $cfg }";
+    const machines = [undefined, ...new Set(spaces().map((s) => s.machine).filter(Boolean))];
+    for (const on of machines) {
+      const isWin = !on && window()?.platform === "windows";
+      if (isWin) {
+        await exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}'`]).catch(() => null);
+      } else {
+        await exec("sh", ["-c", sh, "sh", src], { on, timeout: 8000 }).catch(() => null);
+      }
+    }
+  }
+
+  async setupAntigravity(cx) {
+    const src = `${appHome()}/mods/company-agents/claude-statusline.sh`;
+    const sh = 'SRC="$1"; D="$HOME/.gemini/antigravity-cli"; [ -d "$D" ] || exit 3; T="$D/pixel-hq-statusline.sh"; '
+      + 'cp "$SRC" "$T" && chmod +x "$T" || exit 1; '
+      + 'python3 -c \'import json, os; p = os.path.expanduser("~/.gemini/antigravity-cli/settings.json"); '
+      + 'd = json.load(open(p)) if os.path.exists(p) else {}; '
+      + 'cur = d.get("statusLine"); '
+      + 'cmd = "sh " + os.path.expanduser("~/.gemini/antigravity-cli/pixel-hq-statusline.sh"); '
+      + 'if not cur or "pixel-hq" in str(cur) or "statusline-probe" in str(cur) or "claude-statusline" in str(cur): '
+      + '  d["statusLine"] = {"type": "command", "command": cmd, "enabled": True}; '
+      + '  json.dump(d, open(p, "w"), indent=2)\' 2>/dev/null || exit 1; exit 0';
+    const ps = "param($src); $d = Join-Path $env:USERPROFILE '.gemini\\antigravity-cli'; if (-not (Test-Path -LiteralPath $d)) { exit 3 }; "
+      + "$t = Join-Path $d 'pixel-hq-statusline.sh'; Copy-Item -LiteralPath $src -Destination $t -Force; "
+      + "$cfg = Join-Path $d 'settings.json'; $obj = if (Test-Path -LiteralPath $cfg) { Get-Content -Raw -LiteralPath $cfg | ConvertFrom-Json } else { [pscustomobject]@{} }; "
+      + "$cur = if ($obj.statusLine) { $obj.statusLine.command } else { '' }; "
+      + "if (-not $cur -or $cur -match 'pixel-hq' -or $cur -match 'claude-statusline' -or $cur -match 'statusline-probe') { "
+      + "  $cmd = 'sh ' + ($t -replace '\\\\', '/'); "
+      + "  if (-not $obj.statusLine) { $obj | Add-Member -NotePropertyName statusLine -NotePropertyValue ([pscustomobject]@{ type='command'; command=$cmd; enabled=$true }) } else { $obj.statusLine.command = $cmd; $obj.statusLine.enabled = $true }; "
+      + "  $obj | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $cfg }";
+    const machines = [undefined, ...new Set(spaces().map((s) => s.machine).filter(Boolean))];
+    for (const on of machines) {
+      const isWin = !on && window()?.platform === "windows";
+      if (isWin) {
+        await exec("powershell", ["-NoProfile", "-NonInteractive", "-Command", `& { ${ps} } '${src.replace(/'/g, "''")}'`]).catch(() => null);
+      } else {
+        await exec("sh", ["-c", sh, "sh", src], { on, timeout: 8000 }).catch(() => null);
+      }
+    }
+  }
+
   render(cx) {
     const t = theme();
     if (props()?.sortMenu) return this.sortMenu(t);
@@ -775,12 +880,14 @@ export default class Agents extends View {
     // recycled pane would forever show the previous session's numbers.
     const contextOf = new Map(all.flatMap((k) => {
       const labels = k.labels ?? {};
-      const prog = String(k.program?.key ?? k.report?.app ?? "").toLowerCase();
+      const prog = String(k.program?.key ?? k.report?.app ?? k.status?.app ?? k.agent ?? "").toLowerCase();
       const isClaude = /claude/.test(prog);
-      const own = isClaude ? labels["claude.context"] ?? labels["agent.context"] : labels["agent.context"];
-      const model = isClaude ? (labels["claude.model"] || labels["agent.model"] || null) : (labels["agent.model"] || null);
+      const isAgy = /antigravity|agy/.test(prog);
+      const isCodex = /codex/.test(prog);
+      const own = isClaude ? labels["claude.context"] ?? labels["agent.context"] : (isAgy ? labels["agy.context"] ?? labels["agent.context"] : (isCodex ? labels["codex.context"] ?? labels["agent.context"] : labels["agent.context"]));
+      const model = isClaude ? (labels["claude.model"] || labels["agent.model"] || null) : (labels["agent.model"] || labels["agy.model"] || labels["codex.model"] || null);
       const v = Number.parseInt(own, 10);
-      const q = Number.parseInt((isClaude ? labels["claude.quota"] ?? labels["agent.quota"] : labels["agent.quota"]), 10);
+      const q = Number.parseInt((isClaude ? labels["claude.quota"] ?? labels["agent.quota"] : (isAgy ? labels["agy.quota"] ?? labels["agent.quota"] : (isCodex ? labels["codex.quota"] ?? labels["agent.quota"] : labels["agent.quota"]))), 10);
       if (!Number.isFinite(v) && !Number.isFinite(q)) return [];
       return [[k.address, {
         pct: Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null,

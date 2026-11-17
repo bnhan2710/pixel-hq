@@ -66,6 +66,17 @@ async function runTests() {
   assert.ok(!agentsSrc.includes('btn("upd-go"'), "company-agents must not render old upd-go button");
   console.log("PASS: Obtrusive update banner cleanly eradicated from company-agents office floor");
 
+  // 6. Verify modal and live updating status progress (1/N ... N/N)
+  assert.ok(brandUpdaterSrc.includes("export class Updater"), "updater.js must export Updater class for modal");
+  assert.ok(brandUpdaterSrc.includes("export async function openUpdateModal"), "updater.js must export openUpdateModal function");
+  assert.ok(brandSrc.includes("props()?.updateModal"), "company-brand must support updateModal in props");
+  assert.ok(brandUpdaterSrc.includes("setShared(\"pixel-hq.updating\""), "updater must publish live updating progress to shared state");
+  assert.ok(statusSrc.includes("shared(\"pixel-hq.updating\")"), "status pill must observe live updating progress");
+  assert.ok(statusSrc.includes("⏳ Updating [${updating.step}/${updating.total}]"), "status pill must display live 1/N progress");
+  assert.ok(brandSrc.includes("⏳ Updating [${updatingState.step}/${updatingState.total}]"), "sidebar must display live 1/N progress");
+  assert.ok(brandUpdaterSrc.includes("timeout: 180000"), "updating toast must remain visible throughout the update (not hide)");
+  console.log("PASS: Modal and live updating progress (1/N..N/N) with persistent toast verified");
+
   console.log("All Update System Decoupling & Urgency Types tests passed!");
 }
 

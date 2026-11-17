@@ -31,7 +31,17 @@ export default class WorkspaceStatus extends View {
       .child(label(space?.machine ? "server" : "monitor", space?.machine ?? "This computer"))
       .when(Boolean(space?.branch), el => el.child(label("branch", space.branch)))
       .child(div().text_color(t.dim).child(`${list.length} on the team`))
-      .when(Boolean(shared("pixel-hq.new-version")), (el) => {
+      .when(Boolean(shared("pixel-hq.updating") || shared("pixel-hq.new-version")), (el) => {
+        const updating = shared("pixel-hq.updating");
+        if (updating) {
+          return el.child(
+            h_flex().id("update-status-pill").gap(6).items_center().px(7).py(2).rounded(6)
+              .bg("#89b4fa").text_color(t.chrome).cursor_pointer()
+              .tooltip(`[${updating.step}/${updating.total}] Updating ${updating.file}... · Click to view modal`)
+              .on_click(() => run("company-brand.update"))
+              .child(div().font_bold().text_size(11).child(`⏳ Updating [${updating.step}/${updating.total}] · ${updating.pct}%`))
+          );
+        }
         const upd = shared("pixel-hq.new-version");
         const urgent = Boolean(upd?.isUrgent);
         const pillBg = urgent ? (t.blocked ?? "#f38ba8") : t.accent;

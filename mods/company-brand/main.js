@@ -1,7 +1,7 @@
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { theme, run, props, window, shared, setShared, updates, layout, nextCommand } from "herdr";
-import { checkPixelHqUpdate, executePixelHqUpdate } from "./updater.js";
+import { checkPixelHqUpdate, executePixelHqUpdate, openUpdateModal, Updater } from "./updater.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -26,6 +26,10 @@ function toggleSidebar() {
 
 export default class WorkspaceChrome extends View {
   init(_props, cx) {
+    if (props()?.updateModal) {
+      this.updater = new Updater(cx);
+      return;
+    }
     checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {});
     cx.timer.every(6 * 3600 * 1000, (cx) => {
       checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {});
@@ -48,9 +52,11 @@ export default class WorkspaceChrome extends View {
   }
 
   render(cx) {
+    if (this.updater) return this.updater.render(cx);
     const t = theme();
     const collapsed = narrow();
     const upd = shared("pixel-hq.new-version");
+    const updatingState = shared("pixel-hq.updating");
     if (props()?.footer) {
       const row = (id, icon, label, dim, action) => h_flex().id(id).h(28).px(8).gap(9).items_center().rounded(8)
         .when(collapsed, el => el.relative().w(32).px(0).justify_center().tooltip(label))
@@ -63,7 +69,12 @@ export default class WorkspaceChrome extends View {
         .child(row("settings", "settings", "Settings", false, () => run("app.settings"))
           .when(Boolean(updates().app.ready), el => el.child(collapsed ? ready.absolute().top(5).right(6) : ready)))
         .child(row("machine", "plus", "Add machine", true, () => run("mod.open", { name: "machine-add" })))
-        .when(Boolean(upd), el => {
+        .when(Boolean(updatingState), el => el.child(
+          row("update-hq", "sparkles", `⏳ Updating [${updatingState.step}/${updatingState.total}] (${updatingState.pct}%)`, false, () => {
+            openUpdateModal();
+          }).text_color(t.accent).child(ready)
+        ))
+        .when(Boolean(!updatingState && upd), el => {
           const urgent = Boolean(upd?.isUrgent);
           const verText = upd?.versionLabel ?? `v${upd.version}`;
           const label = urgent ? `⚠️ Urgent Update (${verText})` : `Update Pixel HQ (${verText})`;
@@ -83,7 +94,14 @@ export default class WorkspaceChrome extends View {
       .when(!collapsed, el => el.child(h_flex().flex_1().gap(9).items_center().child(logo)
         .child(v_flex().gap(0).child(div().font_semibold().text_size(14).text_color(t.foreground).child("Pixel HQ"))
           .child(div().text_size(10).text_color(t.dim).child("engineering floor")))))
-      .when(Boolean(upd && !collapsed), el => {
+      .when(Boolean((updatingState || upd) && !collapsed), el => {
+        if (updatingState) {
+          return el.child(
+            this.button("update-btn", svg("mods/company-brand/sparkles.svg").size(15), () => {
+              openUpdateModal();
+            }).tooltip(`Updating [${updatingState.step}/${updatingState.total}]: ${updatingState.file}`).text_color(t.accent)
+          );
+        }
         const urgent = Boolean(upd?.isUrgent);
         const verText = upd?.versionLabel ?? `v${upd.version}`;
         const color = urgent ? (t.blocked ?? "#f38ba8") : t.accent;

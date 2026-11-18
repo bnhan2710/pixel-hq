@@ -270,7 +270,7 @@ def test_9_playlist_queue_and_auto_advance():
             assert q is not None
             assert len(q["items"]) == 6
 
-            player.extract_stream_info = lambda u: ("Resolved Track", f"https://resolved-{u[-2:]}", None)
+            player.extract_stream_info = lambda u: ("Resolved Track", f"https://resolved-{u[-2:]}", 210, None)
 
             p_res = player.cmd_prefetch()
             assert p_res["status"] == "ok"
@@ -364,6 +364,72 @@ def test_10_recently_played_history():
             player.HISTORY_FILE = orig_history
     print("PASS: Test 10 - Recently Played History verified")
 
+def test_11_playback_progress_counter():
+    print("=== Test 11: Playback Progress Counter & Time Tracking ===")
+    with tempfile.TemporaryDirectory() as td:
+        orig_cache = player.CACHE_DIR
+        orig_state = player.STATE_FILE
+        player.CACHE_DIR = td
+        player.STATE_FILE = os.path.join(td, "state.json")
+
+        mock_player = os.path.join(td, "ffplay")
+        with open(mock_player, "w") as f:
+            f.write("#!/bin/sh\nwhile true; do sleep 1; done\n")
+        os.chmod(mock_player, 0o755)
+
+        orig_find_player = player.find_player_bin
+        orig_extract = player.extract_stream_info
+        orig_suspend = player.suspend_process
+        orig_resume = player.resume_process
+        player.find_player_bin = lambda: mock_player
+        player.extract_stream_info = lambda u: ("Mock Track", "https://stream", 300, None)
+        player.suspend_process = lambda pid: True
+        player.resume_process = lambda pid: True
+
+        try:
+            play_res = player.cmd_play("https://www.youtube.com/watch?v=mock1")
+            assert play_res["status"] == "playing"
+            assert play_res["duration"] == 300
+            assert play_res["elapsed"] == 0
+            assert play_res["currentElapsed"] == 0
+
+            time.sleep(1.05)
+            st = player.cmd_status()
+            assert st["status"] == "playing"
+            assert st["duration"] == 300
+            assert st["currentElapsed"] >= 1
+
+            pause_res = player.cmd_pause()
+            assert pause_res["status"] == "paused"
+            assert pause_res["elapsed"] >= 1
+            captured_elapsed = pause_res["elapsed"]
+
+            time.sleep(0.5)
+            st_paused = player.cmd_status()
+            assert st_paused["status"] == "paused"
+            assert st_paused["currentElapsed"] == captured_elapsed
+
+            resume_res = player.cmd_resume()
+            assert resume_res["status"] == "playing"
+
+            time.sleep(1.05)
+            st_resumed = player.cmd_status()
+            assert st_resumed["status"] == "playing"
+            assert st_resumed["currentElapsed"] >= captured_elapsed + 1
+
+            stop_res = player.cmd_stop()
+            assert stop_res["status"] == "idle"
+            assert stop_res["elapsed"] == 0
+            assert stop_res["currentElapsed"] == 0
+        finally:
+            player.find_player_bin = orig_find_player
+            player.extract_stream_info = orig_extract
+            player.suspend_process = orig_suspend
+            player.resume_process = orig_resume
+            player.CACHE_DIR = orig_cache
+            player.STATE_FILE = orig_state
+    print("PASS: Test 11 - Playback Progress Counter & Time Tracking verified")
+
 def main():
     test_1_url_validation()
     test_2_title_derivation()
@@ -375,7 +441,8 @@ def main():
     test_8_next_prev_cycling()
     test_9_playlist_queue_and_auto_advance()
     test_10_recently_played_history()
-    print("All 10 Music Player unit test suites passed successfully!")
+    test_11_playback_progress_counter()
+    print("All 11 Music Player unit test suites passed successfully!")
 
 if __name__ == "__main__":
     main()

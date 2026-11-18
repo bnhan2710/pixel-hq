@@ -4,6 +4,19 @@ import { theme, run, shared, setShared, closeOverlay, checking, appHome, exec, w
 
 const MONO = "JetBrains Mono, Menlo, monospace";
 
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds) || seconds < 0) return "00:00";
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const remM = m % 60;
+    return `${h}:${remM.toString().padStart(2, "0")}:${rem.toString().padStart(2, "0")}`;
+  }
+  return `${m.toString().padStart(2, "0")}:${rem.toString().padStart(2, "0")}`;
+}
+
 const PRESETS = [
   { id: "somafm-chill", title: "SomaFM Groove Salad", desc: "Ambient & Downtempo", url: "https://ice2.somafm.com/groovesalad-128-mp3", tag: "Direct MP3" },
   { id: "nightwave", title: "Nightwave Plaza", desc: "Vaporwave & City Pop", url: "https://stream.plaza.one/mp3", tag: "Direct MP3" },
@@ -45,6 +58,11 @@ export default class CompanyMusic extends View {
     cx.timer.after(150, () => this.urlInput.focus());
     this.checkDeps(cx);
     this.loadHistory(cx);
+
+    cx.timer.every(1000, (cx) => {
+      const music = shared("pixel-hq.music");
+      if (music?.playing) cx.notify();
+    });
 
     cx.timer.every(1500, async (cx) => {
       const music = shared("pixel-hq.music");
@@ -819,6 +837,13 @@ export default class CompanyMusic extends View {
     const isBuffering = music.status === "buffering" || this.busy;
     const isPaused = music.status === "paused";
     const currentTitle = music.title || (isPlaying ? "Audio Stream" : "No stream playing");
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const baseElapsed = Number(music.elapsed || music.currentElapsed || 0);
+    const liveElapsed = isPlaying && music.startTime ? baseElapsed + Math.max(0, nowSec - music.startTime) : (music.currentElapsed || baseElapsed);
+    const dur = Number(music.duration || 0);
+    const percent = dur > 0 ? Math.min(100, Math.max(0, Math.round((liveElapsed / dur) * 100))) : 0;
+
     const missingPlayer = Boolean(this.depStatus && !this.depStatus.has_player);
     const missingYtDlp = Boolean(this.depStatus && !this.depStatus.has_ytdlp);
     const rawError = this.error || music.error;
@@ -1103,6 +1128,77 @@ export default class CompanyMusic extends View {
                       : "IDLE"
                   )
               )
+          )
+          .when(isPlaying || isPaused || isBuffering, (el) =>
+            el.child(
+              v_flex()
+                .w_full()
+                .gap(5)
+                .when(dur > 0, (bar) =>
+                  bar.child(
+                    div()
+                      .w_full()
+                      .h(4)
+                      .rounded(2)
+                      .bg("#1e1e2e")
+                      .overflow_hidden()
+                      .child(
+                        div()
+                          .h_full()
+                          .rounded(2)
+                          .bg(isPlaying ? "#89b4fa" : "#585b70")
+                          .w(`${Math.max(1, percent)}%`)
+                      )
+                  )
+                )
+                .child(
+                  h_flex()
+                    .w_full()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                      h_flex()
+                        .gap(5)
+                        .items_center()
+                        .child(div().text_size(9.5).child("⏱"))
+                        .child(
+                          div()
+                            .text_size(10)
+                            .font_family(MONO)
+                            .font_semibold()
+                            .text_color(isPlaying ? "#cdd6f4" : t.dim)
+                            .child(
+                              dur > 0
+                                ? `${formatTime(liveElapsed)} / ${formatTime(dur)}`
+                                : `${formatTime(liveElapsed)} (Streaming)`
+                            )
+                        )
+                    )
+                    .when(dur > 0, (pct) =>
+                      pct.child(
+                        div()
+                          .text_size(9.5)
+                          .font_family(MONO)
+                          .font_semibold()
+                          .text_color(isPlaying ? "#89b4fa" : t.dim)
+                          .child(`${percent}%`)
+                      )
+                    )
+                    .when(dur <= 0, (tag) =>
+                      tag.child(
+                        div()
+                          .px(4)
+                          .py(1)
+                          .rounded(2)
+                          .bg("#313244")
+                          .text_size(8.5)
+                          .font_family(MONO)
+                          .text_color("#89b4fa")
+                          .child("LIVE")
+                      )
+                    )
+                )
+            )
           )
           .child(
             h_flex()

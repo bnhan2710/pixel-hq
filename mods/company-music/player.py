@@ -11,7 +11,7 @@ CACHE_DIR = os.path.expanduser("~/.cache/pixel-hq/music")
 STATE_FILE = os.path.join(CACHE_DIR, "state.json")
 QUEUE_FILE = os.path.join(CACHE_DIR, "queue.json")
 PREFETCH_PID_FILE = os.path.join(CACHE_DIR, "prefetch.pid")
-POOL_SIZE = 3
+POOL_SIZE = 5
 
 DEFAULT_PRESETS = [
     {"title": "SomaFM Groove Salad", "url": "https://ice2.somafm.com/groovesalad-128-mp3"},

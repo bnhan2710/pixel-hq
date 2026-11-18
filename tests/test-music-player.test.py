@@ -257,6 +257,8 @@ def test_9_playlist_queue_and_auto_advance():
             {"id": "v2", "title": "Track 2", "url": "https://www.youtube.com/watch?v=v2", "stream_url": "https://stream2", "resolved_at": int(time.time())},
             {"id": "v3", "title": "Track 3", "url": "https://www.youtube.com/watch?v=v3", "stream_url": None, "resolved_at": 0},
             {"id": "v4", "title": "Track 4", "url": "https://www.youtube.com/watch?v=v4", "stream_url": None, "resolved_at": 0},
+            {"id": "v5", "title": "Track 5", "url": "https://www.youtube.com/watch?v=v5", "stream_url": None, "resolved_at": 0},
+            {"id": "v6", "title": "Track 6", "url": "https://www.youtube.com/watch?v=v6", "stream_url": None, "resolved_at": 0},
         ]
         try:
             player.write_queue({
@@ -266,7 +268,7 @@ def test_9_playlist_queue_and_auto_advance():
             })
             q = player.read_queue()
             assert q is not None
-            assert len(q["items"]) == 4
+            assert len(q["items"]) == 6
 
             player.extract_stream_info = lambda u: ("Resolved Track", f"https://resolved-{u[-2:]}", None)
 
@@ -276,25 +278,27 @@ def test_9_playlist_queue_and_auto_advance():
             assert q_after["items"][1]["stream_url"] == "https://stream2"
             assert q_after["items"][2]["stream_url"] == "https://resolved-v3"
             assert q_after["items"][3]["stream_url"] == "https://resolved-v4"
+            assert q_after["items"][4]["stream_url"] == "https://resolved-v5"
+            assert q_after["items"][5]["stream_url"] == "https://resolved-v6"
 
             res_play = player.cmd_play_queue_index(0)
             assert res_play["status"] == "playing"
-            assert "[1/4]" in res_play["title"]
+            assert "[1/6]" in res_play["title"]
 
             next_res = player.cmd_next()
             assert next_res["status"] == "playing"
-            assert "[2/4]" in next_res["title"]
+            assert "[2/6]" in next_res["title"]
             assert player.read_queue()["current_index"] == 1
 
             prev_res = player.cmd_prev()
             assert prev_res["status"] == "playing"
-            assert "[1/4]" in prev_res["title"]
+            assert "[1/6]" in prev_res["title"]
             assert player.read_queue()["current_index"] == 0
 
             time.sleep(0.05)
             auto_res = player.cmd_status()
             assert auto_res["status"] == "playing"
-            assert "[2/4]" in auto_res["title"]
+            assert "[2/6]" in auto_res["title"]
 
             player.cmd_stop()
             assert player.read_queue() is None

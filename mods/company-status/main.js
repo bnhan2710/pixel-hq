@@ -1,8 +1,67 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, focused, agents, theme, run, window, keys, setBadge, openOverlay, shared } from "herdr";
+import { spaces, panes, focused, agents, theme, run, window, keys, setBadge, openOverlay, shared, setShared, appHome, exec, checking } from "herdr";
 
 export default class WorkspaceStatus extends View {
+  init(_props, cx) {
+    if (checking()) return;
+    this.polling = false;
+    cx.timer.every(3000, async (cx) => {
+      if (this.polling) return;
+      const music = shared("pixel-hq.music");
+      this.polling = true;
+      try {
+        const script = `${appHome()}/mods/company-music/player.py`;
+        const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+        for (const bin of candidates) {
+          const r = await exec(bin, [script, "status"], { timeout: 3000 }).catch(() => null);
+          if (!r?.stdout) continue;
+          try {
+            const res = JSON.parse(r.stdout.trim().split("\n").pop());
+            if (res.playing !== music.playing || res.status !== music.status || (res.title && res.title !== music.title)) {
+              setShared("pixel-hq.music", res);
+              cx.notify();
+            }
+            break;
+          } catch {}
+        }
+      } finally {
+        this.polling = false;
+      }
+    });
+  }
+
+  async musicAction(action, cx) {
+    if (this.actionBusy) return;
+    this.actionBusy = true;
+    if (action === "next" || action === "prev") {
+      const cur = shared("pixel-hq.music");
+      setShared("pixel-hq.music", {
+        ...(cur || {}),
+        playing: false,
+        status: "buffering",
+        title: "Switching station..."
+      });
+      if (cx) cx.notify();
+    }
+    try {
+      const script = `${appHome()}/mods/company-music/player.py`;
+      const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+      for (const bin of candidates) {
+        const r = await exec(bin, [script, action], { timeout: 35000 }).catch(() => null);
+        if (!r?.stdout) continue;
+        try {
+          const res = JSON.parse(r.stdout.trim().split("\n").pop());
+          setShared("pixel-hq.music", res);
+          if (cx) cx.notify();
+          break;
+        } catch {}
+      }
+    } finally {
+      this.actionBusy = false;
+    }
+  }
+
   switcherHint() {
     const mac = window()?.platform === "macos";
     const mod = { cmd: mac ? "⌘" : "Ctrl+", ctrl: mac ? "⌃" : "Ctrl+", shift: mac ? "⇧" : "Shift+", alt: mac ? "⌥" : "Alt+", option: mac ? "⌥" : "Alt+" };
@@ -13,8 +72,6 @@ export default class WorkspaceStatus extends View {
     return `${key} Switcher`;
   }
 
-  // The palette key as actually bound, not a hardcoded one; without a
-  // binding the hint stays useful ("commands") instead of lying.
   hint(t) {
     const mac = window()?.platform === "macos";
     const mod = { cmd: mac ? "⌘" : "Ctrl+", ctrl: mac ? "⌃" : "Ctrl+", shift: mac ? "⇧" : "Shift+", alt: mac ? "⌥" : "Alt+", option: mac ? "⌥" : "Alt+" };
@@ -75,6 +132,139 @@ export default class WorkspaceStatus extends View {
       .when(n("done") > 0, el => el.child(pill(t.done ?? "#8ec07c", `${n("done")} shipped`)))
       .when(list.length - n("working") - n("blocked") - n("done") > 0, el => el.child(pill(t.dim ?? "#9a8f86", `${list.length - n("working") - n("blocked") - n("done")} on break`)))
       .child(div().flex_1())
+      .child(
+        (() => {
+          const m = shared("pixel-hq.music");
+          const setup = shared("pixel-hq.music-setup");
+          if (setup?.installing) {
+            return h_flex()
+              .id("btn-music")
+              .gap(5)
+              .items_center()
+              .px(6)
+              .py(2)
+              .rounded(4)
+              .max_w(170)
+              .cursor_pointer()
+              .bg("#313244")
+              .text_color("#f9e2af")
+              .tooltip(setup.msg || "Installing audio engine... · Click to view")
+              .on_click(() => run("mod.open", { name: "company-music" }))
+              .child(div().text_size(10).child("⏳"))
+              .child(div().truncate().text_size(11).font_semibold().child("Installing..."));
+          }
+          const isPlaying = Boolean(m?.playing);
+          const isPaused = m?.status === "paused";
+          const isBuffering = m?.status === "buffering";
+          const title = m?.title || "MusicBox";
+          if (isPlaying || isPaused || isBuffering) {
+            const playPauseIcon = isPlaying ? "⏸" : "▶";
+            const playPauseTooltip = isPlaying ? "Tạm dừng (Pause)" : "Tiếp tục phát (Resume)";
+            return h_flex()
+              .id("btn-music-bar")
+              .gap(3)
+              .items_center()
+              .px(5)
+              .py(2)
+              .rounded(6)
+              .bg("#181825")
+              .border_1()
+              .border_color("#313244")
+              .child(
+                div()
+                  .cursor_pointer()
+                  .w(22)
+                  .h(20)
+                  .flex()
+                  .items_center()
+                  .justify_center()
+                  .rounded(4)
+                  .text_size(13.5)
+                  .text_color(t.dim)
+                  .hover((s) => s.bg(t.hover).text_color(t.foreground))
+                  .tooltip("Bài trước / Đài trước (Previous)")
+                  .on_click((_e, cx) => this.musicAction("prev", cx))
+                  .child("⏮")
+              )
+              .child(
+                div()
+                  .cursor_pointer()
+                  .w(22)
+                  .h(20)
+                  .flex()
+                  .items_center()
+                  .justify_center()
+                  .rounded(4)
+                  .text_size(14)
+                  .text_color(isPlaying ? "#a6e3a1" : "#89b4fa")
+                  .hover((s) => s.bg(t.hover))
+                  .tooltip(playPauseTooltip)
+                  .on_click((_e, cx) => this.musicAction(isPlaying ? "pause" : "resume", cx))
+                  .child(isBuffering ? "⏳" : playPauseIcon)
+              )
+              .child(
+                div()
+                  .cursor_pointer()
+                  .w(22)
+                  .h(20)
+                  .flex()
+                  .items_center()
+                  .justify_center()
+                  .rounded(4)
+                  .text_size(13.5)
+                  .text_color("#f38ba8")
+                  .hover((s) => s.bg(t.hover))
+                  .tooltip("Dừng phát (Stop)")
+                  .on_click((_e, cx) => this.musicAction("stop", cx))
+                  .child("⏹")
+              )
+              .child(
+                div()
+                  .cursor_pointer()
+                  .w(22)
+                  .h(20)
+                  .flex()
+                  .items_center()
+                  .justify_center()
+                  .rounded(4)
+                  .text_size(13.5)
+                  .text_color(t.dim)
+                  .hover((s) => s.bg(t.hover).text_color(t.foreground))
+                  .tooltip("Bài kế tiếp / Đài kế tiếp (Next)")
+                  .on_click((_e, cx) => this.musicAction("next", cx))
+                  .child("⏭")
+              )
+              .child(
+                h_flex()
+                  .cursor_pointer()
+                  .items_center()
+                  .gap(5)
+                  .px(6)
+                  .py(2)
+                  .rounded(4)
+                  .max_w(170)
+                  .hover((s) => s.bg(t.hover))
+                  .tooltip(`Pixel MusicBox: ${title} · Mở bảng điều khiển`)
+                  .on_click(() => run("mod.open", { name: "company-music" }))
+                  .child(div().text_size(12).child("📻"))
+                  .child(div().truncate().text_size(11.5).font_semibold().text_color(t.foreground).child(title))
+              );
+          }
+          return h_flex()
+            .id("btn-music")
+            .gap(5)
+            .items_center()
+            .px(6)
+            .py(2)
+            .rounded(4)
+            .text_color(t.dim)
+            .cursor_pointer()
+            .hover((s) => s.bg(t.hover).text_color(t.foreground))
+            .tooltip("Open Pixel MusicBox")
+            .on_click(() => run("mod.open", { name: "company-music" }))
+            .child("📻 MusicBox");
+        })()
+      )
       .child(
         h_flex()
           .id("btn-switcher")

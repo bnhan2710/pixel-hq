@@ -1,6 +1,6 @@
 # gpui-shell rewrites these on every check; committing them only freezes a stale copy.
-mods/company-agents/gpui-kit.d.ts
-mods/company-agents/jsconfig.json
+mods/*/gpui-kit.d.ts
+mods/*/jsconfig.json
 
 __pycache__/
 *.pyc

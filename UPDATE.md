@@ -9,7 +9,7 @@ What lives in your install (`~/.config/herdr-app/`):
 | --- | --- |
 | `layouts/pixel-hq.json` | the layout |
 | `themes/pixel-hq.json` | the terminal theme |
-| `mods/company-agents/`, `company-brand/`, `company-pane/`, `company-spaces/`, `company-status/`, `company-switcher/`, `company-hotkeys/` | the mods |
+| `mods/company-agents/`, `company-brand/`, `company-pane/`, `company-spaces/`, `company-status/`, `company-switcher/`, `company-hotkeys/`, `company-music/` | the mods |
 
 ## 1. Press Update now
 

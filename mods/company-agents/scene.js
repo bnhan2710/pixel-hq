@@ -19,7 +19,7 @@ function ellipse(cx, cy, rx, ry, c) {
 // The tech corner on the wall: a server rack (drive bays, vents and fans, a glowing light on every unit) and a modern little desk with a monitor, keyboard and a mug.
 const LIGHTS = ["#f4723a", "#f9d23c", "#8fcb4f", "#37c5d6", "#c678dd", "#f38ba8"];
 const CODE = ["#cba6f7", "#89b4fa", "#a6e3a1", "#f9e2af", "#f5c2e7", "#94e2d5"]; // keyword, function, string, class, tag, type
-function ledWall(x, w, base) {
+function ledWall(x, w, base, isMusicPlaying = false) {
   const o = [], top = 8, rw = w >= 64 ? snap(Math.min(28, w * 0.34)) : snap(w), rh = snap(Math.min(base - top, 80)), rt = base - rh;
   // Server rack: a cabinet with a lit top cap, a darker side, a plinth with feet, and units of three kinds.
   o.push(r(x - 2, rt - 2, rw + 4, rh + 2, "#0a0c1a"), r(x, rt, rw, rh, "#1a1f3d"), r(x + rw - 3, rt, 3, rh, "#12152c"), r(x, rt, 1, rh, "#2c3366"),
@@ -40,6 +40,29 @@ function ledWall(x, w, base) {
     o.push(r(ux + 1, uy + 2, 5, 5, ledC + "33"));
     const led = r(ux + 2, uy + 3, 3, 3, ledC);
     o.push(k % 3 === 1 ? led.loop("opacity", { from: 0.25, to: 1, period: 700 + k * 230, easing: "ease-in-out" }) : led);
+  }
+  if (w >= 64) {
+    const rx = x + 3, ry = rt - 11;
+    o.push(
+      r(rx, ry + 2, 18, 9, "#313244"),
+      r(rx + 4, ry, 10, 2, "#45475a"),
+      r(rx + 2, ry + 4, 4, 5, "#181825"),
+      r(rx + 3, ry + 5, 2, 3, isMusicPlaying ? "#89b4fa" : "#45475a"),
+      r(rx + 12, ry + 4, 4, 5, "#181825"),
+      r(rx + 13, ry + 5, 2, 3, isMusicPlaying ? "#89b4fa" : "#45475a"),
+      r(rx + 7, ry + 4, 4, 4, "#11111b"),
+      r(rx + 15, ry - 3, 1, 3, "#89b4fa"),
+      r(rx + 8, ry + 2, 2, 1, isMusicPlaying ? "#a6e3a1" : "#585b70")
+    );
+    if (isMusicPlaying) {
+      o.push(
+        r(rx + 4, ry - 6, 2, 2, "#cba6f7").loop("opacity", { from: 0.1, to: 1, period: 1400, easing: "ease-in-out" }),
+        r(rx + 5, ry - 9, 1, 4, "#cba6f7").loop("opacity", { from: 0.1, to: 1, period: 1400, easing: "ease-in-out" }),
+        r(rx + 11, ry - 9, 2, 2, "#89b4fa").loop("opacity", { from: 0.8, to: 0.1, period: 1700, easing: "ease-in-out" }),
+        r(rx + 12, ry - 12, 1, 4, "#89b4fa").loop("opacity", { from: 0.8, to: 0.1, period: 1700, easing: "ease-in-out" }),
+        r(rx + 17, ry - 5, 2, 2, "#f5c2e7").loop("opacity", { from: 0.2, to: 0.9, period: 1200, easing: "ease-in-out" })
+      );
+    }
   }
   if (w < 64) return o;
   // A little desk on the baseboard: a slim modern desk, and on it a monitor (code editor with a gutter, minimap and status bar), a keyboard, a mouse and a mug.
@@ -105,7 +128,7 @@ function ledWall(x, w, base) {
 
 export const yHorizon = (H) => snap(snap(H) * 0.3); // where the wall ends and the floor begins
 
-export function scene(W, H) {
+export function scene(W, H, isMusicPlaying = false) {
   W = snap(W); H = snap(H);
   const yH = yHorizon(H);
   const base = yH - 8; // the top of the baseboard: things stand on it
@@ -155,7 +178,7 @@ export function scene(W, H) {
     r(x, base - 44, 10, 26, "#2f6e3b"), r(x + 8, base - 54, 10, 36, "#3a8247"), r(x + 18, base - 42, 10, 24, "#2f6e3b"), r(x + 4, base - 34, 6, 6, "#52a35f"),
     r(x + 2, base - 18, 24, 18, "#8a5a3c"), r(x, base - 18, 28, 4, "#a06c48"),
   ];
-  L.push(...plant(6), ...ledWall(rackX, rackW, base));
+  L.push(...plant(6), ...ledWall(rackX, rackW, base, isMusicPlaying));
 
   // Tiled floor: a dark base with a grid of 24px tiles, and a pool of window light under each window.
   L.push(r(0, yH, W, H - yH, "#242843"));

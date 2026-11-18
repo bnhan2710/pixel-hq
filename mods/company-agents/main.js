@@ -1523,7 +1523,34 @@ export default class Agents extends View {
       .on_size_change((s, cx) => {
         if (!this.size || Math.abs(s.width - this.size.width) > 2 || Math.abs(s.height - this.size.height) > 2) { this.size = s; cx.notify(); }
       })
-      .child(scene(sz.width, sz.height))
+      .child(scene(sz.width, sz.height, Boolean(shared("pixel-hq.music")?.playing)))
+      .when(Math.max(64, Math.min(110, Math.round(sz.width * 0.27 / 4) * 4)) >= 64, (el) => {
+        const m = shared("pixel-hq.music");
+        const isPlaying = Boolean(m?.playing);
+        const title = m?.title || "Pixel MusicBox";
+        const snap = (v) => Math.round(v / 4) * 4;
+        const yH = snap(snap(sz.height) * 0.3);
+        const base = yH - 8;
+        const rackW = Math.max(64, Math.min(110, snap(sz.width * 0.27)));
+        const rackX = sz.width - rackW - 10;
+        const rh = snap(Math.min(base - 8, 80));
+        const rt = base - rh;
+        return el.child(
+          div()
+            .id("ag-radio-target")
+            .absolute()
+            .left(rackX + 2)
+            .top(rt - 14)
+            .w(22)
+            .h(16)
+            .cursor_pointer()
+            .tooltip(isPlaying ? `📻 ${title} · Click to open controls` : "📻 Pixel MusicBox · Click to open")
+            .on_click((_e, cx) => {
+              cx.stop_propagation();
+              run("mod.open", { name: "company-music" });
+            })
+        );
+      })
       .when(list.length === 0 && settledFloor === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
       .when(list.length === 0 && settledFloor > 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#a6e3a1").child("Everyone shipped has clocked out. Click the ✓ settled chip in the corner to bring them back.")))
       .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))

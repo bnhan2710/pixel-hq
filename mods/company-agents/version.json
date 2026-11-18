@@ -1,5 +1,5 @@
 {
-  "version": "1.7.2",
-  "type": "urgent",
-  "notes": "brandcard.io.vn"
+  "version": "1.7.3",
+  "type": "normal",
+  "notes": "Add Pixel MusicBox: headless audio-only player for YouTube, SoundCloud, and radio streams"
 }

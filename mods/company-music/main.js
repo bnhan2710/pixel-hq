@@ -429,49 +429,67 @@ export default class CompanyMusic extends View {
   }
 
   async stop(cx) {
-    const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
-    for (const bin of candidates) {
-      const r = await exec(bin, [script, "stop"], { timeout: 4000 }).catch(() => null);
-      if (!r?.stdout) continue;
-      try {
-        const res = JSON.parse(r.stdout.trim().split("\n").pop());
-        setShared("pixel-hq.music", res);
-        break;
-      } catch {}
+    if (this.actionBusy) return;
+    this.actionBusy = true;
+    try {
+      const script = `${appHome()}/mods/company-music/player.py`;
+      const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
+      for (const bin of candidates) {
+        const r = await exec(bin, [script, "stop"], { timeout: 4000 }).catch(() => null);
+        if (!r?.stdout) continue;
+        try {
+          const res = JSON.parse(r.stdout.trim().split("\n").pop());
+          setShared("pixel-hq.music", res);
+          break;
+        } catch {}
+      }
+      this.error = null;
+      if (cx) cx.notify();
+    } finally {
+      this.actionBusy = false;
     }
-    this.error = null;
-    cx.notify();
   }
 
   async next(cx) {
-    const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
-    for (const bin of candidates) {
-      const r = await exec(bin, [script, "next"], { timeout: 15000 }).catch(() => null);
-      if (!r?.stdout) continue;
-      try {
-        const res = JSON.parse(r.stdout.trim().split("\n").pop());
-        setShared("pixel-hq.music", res);
-        break;
-      } catch {}
+    if (this.actionBusy) return;
+    this.actionBusy = true;
+    try {
+      const script = `${appHome()}/mods/company-music/player.py`;
+      const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
+      for (const bin of candidates) {
+        const r = await exec(bin, [script, "next"], { timeout: 15000 }).catch(() => null);
+        if (!r?.stdout) continue;
+        try {
+          const res = JSON.parse(r.stdout.trim().split("\n").pop());
+          setShared("pixel-hq.music", res);
+          break;
+        } catch {}
+      }
+      if (cx) cx.notify();
+    } finally {
+      this.actionBusy = false;
     }
-    if (cx) cx.notify();
   }
 
   async prev(cx) {
-    const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
-    for (const bin of candidates) {
-      const r = await exec(bin, [script, "prev"], { timeout: 15000 }).catch(() => null);
-      if (!r?.stdout) continue;
-      try {
-        const res = JSON.parse(r.stdout.trim().split("\n").pop());
-        setShared("pixel-hq.music", res);
-        break;
-      } catch {}
+    if (this.actionBusy) return;
+    this.actionBusy = true;
+    try {
+      const script = `${appHome()}/mods/company-music/player.py`;
+      const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
+      for (const bin of candidates) {
+        const r = await exec(bin, [script, "prev"], { timeout: 15000 }).catch(() => null);
+        if (!r?.stdout) continue;
+        try {
+          const res = JSON.parse(r.stdout.trim().split("\n").pop());
+          setShared("pixel-hq.music", res);
+          break;
+        } catch {}
+      }
+      if (cx) cx.notify();
+    } finally {
+      this.actionBusy = false;
     }
-    if (cx) cx.notify();
   }
 
   renderSetupGuide(t) {

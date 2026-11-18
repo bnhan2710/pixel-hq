@@ -336,17 +336,28 @@ def find_running_player_pid():
 def stop_all_players(keep_queue=False):
     kill_prefetch_worker()
     current = read_state()
-    if current and current.get("pid"):
-        stop_process(current["pid"], current.get("status") == "paused")
+    pid = current.get("pid") if current else None
+    is_paused = current.get("status") == "paused" if current else False
+    if not keep_queue:
+        clear_queue()
+        clear_state()
+    if pid:
+        stop_process(pid, is_paused)
+    orphan = find_running_player_pid()
+    if orphan and orphan != pid:
+        stop_process(orphan)
     if sys.platform == "win32":
         try:
             run_cmd(["taskkill", "/F", "/IM", "ffplay.exe"], capture_output=True, timeout=2)
             run_cmd(["taskkill", "/F", "/IM", "mpv.exe"], capture_output=True, timeout=2)
         except Exception:
             pass
-    if not keep_queue:
-        clear_queue()
-    clear_state()
+    elif sys.platform == "darwin" or sys.platform.startswith("linux"):
+        try:
+            run_cmd(["pkill", "-x", "ffplay"], capture_output=True, timeout=2)
+            run_cmd(["pkill", "-x", "mpv"], capture_output=True, timeout=2)
+        except Exception:
+            pass
 
 def find_player_bin():
     for name in ("ffplay", "mpv"):
@@ -683,7 +694,6 @@ def cmd_play_queue_index(index):
     if not queue or not queue.get("items") or index < 0 or index >= len(queue["items"]):
         return {"status": "error", "error": "Invalid queue index", "playing": False}
 
-    stop_all_players(keep_queue=True)
     item = queue["items"][index]
     queue["current_index"] = index
     write_queue(queue)
@@ -694,19 +704,45 @@ def cmd_play_queue_index(index):
     duration = item.get("duration", 0)
     now = int(time.time())
 
+    write_state({
+        "pid": None,
+        "startTime": now,
+        "elapsed": 0,
+        "duration": duration,
+        "currentElapsed": 0,
+        "url": url,
+        "title": f"[{index + 1}/{len(queue['items'])}] {title}",
+        "status": "buffering",
+        "playing": False,
+        "source": "youtube",
+        "playlist": {
+            "index": index + 1,
+            "total": len(queue["items"])
+        },
+        "history": read_history()
+    })
+
+    stop_all_players(keep_queue=True)
+
+    write_state({
+        "pid": None,
+        "startTime": now,
+        "elapsed": 0,
+        "duration": duration,
+        "currentElapsed": 0,
+        "url": url,
+        "title": f"[{index + 1}/{len(queue['items'])}] {title}",
+        "status": "buffering",
+        "playing": False,
+        "source": "youtube",
+        "playlist": {
+            "index": index + 1,
+            "total": len(queue["items"])
+        },
+        "history": read_history()
+    })
+
     if not stream_url or (now - item.get("resolved_at", 0) >= 14400):
-        write_state({
-            "pid": None,
-            "startTime": now,
-            "elapsed": 0,
-            "duration": duration,
-            "currentElapsed": 0,
-            "url": url,
-            "title": f"[{index + 1}/{len(queue['items'])}] {title}",
-            "status": "buffering",
-            "playing": False,
-            "source": "youtube"
-        })
         ext_title, ext_stream, ext_dur, err = extract_stream_info(url)
         if err or not ext_stream:
             if index + 1 < len(queue["items"]):
@@ -1077,63 +1113,68 @@ def cmd_stop():
 
 def cmd_status():
     current = read_state()
-    if current and current.get("pid"):
-        now = int(time.time())
-        base = current.get("elapsed", 0)
-        dur = current.get("duration", 0)
-        is_playing = current.get("playing", False)
-        current_elapsed = base + (max(0, now - current.get("startTime", now)) if is_playing else 0)
-        current["currentElapsed"] = current_elapsed
-        current["history"] = read_history()
+    if not current:
+        orphan_pid = find_running_player_pid()
+        if orphan_pid:
+            state = {
+                "pid": orphan_pid,
+                "startTime": int(time.time()),
+                "elapsed": 0,
+                "duration": 0,
+                "currentElapsed": 0,
+                "url": "",
+                "title": "Audio Stream",
+                "status": "playing",
+                "playing": True,
+                "source": "direct",
+                "history": read_history()
+            }
+            write_state(state)
+            return state
+        return {"status": "idle", "playing": False, "title": "", "url": "", "source": "direct", "elapsed": 0, "duration": 0, "currentElapsed": 0, "history": read_history()}
 
-        proc_alive = is_valid_player_proc(current["pid"])
-        is_expired = is_playing and dur > 0 and current_elapsed >= dur + 1.5
-
-        if proc_alive and not is_expired:
-            return current
-
-        if is_playing and (now - current.get("startTime", now) < 6) and not is_expired:
-            orphan = find_running_player_pid()
-            if orphan:
-                current["pid"] = orphan
-                write_state(current)
-                return current
-            return current
-
-    if current and current.get("status") == "buffering":
+    status = current.get("status")
+    if status == "buffering":
         if int(time.time()) - current.get("startTime", 0) <= 35:
             current["currentElapsed"] = current.get("elapsed", 0)
             current["history"] = read_history()
             return current
 
-    queue = read_queue()
-    if queue and queue.get("items"):
-        cur_idx = queue.get("current_index", 0)
-        items = queue.get("items", [])
-        if cur_idx + 1 < len(items):
-            res = cmd_play_queue_index(cur_idx + 1)
-            res["history"] = read_history()
-            return res
-        else:
-            clear_queue()
+    if status == "paused":
+        current["currentElapsed"] = current.get("elapsed", 0)
+        current["history"] = read_history()
+        return current
 
-    orphan_pid = find_running_player_pid()
-    if orphan_pid:
-        state = {
-            "pid": orphan_pid,
-            "startTime": int(time.time()),
-            "elapsed": 0,
-            "duration": 0,
-            "currentElapsed": 0,
-            "url": current.get("url", "") if current else "",
-            "title": current.get("title", "Audio Stream") if (current and current.get("title") and current.get("title") != "Buffering stream...") else "Audio Stream",
-            "status": "playing",
-            "playing": True,
-            "source": current.get("source", "direct") if current else "direct",
-            "history": read_history()
-        }
-        write_state(state)
-        return state
+    if status == "playing" and current.get("pid"):
+        now = int(time.time())
+        base = current.get("elapsed", 0)
+        dur = current.get("duration", 0)
+        current_elapsed = base + max(0, now - current.get("startTime", now))
+        current["currentElapsed"] = current_elapsed
+        current["history"] = read_history()
+
+        proc_alive = is_valid_player_proc(current["pid"])
+        is_expired = dur > 0 and current_elapsed >= dur + 1.5
+
+        if proc_alive and not is_expired:
+            return current
+
+        orphan = find_running_player_pid()
+        if orphan:
+            current["pid"] = orphan
+            write_state(current)
+            return current
+
+        queue = read_queue()
+        if queue and queue.get("items"):
+            cur_idx = queue.get("current_index", 0)
+            items = queue.get("items", [])
+            if cur_idx + 1 < len(items):
+                res = cmd_play_queue_index(cur_idx + 1)
+                res["history"] = read_history()
+                return res
+            else:
+                clear_queue()
 
     clear_state()
     return {"status": "idle", "playing": False, "title": "", "url": "", "source": "direct", "elapsed": 0, "duration": 0, "currentElapsed": 0, "history": read_history()}

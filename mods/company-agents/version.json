@@ -1,5 +1,5 @@
 {
   "version": "1.7.6",
-  "type": "normal",
-  "notes": "Add recently played history list for quick replay"
+  "type": "urgent",
+  "notes": "Fix audio auto-advance, instant track start, and macOS playback"
 }

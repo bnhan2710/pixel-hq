@@ -57,6 +57,7 @@ One species per agent program, so you can tell who is who at a glance:
   </tr>
   <tr>
     <td align="center"><img src="pets/arch.svg" width="120" alt="astronaut with a gradient cube head"><br><b>Antigravity (<code>agy</code>)</b><br><sub>Systems Architect</sub></td>
+    <td align="center"><img src="pets/herald.svg" width="120" alt="charcoal herald in a gold winged helmet"><br><b>Hermes Agent</b><br><sub>Chief of Staff</sub></td>
     <td align="center"><img src="pets/sheep.svg" width="120" alt="sheep"><br><b>anything else</b><br><sub>the program's name</sub></td>
   </tr>
 </table>
@@ -67,6 +68,7 @@ One species per agent program, so you can tell who is who at a glance:
 | Codex | blue terminal robot | Code Reviewer |
 | OpenCode | penguin | Platform Engineer |
 | Antigravity (`agy`) | little astronaut with a gradient cube head, orange arms and boots, its arch logo on the chest and on the laptop lid | Systems Architect |
+| Hermes Agent (`hermes`) | charcoal herald in a gold helmet with white wings that flap (faster when it types or cheers), gold badge | Chief of Staff |
 | anything else | sheep | the program's name |
 
 <p align="center">
@@ -124,12 +126,14 @@ Herdr does not know how full an agent's context is, so each agent has its own wa
 
 - **Antigravity (`agy`):** nothing to set up. Pixel HQ finds the conversation transcript in `~/.gemini/antigravity-cli/brain/` (from the CLI's `history.jsonl` workspace match) and reads token usage (`input_tokens + cache_read_tokens`) against its 1M token context window every few seconds — that feeds HP. SP reads the plan's remaining quota from the same usage API the `agy` CLI talks to (token in `~/.gemini/antigravity-cli/antigravity-oauth-token`, refreshed automatically; `AGY_HOME` honored for non-standard installs) and shows the tightest model bucket ([`agy-quota.py`](mods/company-agents/agy-quota.py)). macOS, Linux and Windows (SP needs `python3` or `python`; the script carries no credentials of its own — it reads the public OAuth pair from the installed `agy` binary and caches it under `~/.cache/pixel-hq/`).
 
+- **Hermes Agent (`hermes`):** nothing to set up. Hermes does not report a status to Herdr by itself, so Pixel HQ installs a small Hermes plugin ([`hermes-status/`](mods/company-agents/hermes-status/)) into `~/.hermes/plugins/pixel-hq-status/` and into every profile's `plugins/` folder under `~/.hermes/profiles/`, then turns it on with `hermes plugins enable pixel-hq-status`, once per home. Restart Hermes after that to get a desk. With the classic CLI the plugin sends Herdr's status sequence (OSC 7501) from Hermes' hooks: **working** when a turn starts, **blocked** while a dangerous-command approval or a clarify question waits on you, **idle** when the turn ends or is interrupted, and idle again at launch so the desk shows up before your first message. Turns of delegated sub-agents never mark the main desk idle. After each model call it labels the terminal with the context fill (`agent.context`, `agent.model`), which feeds the HP bar and the paper pile. It does nothing outside a Herdr terminal. **`hermes --tui` works too:** there the agent runs in Hermes' shared background host (`hermes gateway`), which has no terminal of its own, so Pixel HQ also adds `HC_TERMINAL_ID` to each home's `terminal.client_env_passthrough` (merged with what is there). Every TUI session then carries the Herdr terminal it was started from, and the plugin writes the status to that terminal's tty, only while its foreground program is Hermes. Pixel HQ puts the desk up at launch itself ([`hermes-announce.sh`](mods/company-agents/hermes-announce.sh)), since the TUI reports nothing before your first message. After the first install, restart the host once (`hermes gateway restart`) so it loads the plugin. Pixel HQ only updates its own copy later and never turns the plugin back on; to remove it, delete the folder (a `.pixel-hq-status-installed` marker keeps it from coming back) or run `hermes plugins disable pixel-hq-status`. macOS and Linux.
+
 ## Teamwork without collisions
 
 - **One floor, one office.** Each space is its own office: the desks show only the agents of the space you are looking at (the other floors have their own cards).
 - **Branch on every nameplate.** Under each desk's name tag is the branch its agent is on, with a small git-branch glyph.
 - **Clash warnings.** Every few seconds Pixel HQ asks git what each desk has changed. If two worktrees of the same repo both changed the same file, both pets get a red lightning bolt and a red `clash: file` tag, and a dotted line of sparks joins their desks. If two agents are working in one and the same folder at the same time, they get an amber `same folder` tag instead.
-- **Hire staff in their own worktree.** The **+** in the header opens a small form: a ticket name (say `UC-1234`), the repo folder and which agent to start. Pixel HQ runs `git worktree add -b UC-1234 <repo>/../.worktrees/<repo>-UC-1234` (or reuses the branch if it exists) and opens the agent there as a new tab of the current space, so two staff never share a working tree. Worktrees are not removed when the staff leaves; clean them with `git worktree remove`. If the folder is a workspace of several repos, the form tells you which ones are inside so you can type one.
+- **Hire staff in their own worktree.** The **+** in the header opens a small form: a ticket name (say `UC-1234`), the repo folder and which agent to start. Pixel HQ runs `git worktree add -b UC-1234 <repo>/../.worktrees/<repo>-UC-1234` (or reuses the branch if it exists) and opens the agent (Claude Code, Codex, OpenCode, Antigravity or Hermes) there as a new tab of the current space, so two staff never share a working tree. Worktrees are not removed when the staff leaves; clean them with `git worktree remove`. If the folder is a workspace of several repos, the form tells you which ones are inside so you can type one.
 
 <p align="center">
   <img src="clash.png" alt="Two desks that changed the same file: a red lightning bolt, a red clash tag and the branch name" width="200">

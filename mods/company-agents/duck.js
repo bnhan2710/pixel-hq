@@ -26,8 +26,10 @@ const STEAM = "#FFFFFF";
 const BADGE = "#F4E9DC";
 const BADGE_TOP = "#8C4A33";
 
-// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, Antigravity the rainbow arch, the rest sheep.
+// One species per agent program: Claude is the orange crab, Codex a blue terminal robot, OpenCode a penguin, Antigravity the rainbow arch,
+// Hermes the herald in a gold winged helmet, the rest sheep.
 const SPECIES = {
+  herald: { body: "#2F3346", shade: "#22263A", eye: "#F5F1E6", badge: "#E8B04A", wings: true },
   crab: { body: "#D97757", shade: "#B5593B", eye: "#2A1A14", badge: "#F4E9DC" },
   bot: { body: "#5B6CF0", shade: "#4553C9", eye: "#DDE4FF", badge: "#F4E9DC", bot: true, screen: "#1B2140", glyph: "#DDE4FF", legs: [88, 152], legW: 30 },
   penguin: { body: "#35425E", shade: "#2E3A52", eye: "#1B2130", badge: "#F2A33A", round: true },
@@ -36,6 +38,7 @@ const SPECIES = {
 };
 
 const AGENTS = [
+  { match: (k) => k.includes("hermes"), species: "herald", role: "Chief of Staff" },
   { match: (k) => k.includes("claude"), species: "crab", role: "Staff Engineer" },
   { match: (k) => k.includes("codex"), species: "bot", role: "Code Reviewer" },
   { match: (k) => k.includes("opencode"), species: "penguin", role: "Platform Engineer" },
@@ -106,6 +109,28 @@ const PENGUIN = [
   [117, 10, 10, 12, "#4A5B80"], [127, 4, 8, 12, "#4A5B80"],
 ];
 const PENGUIN_FEET = [[66, 206, 48, 12, "#F5A623"], [136, 206, 48, 12, "#F5A623"]];
+
+// Hermes: a gold helmet across the top of the head and a white wing on each side of it, flapping (fast when cheering or alarmed).
+// The wings stay inside the body group's 250 units so nothing is clipped.
+const GOLD = "#E8B04A", GOLD_DARK = "#B8862E", FEATHER = "#F5F1E6", FEATHER_SHADE = "#C9C3B4";
+function heraldHelmet(rect, motion, px, { cheer, typing, urging }) {
+  const wing = (side) => {
+    const x = (v, w) => (side < 0 ? v : 250 - v - w);
+    return div().absolute().left(0).top(0).w(px(1)).h(px(1))
+      .child(rect(x(0, 25), 2, 25, 10, FEATHER))
+      .child(rect(x(5, 20), 12, 20, 10, FEATHER))
+      .child(rect(x(11, 14), 22, 14, 8, FEATHER_SHADE));
+  };
+  const period = cheer || urging ? 240 : typing ? 520 : 1100;
+  const flap = (el) => motion(el, "top", { from: px(0), to: px(-5), period, easing: "ease-in-out" });
+  return [
+    rect(25, 0, 200, 24, GOLD),
+    rect(25, 24, 200, 6, GOLD_DARK),
+    rect(115, 0, 20, 24, "#F4CB6E"),
+    flap(wing(-1)),
+    flap(wing(1)),
+  ];
+}
 
 const ROOM = 118; // desk props reach left of the body group
 const WIDTH = ROOM + 250;
@@ -320,6 +345,7 @@ export function duckMood(m, height, { still = false, species = "crab" } = {}) {
     .when(Boolean(sp.ears), (el) => el.child(rect(25, 0, 42, 38, SHADE)).child(rect(183, 0, 42, 38, SHADE)))
     .when(Boolean(sp.patch), (el) => el.child(rect(40, 32, 56, 60, sp.patch)).child(rect(146, 32, 56, 60, sp.patch)))
     .when(Boolean(sp.face), (el) => el.child(rect(64, 22, 112, 88, sp.face)).child(rect(14, 40, 26, 18, sp.face)).child(rect(200, 40, 26, 18, sp.face)))
+    .when(Boolean(sp.wings), (el) => el.children(heraldHelmet(rect, motion, px, { cheer, typing, urging })))
     .children(eyes2)
     // company badge on a lanyard, hanging at the right side of the chest
     .when(!sp.bot && !sp.arch && !sp.round, (el) => el.child(rect(181, 82, 6, 38, BADGE_TOP)).child(rect(163, 120, 42, 56, BADGE)).child(rect(163, 120, 42, 12, BADGE_TOP)).child(rect(174, 140, 20, 16, SHADE)).child(rect(170, 162, 28, 6, SHADE)))

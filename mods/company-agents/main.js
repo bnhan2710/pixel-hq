@@ -3,7 +3,7 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, writeTextFile, nextCommand, hc, knownAgents } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, writeTextFile, nextCommand, hc, knownAgents, checking } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, DUCK_CENTER, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
 import { scene, yHorizon } from "./scene.js";
@@ -120,6 +120,8 @@ const progOf = (a) => {
   for (const item of pool) {
     if (!item) continue;
     const s = String(item).toLowerCase();
+    // Hermes first: it can run on a Claude or Codex model, and its argv may name one.
+    if (/hermes/.test(s)) return "hermes";
     if (/claude/.test(s)) return "claude";
     if (/antigravity|agy/.test(s)) return "antigravity";
     if (/opencode/.test(s)) return "opencode";
@@ -340,6 +342,10 @@ export default class Agents extends View {
     this.setupClaude(cx);
     this.setupAntigravity(cx);
     this.setupCodex(cx);
+    // Hermes Agent does not report a status either: give every Hermes home (~/.hermes and each profile) this mod's status plugin.
+    this.setupHermes(cx);
+    this.announceHermes(cx);
+    cx.timer.every(5000, (cx) => this.announceHermes(cx));
     checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {});
     cx.timer.every(6 * 3600 * 1000, (cx) => checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {}));
     // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
@@ -791,7 +797,7 @@ export default class Agents extends View {
     cx.notify();
     try {
       const { path, branch } = await hire(exec, { ticket: this.ticketInput.value(), repo: this.repoInput.value() });
-      const argv = { claude: ["claude"], codex: ["codex"], opencode: ["opencode"], agy: ["agy"] }[h.program] ?? [h.program];
+      const argv = { claude: ["claude"], codex: ["codex"], opencode: ["opencode"], agy: ["agy"], hermes: ["hermes"] }[h.program] ?? [h.program];
       run("tab.new", { name: branch, folder: path, argv, space: spaces().find((x) => x.active)?.id });
       h.open = false;
       this.ticketInput.set_value("");
@@ -886,6 +892,40 @@ export default class Agents extends View {
     localStorage.setItem("oc-hp-plugin", "1");
     if (r.code === 0) { this.notice = "OpenCode HP plugin added"; cx.notify(); }
     if (r.code === 5) { this.notice = "OpenCode HP plugin updated"; cx.notify(); }
+  }
+
+  // Hermes loads user plugins from <home>/plugins and runs only the ones listed in that home's config.yaml, per home: ~/.hermes and
+  // every ~/.hermes/profiles/<name>. For each, once: copy hermes-status/ to plugins/pixel-hq-status and enable it with Hermes' own CLI.
+  // Later launches only refresh Pixel HQ's own older copy (never re-enable it). A home where it was installed and then deleted
+  // keeps a tombstone (.pixel-hq-status-installed) and is left alone for good. Each home with the plugin also gets HC_TERMINAL_ID
+  // in terminal.client_env_passthrough, once, so `hermes --tui` sessions (run by a shared host with no terminal) know their terminal.
+  // The steps are in hermes-setup.sh. Unix only; Hermes reads all of it on its next start.
+  async setupHermes(cx) {
+    if (checking() || window()?.platform === "windows") return; // a check must not touch ~/.hermes
+    const dir = `${appHome()}/mods/company-agents`;
+    const r = await exec("sh", [`${dir}/hermes-setup.sh`, `${dir}/hermes-status`], { timeout: 300000 }).catch(() => null);
+    if (!r || r.code !== 0) return; // no Hermes here: nothing to do
+    const [added, updated, , tui] = r.stdout.trim().split(/\s+/).map((n) => parseInt(n, 10) || 0);
+    if (added) { this.notice = `Hermes status plugin added${added > 1 ? ` to ${added} homes` : ""} · restart Hermes to get a desk`; cx.notify(); }
+    else if (updated || tui) { this.notice = "Hermes status plugin updated · restart Hermes, and `hermes gateway restart` for the TUI"; cx.notify(); }
+  }
+
+  // `hermes --tui` runs its agent in a background host, so nothing reports until the first message. Give such a terminal its desk
+  // at launch: hermes-announce.sh writes `idle` to the tty of a live local terminal whose foreground program is Hermes and that has
+  // no status yet. Each terminal is tried at most every 30 s; never one on another machine.
+  announceHermes(cx) {
+    if (checking() || window()?.platform === "windows") return;
+    const now = Date.now();
+    this.hermesTried ??= new Map();
+    const due = terminals().filter((t) => {
+      if (t.state !== "live" || t.status || String(t.address).includes("/")) return false;
+      // The process name, not argv: `vim ~/.hermes/config.yaml` must not get a desk.
+      return t.foreground?.name === "hermes" && now - (this.hermesTried.get(t.address) ?? 0) > 30000;
+    });
+    if (!due.length) return;
+    for (const t of due) this.hermesTried.set(t.address, now);
+    const script = `${appHome()}/mods/company-agents/hermes-announce.sh`;
+    cx.spawn(async () => { await exec("sh", [script, ...due.map((t) => String(t.address))], { timeout: 15000 }).catch(() => null); });
   }
 
   async setupClaude(cx) {
@@ -1633,7 +1673,7 @@ export default class Agents extends View {
             .child(div().font_family(mono).font_bold().text_size(10).text_color("#89b4fa").child("HIRE STAFF · NEW WORKTREE"))
             .child(box(this.ticketInput))
             .child(box(this.repoInput))
-            .child(h_flex().gap(4).children(["claude", "codex", "opencode", "agy"].map((pg) => div().id(`hire-${pg}`).px(8).h(22).flex().items_center().cursor_pointer().border_1()
+            .child(h_flex().gap(4).flex_wrap().children(["claude", "codex", "opencode", "agy", "hermes"].map((pg) => div().id(`hire-${pg}`).px(8).h(22).flex().items_center().cursor_pointer().border_1()
               .border_color(h.program === pg ? "#89b4fa" : "#45475a").bg(h.program === pg ? "#89b4fa22" : "#181825").text_size(10.5).font_family(mono).text_color(h.program === pg ? "#89b4fa" : "#a6adc8")
               .on_click((_e, cx) => { h.program = pg; cx.notify(); }).child(pg))))
             .when(Boolean(h.error), (e2) => e2.child(div().text_size(10.5).text_color("#ff5370").child(h.error)))

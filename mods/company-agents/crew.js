@@ -89,6 +89,10 @@ export function agentTaskArgv(run, key = "") {
   if (bin.includes("agy") || bin.includes("antigravity") || k.includes("agy") || k.includes("antigravity")) {
     if (!base.includes("-i") && !base.includes("--prompt-interactive")) return [...base, "-i"];
   }
+  // Hermes: `hermes chat -q <task>` seeds an interactive session on a real terminal (the task is its first turn).
+  if (bin.includes("hermes") || k.includes("hermes")) {
+    if (!base.includes("-q") && !base.includes("--query")) return [...base, ...(base.includes("chat") ? [] : ["chat"]), "-q"];
+  }
   if (bin.includes("opencode") || k.includes("opencode")) {
     if (!base.includes("--prompt")) return [...base, "--prompt"];
   }

@@ -313,6 +313,57 @@ def test_9_playlist_queue_and_auto_advance():
             player.PREFETCH_PID_FILE = orig_prefetch
     print("PASS: Test 9 - Playlist Queue, Prefetch Pool & Auto-Advance verified")
 
+def test_10_recently_played_history():
+    print("=== Test 10: Recently Played History (Max 3, Dedup & Actions) ===")
+    with tempfile.TemporaryDirectory() as td:
+        orig_cache = player.CACHE_DIR
+        orig_history = player.HISTORY_FILE
+        player.CACHE_DIR = td
+        player.HISTORY_FILE = os.path.join(td, "history.json")
+        try:
+            assert player.read_history() == []
+
+            player.add_history("https://ice2.somafm.com/groovesalad-128-mp3", "SomaFM Groove Salad", "direct")
+            h = player.read_history()
+            assert len(h) == 1
+            assert h[0]["url"] == "https://ice2.somafm.com/groovesalad-128-mp3"
+            assert h[0]["title"] == "SomaFM Groove Salad"
+            assert h[0]["type"] == "direct"
+
+            player.add_history("https://www.youtube.com/watch?v=track1", "Track 1", "youtube")
+            player.add_history("https://www.youtube.com/watch?v=track2&list=PL1", "Playlist 1", "playlist")
+            h = player.read_history()
+            assert len(h) == 3
+            assert h[0]["title"] == "Playlist 1"
+            assert h[1]["title"] == "Track 1"
+            assert h[2]["title"] == "SomaFM Groove Salad"
+
+            player.add_history("https://www.youtube.com/watch?v=track3", "Track 3", "youtube")
+            h = player.read_history()
+            assert len(h) == 3
+            assert h[0]["title"] == "Track 3"
+            assert h[1]["title"] == "Playlist 1"
+            assert h[2]["title"] == "Track 1"
+
+            player.add_history("https://www.youtube.com/watch?v=track1", "Track 1 (Remastered)", "youtube")
+            h = player.read_history()
+            assert len(h) == 3
+            assert h[0]["url"] == "https://www.youtube.com/watch?v=track1"
+            assert h[0]["title"] == "Track 1 (Remastered)"
+            assert h[1]["title"] == "Track 3"
+            assert h[2]["title"] == "Playlist 1"
+
+            player.update_history_title("https://www.youtube.com/watch?v=track3", "Track 3 Official Video")
+            h = player.read_history()
+            assert h[1]["title"] == "Track 3 Official Video"
+
+            player.clear_history()
+            assert player.read_history() == []
+        finally:
+            player.CACHE_DIR = orig_cache
+            player.HISTORY_FILE = orig_history
+    print("PASS: Test 10 - Recently Played History verified")
+
 def main():
     test_1_url_validation()
     test_2_title_derivation()
@@ -323,7 +374,8 @@ def main():
     test_7_missing_dependency_reporting()
     test_8_next_prev_cycling()
     test_9_playlist_queue_and_auto_advance()
-    print("All 9 Music Player unit test suites passed successfully!")
+    test_10_recently_played_history()
+    print("All 10 Music Player unit test suites passed successfully!")
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,5 @@
 {
-  "version": "1.7.5",
+  "version": "1.7.6",
   "type": "normal",
-  "notes": "Add YouTube playlist auto-advance with background prefetch pool"
+  "notes": "Add recently played history list for quick replay"
 }

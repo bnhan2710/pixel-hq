@@ -185,9 +185,14 @@ def test_7_missing_dependency_reporting():
                 f.write("#!/bin/sh\nexit 0\n")
             os.chmod(mock_ffplay, 0o755)
 
-            res_yt = player.cmd_play("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-            assert res_yt["status"] == "error"
-            assert "yt-dlp is required" in res_yt["error"]
+            orig_find_ytdlp = player.find_ytdlp_bin
+            try:
+                player.find_ytdlp_bin = lambda: None
+                res_yt = player.cmd_play("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+                assert res_yt["status"] == "error"
+                assert "yt-dlp is required" in res_yt["error"]
+            finally:
+                player.find_ytdlp_bin = orig_find_ytdlp
         finally:
             player.CACHE_DIR = orig_cache
             player.STATE_FILE = orig_state
@@ -222,6 +227,88 @@ def test_8_next_prev_cycling():
             player.STATE_FILE = orig_state
     print("PASS: Test 8 - Next and previous cycling verified")
 
+def test_9_playlist_queue_and_auto_advance():
+    print("=== Test 9: Playlist Queue, Prefetch Pool & Auto-Advance ===")
+    assert player.is_playlist_url("https://www.youtube.com/watch?v=abc&list=RD123") is True
+    assert player.is_playlist_url("https://www.youtube.com/playlist?list=PL123") is True
+    assert player.is_playlist_url("https://www.youtube.com/watch?v=abc") is False
+
+    with tempfile.TemporaryDirectory() as td:
+        orig_cache = player.CACHE_DIR
+        orig_state = player.STATE_FILE
+        orig_queue = player.QUEUE_FILE
+        orig_prefetch = player.PREFETCH_PID_FILE
+        player.CACHE_DIR = td
+        player.STATE_FILE = os.path.join(td, "state.json")
+        player.QUEUE_FILE = os.path.join(td, "queue.json")
+        player.PREFETCH_PID_FILE = os.path.join(td, "prefetch.pid")
+
+        mock_player = os.path.join(td, "ffplay")
+        with open(mock_player, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(mock_player, 0o755)
+
+        orig_find_player = player.find_player_bin
+        orig_extract = player.extract_stream_info
+        player.find_player_bin = lambda: mock_player
+
+        test_items = [
+            {"id": "v1", "title": "Track 1", "url": "https://www.youtube.com/watch?v=v1", "stream_url": "https://stream1", "resolved_at": int(time.time())},
+            {"id": "v2", "title": "Track 2", "url": "https://www.youtube.com/watch?v=v2", "stream_url": "https://stream2", "resolved_at": int(time.time())},
+            {"id": "v3", "title": "Track 3", "url": "https://www.youtube.com/watch?v=v3", "stream_url": None, "resolved_at": 0},
+            {"id": "v4", "title": "Track 4", "url": "https://www.youtube.com/watch?v=v4", "stream_url": None, "resolved_at": 0},
+        ]
+        try:
+            player.write_queue({
+                "playlist_url": "https://www.youtube.com/watch?v=v1&list=PL1",
+                "current_index": 0,
+                "items": test_items
+            })
+            q = player.read_queue()
+            assert q is not None
+            assert len(q["items"]) == 4
+
+            player.extract_stream_info = lambda u: ("Resolved Track", f"https://resolved-{u[-2:]}", None)
+
+            p_res = player.cmd_prefetch()
+            assert p_res["status"] == "ok"
+            q_after = player.read_queue()
+            assert q_after["items"][1]["stream_url"] == "https://stream2"
+            assert q_after["items"][2]["stream_url"] == "https://resolved-v3"
+            assert q_after["items"][3]["stream_url"] == "https://resolved-v4"
+
+            res_play = player.cmd_play_queue_index(0)
+            assert res_play["status"] == "playing"
+            assert "[1/4]" in res_play["title"]
+
+            next_res = player.cmd_next()
+            assert next_res["status"] == "playing"
+            assert "[2/4]" in next_res["title"]
+            assert player.read_queue()["current_index"] == 1
+
+            prev_res = player.cmd_prev()
+            assert prev_res["status"] == "playing"
+            assert "[1/4]" in prev_res["title"]
+            assert player.read_queue()["current_index"] == 0
+
+            time.sleep(0.05)
+            auto_res = player.cmd_status()
+            assert auto_res["status"] == "playing"
+            assert "[2/4]" in auto_res["title"]
+
+            player.cmd_stop()
+            assert player.read_queue() is None
+            assert not os.path.exists(player.QUEUE_FILE)
+            assert not os.path.exists(player.STATE_FILE)
+        finally:
+            player.find_player_bin = orig_find_player
+            player.extract_stream_info = orig_extract
+            player.CACHE_DIR = orig_cache
+            player.STATE_FILE = orig_state
+            player.QUEUE_FILE = orig_queue
+            player.PREFETCH_PID_FILE = orig_prefetch
+    print("PASS: Test 9 - Playlist Queue, Prefetch Pool & Auto-Advance verified")
+
 def main():
     test_1_url_validation()
     test_2_title_derivation()
@@ -231,7 +318,8 @@ def main():
     test_6_stop_while_paused_and_cleanup()
     test_7_missing_dependency_reporting()
     test_8_next_prev_cycling()
-    print("All 8 Music Player unit test suites passed successfully!")
+    test_9_playlist_queue_and_auto_advance()
+    print("All 9 Music Player unit test suites passed successfully!")
 
 if __name__ == "__main__":
     main()

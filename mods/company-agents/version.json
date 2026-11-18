@@ -1,5 +1,5 @@
 {
-  "version": "1.7.4",
+  "version": "1.7.5",
   "type": "normal",
-  "notes": "Fix yt-dlp install state feedback and speed up pip extraction"
+  "notes": "Add YouTube playlist auto-advance with background prefetch pool"
 }

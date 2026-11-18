@@ -386,6 +386,36 @@ export default class CompanyMusic extends View {
     cx.notify();
   }
 
+  async next(cx) {
+    const script = `${appHome()}/mods/company-music/player.py`;
+    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    for (const bin of candidates) {
+      const r = await exec(bin, [script, "next"], { timeout: 15000 }).catch(() => null);
+      if (!r?.stdout) continue;
+      try {
+        const res = JSON.parse(r.stdout.trim().split("\n").pop());
+        setShared("pixel-hq.music", res);
+        break;
+      } catch {}
+    }
+    if (cx) cx.notify();
+  }
+
+  async prev(cx) {
+    const script = `${appHome()}/mods/company-music/player.py`;
+    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    for (const bin of candidates) {
+      const r = await exec(bin, [script, "prev"], { timeout: 15000 }).catch(() => null);
+      if (!r?.stdout) continue;
+      try {
+        const res = JSON.parse(r.stdout.trim().split("\n").pop());
+        setShared("pixel-hq.music", res);
+        break;
+      } catch {}
+    }
+    if (cx) cx.notify();
+  }
+
   renderSetupGuide(t) {
     const isWindows = this.guideTab === "windows";
     const isMac = this.guideTab === "macos";
@@ -1040,6 +1070,26 @@ export default class CompanyMusic extends View {
             h_flex()
               .gap(8)
               .items_center()
+              .when(isPlaying || isPaused, (el) =>
+                el.child(
+                  div()
+                    .h(26)
+                    .px(8)
+                    .rounded(4)
+                    .bg("#313244")
+                    .cursor_pointer()
+                    .flex()
+                    .items_center()
+                    .text_size(11)
+                    .font_family(MONO)
+                    .font_semibold()
+                    .text_color("#cdd6f4")
+                    .hover((s) => s.bg("#45475a"))
+                    .tooltip("Bài trước / Đài trước (Previous)")
+                    .on_click((_e, cx) => this.prev(cx))
+                    .child("⏮ Prev")
+                )
+              )
               .when(isPlaying, (el) =>
                 el.child(
                   div()
@@ -1097,6 +1147,26 @@ export default class CompanyMusic extends View {
                     .hover((s) => s.bg("#f38ba855"))
                     .on_click((_e, cx) => this.stop(cx))
                     .child("⏹ Stop")
+                )
+              )
+              .when(isPlaying || isPaused, (el) =>
+                el.child(
+                  div()
+                    .h(26)
+                    .px(8)
+                    .rounded(4)
+                    .bg("#313244")
+                    .cursor_pointer()
+                    .flex()
+                    .items_center()
+                    .text_size(11)
+                    .font_family(MONO)
+                    .font_semibold()
+                    .text_color("#cdd6f4")
+                    .hover((s) => s.bg("#45475a"))
+                    .tooltip("Bài kế tiếp / Đài kế tiếp (Next)")
+                    .on_click((_e, cx) => this.next(cx))
+                    .child("⏭ Next")
                 )
               )
           )

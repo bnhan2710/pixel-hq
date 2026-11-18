@@ -7,6 +7,11 @@ import signal
 import urllib.parse
 import subprocess
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 def get_subprocess_kwargs(**kwargs):
     if sys.platform == "win32":
         flags = kwargs.get("creationflags", 0)
@@ -37,7 +42,7 @@ MAX_HISTORY = 3
 
 DEFAULT_PRESETS = [
     {"title": "SomaFM Groove Salad", "url": "https://ice2.somafm.com/groovesalad-128-mp3"},
-    {"title": "Nightwave Plaza", "url": "https://stream.plaza.one/mp3"},
+    {"title": "Nightwave Plaza", "url": "https://radio.plaza.one/mp3"},
     {"title": "SomaFM DEF CON", "url": "https://ice1.somafm.com/defcon-128-mp3"},
     {"title": "SomaFM Drone Zone", "url": "https://ice6.somafm.com/dronezone-128-mp3"},
 ]
@@ -96,26 +101,36 @@ def is_valid_player_proc(pid):
         except OSError:
             return False
         try:
-            r = run_cmd(["ps", "-p", str(pid), "-o", "command"], capture_output=True, text=True, timeout=2)
+            r = run_cmd(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=3)
             if r.returncode == 0 and r.stdout.strip():
                 out = r.stdout.lower()
-                lines = [line.strip() for line in out.splitlines() if line.strip() and line.strip() != "command"]
-                if lines:
-                    return any("ffplay" in line or "mpv" in line for line in lines)
+                return "ffplay" in out or "mpv" in out
         except Exception:
             pass
-        try:
-            os.kill(pid, 0)
-            return True
-        except OSError:
-            return False
+        return True
     elif sys.platform == "win32":
         try:
-            r = run_cmd(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=2)
-            out = r.stdout.lower()
-            return '"ffplay.exe"' in out or '"mpv.exe"' in out
+            import ctypes
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if not h:
+                return False
+            exit_code = ctypes.c_ulong()
+            if ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(exit_code)):
+                ctypes.windll.kernel32.CloseHandle(h)
+                STILL_ACTIVE = 259
+                if exit_code.value != STILL_ACTIVE:
+                    return False
+            else:
+                ctypes.windll.kernel32.CloseHandle(h)
+                return False
+            return True
         except Exception:
-            return False
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                return False
     try:
         os.kill(pid, 0)
         return True
@@ -424,32 +439,36 @@ def extract_stream_info(url):
         except Exception:
             pass
     cmd = yt_dlp if isinstance(yt_dlp, list) else [yt_dlp]
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     try:
         r = run_cmd(
-            [*cmd, "--no-warnings", "--no-playlist", "-f", "ba/b", "--print", "%(title)s", "--print", "%(duration)s", "-g", clean_url],
+            [*cmd, "--encoding", "utf-8", "--no-warnings", "--no-playlist", "-f", "ba/b", "--print", "%(title)s", "--print", "%(duration)s", "-g", clean_url],
             capture_output=True,
             text=True,
-            timeout=18
+            encoding="utf-8",
+            errors="replace",
+            env=env,
+            timeout=22
         )
         if r.returncode == 0 and r.stdout.strip():
             lines = [line.strip() for line in r.stdout.strip().splitlines() if line.strip()]
-            if len(lines) >= 3:
-                title = lines[0]
-                d_str = lines[1]
+            stream_url = next((line for line in reversed(lines) if line.startswith("http://") or line.startswith("https://")), None)
+            if stream_url:
+                non_url = [l for l in lines if not (l.startswith("http://") or l.startswith("https://"))]
                 duration = 0
-                try:
-                    if d_str and d_str != "NA":
-                        duration = int(float(d_str))
-                except Exception:
-                    pass
-                stream_url = lines[2]
+                title_parts = []
+                for l in non_url:
+                    if duration == 0 and (l.isdigit() or (l.replace(".", "", 1).isdigit() and "." in l)):
+                        try:
+                            duration = int(float(l))
+                            continue
+                        except Exception:
+                            pass
+                    title_parts.append(l)
+                title = " ".join(title_parts).strip() if title_parts else derive_direct_title(url)
                 return title, stream_url, duration, None
-            elif len(lines) == 2:
-                title = lines[0]
-                stream_url = lines[1]
-                return title, stream_url, 0, None
-            elif len(lines) == 1 and (lines[0].startswith("http://") or lines[0].startswith("https://")):
-                return derive_direct_title(url), lines[0], 0, None
     except Exception as e:
         return None, None, 0, f"Failed to extract stream: {str(e)}"
 
@@ -498,12 +517,18 @@ def extract_playlist_items(url, limit=25):
     if not yt_dlp:
         return []
     cmd = yt_dlp if isinstance(yt_dlp, list) else [yt_dlp]
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     try:
         r = run_cmd(
-            [*cmd, "--no-warnings", "--flat-playlist", "--playlist-end", str(limit), "--print", "%(id)s\t%(title)s\t%(duration)s", url],
+            [*cmd, "--encoding", "utf-8", "--no-warnings", "--flat-playlist", "--playlist-end", str(limit), "--print", "%(id)s\t%(title)s\t%(duration)s", url],
             capture_output=True,
             text=True,
-            timeout=15
+            encoding="utf-8",
+            errors="replace",
+            env=env,
+            timeout=18
         )
         items = []
         if r.returncode == 0 and r.stdout.strip():
@@ -549,6 +574,10 @@ def launch_prefetch_worker():
             pass
     kill_prefetch_worker()
     py = sys.executable
+    if sys.platform == "win32" and py.lower().endswith("python.exe"):
+        pyw = py[:-4] + "w.exe"
+        if os.path.isfile(pyw):
+            py = pyw
     script = os.path.abspath(__file__)
     args = [py, script, "prefetch"]
     try:
@@ -638,43 +667,14 @@ def cmd_prefetch():
                     q_update["items"][idx]["duration"] = ext_dur
                 write_queue(q_update)
 
-        time.sleep(1)
+        time.sleep(2)
         current = read_state()
         if not current:
             idle_count += 1
-            if idle_count > 10:
+            if idle_count > 5:
                 break
             continue
-
         idle_count = 0
-        status = current.get("status")
-        if status == "paused":
-            continue
-        if status != "playing":
-            continue
-
-        pid = current.get("pid")
-        duration = current.get("duration", 0)
-        base = current.get("elapsed", 0)
-        now = int(time.time())
-        current_elapsed = base + max(0, now - current.get("startTime", now))
-
-        proc_alive = is_valid_player_proc(pid)
-        is_expired = duration > 0 and current_elapsed >= duration + 1.5
-
-        if not proc_alive or is_expired:
-            q_advance = read_queue()
-            if q_advance and q_advance.get("items"):
-                c_idx = q_advance.get("current_index", 0)
-                if c_idx + 1 < len(q_advance["items"]):
-                    cmd_play_queue_index(c_idx + 1)
-                    continue
-                else:
-                    clear_queue()
-                    clear_state()
-                    break
-            else:
-                break
 
     return {"status": "ok"}
 
@@ -1092,6 +1092,14 @@ def cmd_status():
         if proc_alive and not is_expired:
             return current
 
+        if is_playing and (now - current.get("startTime", now) < 6) and not is_expired:
+            orphan = find_running_player_pid()
+            if orphan:
+                current["pid"] = orphan
+                write_state(current)
+                return current
+            return current
+
     if current and current.get("status") == "buffering":
         if int(time.time()) - current.get("startTime", 0) <= 35:
             current["currentElapsed"] = current.get("elapsed", 0)
@@ -1227,7 +1235,7 @@ def cmd_check():
 def main():
     if len(sys.argv) < 2:
         out = cmd_status()
-        json.dump(out, sys.stdout)
+        json.dump(out, sys.stdout, ensure_ascii=True)
         sys.stdout.write("\n")
         sys.stdout.flush()
         return
@@ -1263,7 +1271,7 @@ def main():
     else:
         out = {"status": "error", "error": f"Unknown action: {action}", "playing": False}
 
-    json.dump(out, sys.stdout)
+    json.dump(out, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")
     sys.stdout.flush()
 

@@ -19,7 +19,7 @@ function formatTime(seconds) {
 
 const PRESETS = [
   { id: "somafm-chill", title: "SomaFM Groove Salad", desc: "Ambient & Downtempo", url: "https://ice2.somafm.com/groovesalad-128-mp3", tag: "Direct MP3" },
-  { id: "nightwave", title: "Nightwave Plaza", desc: "Vaporwave & City Pop", url: "https://stream.plaza.one/mp3", tag: "Direct MP3" },
+  { id: "nightwave", title: "Nightwave Plaza", desc: "Vaporwave & City Pop", url: "https://radio.plaza.one/mp3", tag: "Direct MP3" },
   { id: "defcon", title: "SomaFM DEF CON", desc: "Hacker Chiptune & Beats", url: "https://ice1.somafm.com/defcon-128-mp3", tag: "Direct MP3" },
   { id: "dronezone", title: "SomaFM Drone Zone", desc: "Ambient Space & Focus", url: "https://ice6.somafm.com/dronezone-128-mp3", tag: "Direct MP3" },
 ];
@@ -34,7 +34,7 @@ export default class CompanyMusic extends View {
     this.installing = false;
     this.installMsg = null;
     this.installSuccess = null;
-    this.history = [];
+    this.history = shared("pixel-hq.music")?.history || [];
 
     this.urlInput = InputState.new({ placeholder: "Paste YouTube, SoundCloud, or direct audio stream URL..." });
     this.urlInput.on("submit", (_e, cx) => this.play(this.urlInput.value(), null, cx));
@@ -68,7 +68,7 @@ export default class CompanyMusic extends View {
       const music = shared("pixel-hq.music");
       if (music?.status !== "buffering" && !music?.playing) return;
       const script = `${appHome()}/mods/company-music/player.py`;
-      const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+      const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
       for (const bin of candidates) {
         const r = await exec(bin, [script, "status"], { timeout: 15000 }).catch(() => null);
         if (!r?.stdout) continue;
@@ -90,7 +90,7 @@ export default class CompanyMusic extends View {
 
   async checkDeps(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "check"], { timeout: 4000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -111,7 +111,7 @@ export default class CompanyMusic extends View {
 
   async loadHistory(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "history"], { timeout: 3000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -128,9 +128,11 @@ export default class CompanyMusic extends View {
 
   async clearHistory(cx) {
     this.history = [];
+    const cur = shared("pixel-hq.music") || {};
+    setShared("pixel-hq.music", { ...cur, history: [] });
     if (cx) cx.notify();
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "clear-history"], { timeout: 3000 }).catch(() => null);
       if (r?.stdout) break;
@@ -347,7 +349,7 @@ export default class CompanyMusic extends View {
     cx.notify();
 
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     const args = presetTitle ? [script, "play", cleanUrl, presetTitle] : [script, "play", cleanUrl];
 
     let res = null;
@@ -398,7 +400,7 @@ export default class CompanyMusic extends View {
 
   async pause(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "pause"], { timeout: 4000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -413,7 +415,7 @@ export default class CompanyMusic extends View {
 
   async resume(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "resume"], { timeout: 4000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -428,7 +430,7 @@ export default class CompanyMusic extends View {
 
   async stop(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "stop"], { timeout: 4000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -444,7 +446,7 @@ export default class CompanyMusic extends View {
 
   async next(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "next"], { timeout: 15000 }).catch(() => null);
       if (!r?.stdout) continue;
@@ -459,7 +461,7 @@ export default class CompanyMusic extends View {
 
   async prev(cx) {
     const script = `${appHome()}/mods/company-music/player.py`;
-    const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+    const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
     for (const bin of candidates) {
       const r = await exec(bin, [script, "prev"], { timeout: 15000 }).catch(() => null);
       if (!r?.stdout) continue;

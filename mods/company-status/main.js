@@ -31,7 +31,7 @@ export default class WorkspaceStatus extends View {
       this.polling = true;
       try {
         const script = `${appHome()}/mods/company-music/player.py`;
-        const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+        const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
         for (const bin of candidates) {
           const r = await exec(bin, [script, "status"], { timeout: 15000 }).catch(() => null);
           if (!r?.stdout) continue;
@@ -65,7 +65,7 @@ export default class WorkspaceStatus extends View {
     }
     try {
       const script = `${appHome()}/mods/company-music/player.py`;
-      const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
+      const candidates = window()?.platform === "windows" ? ["pythonw", "python", "python3", "py"] : ["python3", "python"];
       for (const bin of candidates) {
         const r = await exec(bin, [script, action], { timeout: 35000 }).catch(() => null);
         if (!r?.stdout) continue;

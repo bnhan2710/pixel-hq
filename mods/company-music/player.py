@@ -92,15 +92,23 @@ def is_valid_player_proc(pid):
         return False
     elif sys.platform == "darwin":
         try:
-            r = run_cmd(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, timeout=2)
-            if r.returncode == 0 and r.stdout.strip():
-                parts = r.stdout.strip().split()
-                if parts:
-                    base = os.path.basename(parts[0]).lower()
-                    return base in ("ffplay", "mpv")
-        except Exception:
+            os.kill(pid, 0)
+        except OSError:
             return False
-        return False
+        try:
+            r = run_cmd(["ps", "-p", str(pid), "-o", "command"], capture_output=True, text=True, timeout=2)
+            if r.returncode == 0 and r.stdout.strip():
+                out = r.stdout.lower()
+                lines = [line.strip() for line in out.splitlines() if line.strip() and line.strip() != "command"]
+                if lines:
+                    return any("ffplay" in line or "mpv" in line for line in lines)
+        except Exception:
+            pass
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
     elif sys.platform == "win32":
         try:
             r = run_cmd(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=2)
@@ -295,8 +303,15 @@ def find_running_player_pid():
             pass
     elif sys.platform.startswith("linux") or sys.platform == "darwin":
         try:
-            r = run_cmd(["pgrep", "-x", "ffplay"], capture_output=True, text=True, timeout=2)
-            pids = [int(p) for p in r.stdout.splitlines() if p.strip().isdigit()]
+            r = run_cmd(["pgrep", "-f", "ffplay"], capture_output=True, text=True, timeout=2)
+            pids = [int(p) for p in r.stdout.splitlines() if p.strip().isdigit() and int(p) != os.getpid()]
+            if pids:
+                return pids[0]
+        except Exception:
+            pass
+        try:
+            r = run_cmd(["pgrep", "-f", "mpv"], capture_output=True, text=True, timeout=2)
+            pids = [int(p) for p in r.stdout.splitlines() if p.strip().isdigit() and int(p) != os.getpid()]
             if pids:
                 return pids[0]
         except Exception:
@@ -304,6 +319,7 @@ def find_running_player_pid():
     return None
 
 def stop_all_players(keep_queue=False):
+    kill_prefetch_worker()
     current = read_state()
     if current and current.get("pid"):
         stop_process(current["pid"], current.get("status") == "paused")

@@ -33,11 +33,11 @@ export default class WorkspaceStatus extends View {
         const script = `${appHome()}/mods/company-music/player.py`;
         const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
         for (const bin of candidates) {
-          const r = await exec(bin, [script, "status"], { timeout: 3000 }).catch(() => null);
+          const r = await exec(bin, [script, "status"], { timeout: 15000 }).catch(() => null);
           if (!r?.stdout) continue;
           try {
             const res = JSON.parse(r.stdout.trim().split("\n").pop());
-            if (res.playing !== music.playing || res.status !== music.status || (res.title && res.title !== music.title)) {
+            if (res.playing !== music.playing || res.status !== music.status || (res.title && res.title !== music.title) || (res.url && res.url !== music.url)) {
               setShared("pixel-hq.music", res);
               cx.notify();
             }

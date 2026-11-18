@@ -64,20 +64,20 @@ export default class CompanyMusic extends View {
       if (music?.playing) cx.notify();
     });
 
-    cx.timer.every(1500, async (cx) => {
+    cx.timer.every(2000, async (cx) => {
       const music = shared("pixel-hq.music");
-      if (music?.status !== "buffering") return;
+      if (music?.status !== "buffering" && !music?.playing) return;
       const script = `${appHome()}/mods/company-music/player.py`;
       const candidates = window()?.platform === "windows" ? ["python", "python3", "py"] : ["python3", "python"];
       for (const bin of candidates) {
-        const r = await exec(bin, [script, "status"], { timeout: 2500 }).catch(() => null);
+        const r = await exec(bin, [script, "status"], { timeout: 15000 }).catch(() => null);
         if (!r?.stdout) continue;
         try {
           const res = JSON.parse(r.stdout.trim().split("\n").pop());
           if (Array.isArray(res?.history)) {
             this.history = res.history;
           }
-          if (res.status === "playing" || res.status === "error") {
+          if (res.status === "playing" || res.status === "error" || res.status === "idle") {
             this.busy = false;
             setShared("pixel-hq.music", res);
             cx.notify();

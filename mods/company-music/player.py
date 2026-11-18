@@ -475,11 +475,23 @@ def extract_playlist_items(url, limit=25):
         return items
     except Exception:
         return []
-        return items
-    except Exception:
-        return []
 
 def launch_prefetch_worker():
+    if os.path.exists(PREFETCH_PID_FILE):
+        try:
+            with open(PREFETCH_PID_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                pid = int(content) if content.isdigit() else None
+            if pid and pid == os.getpid():
+                return
+            if pid and pid > 0:
+                try:
+                    os.kill(pid, 0)
+                    return
+                except OSError:
+                    pass
+        except Exception:
+            pass
     kill_prefetch_worker()
     py = sys.executable
     script = os.path.abspath(__file__)
@@ -508,39 +520,76 @@ def launch_prefetch_worker():
         pass
 
 def cmd_prefetch():
-    queue = read_queue()
-    if not queue or not queue.get("items"):
-        return {"status": "ok", "prefetched": 0}
-
-    cur_idx = queue.get("current_index", 0)
-    items = queue.get("items", [])
-    target_indices = list(range(cur_idx + 1, min(len(items), cur_idx + 1 + POOL_SIZE)))
-
-    prefetched = 0
-    now = int(time.time())
-    for idx in target_indices:
-        q_now = read_queue()
-        if not q_now or q_now.get("current_index") != cur_idx:
+    idle_count = 0
+    while True:
+        queue = read_queue()
+        if not queue or not queue.get("items"):
             break
-        it = q_now["items"][idx]
-        if it.get("stream_url") and (now - it.get("resolved_at", 0) < 14400):
+
+        cur_idx = queue.get("current_index", 0)
+        items = queue.get("items", [])
+        now = int(time.time())
+
+        target_indices = list(range(cur_idx + 1, min(len(items), cur_idx + 1 + POOL_SIZE)))
+        for idx in target_indices:
+            q_now = read_queue()
+            if not q_now or q_now.get("current_index") != cur_idx:
+                break
+            it = q_now["items"][idx]
+            if it.get("stream_url") and (now - it.get("resolved_at", 0) < 14400):
+                continue
+            ext_title, ext_stream, ext_dur, err = extract_stream_info(it["url"])
+            if ext_stream:
+                q_update = read_queue()
+                if not q_update or q_update.get("current_index") != cur_idx:
+                    break
+                q_update["items"][idx]["stream_url"] = ext_stream
+                q_update["items"][idx]["resolved_at"] = int(time.time())
+                if ext_title:
+                    q_update["items"][idx]["title"] = ext_title
+                if ext_dur:
+                    q_update["items"][idx]["duration"] = ext_dur
+                write_queue(q_update)
+
+        time.sleep(1)
+        current = read_state()
+        if not current:
+            idle_count += 1
+            if idle_count > 10:
+                break
             continue
 
-        ext_title, ext_stream, ext_dur, err = extract_stream_info(it["url"])
-        if ext_stream:
-            q_update = read_queue()
-            if not q_update or q_update.get("current_index") != cur_idx:
-                break
-            q_update["items"][idx]["stream_url"] = ext_stream
-            q_update["items"][idx]["resolved_at"] = int(time.time())
-            if ext_title:
-                q_update["items"][idx]["title"] = ext_title
-            if ext_dur:
-                q_update["items"][idx]["duration"] = ext_dur
-            write_queue(q_update)
-            prefetched += 1
+        idle_count = 0
+        status = current.get("status")
+        if status == "paused":
+            continue
+        if status != "playing":
+            continue
 
-    return {"status": "ok", "prefetched": prefetched}
+        pid = current.get("pid")
+        duration = current.get("duration", 0)
+        base = current.get("elapsed", 0)
+        now = int(time.time())
+        current_elapsed = base + max(0, now - current.get("startTime", now))
+
+        proc_alive = is_valid_player_proc(pid)
+        is_expired = duration > 0 and current_elapsed >= duration + 1.5
+
+        if not proc_alive or is_expired:
+            q_advance = read_queue()
+            if q_advance and q_advance.get("items"):
+                c_idx = q_advance.get("current_index", 0)
+                if c_idx + 1 < len(q_advance["items"]):
+                    cmd_play_queue_index(c_idx + 1)
+                    continue
+                else:
+                    clear_queue()
+                    clear_state()
+                    break
+            else:
+                break
+
+    return {"status": "ok"}
 
 def cmd_play_queue_index(index):
     queue = read_queue()
@@ -871,12 +920,21 @@ def cmd_stop():
 
 def cmd_status():
     current = read_state()
-    if current and current.get("pid") and is_valid_player_proc(current["pid"]):
+    if current and current.get("pid"):
         now = int(time.time())
         base = current.get("elapsed", 0)
-        current["currentElapsed"] = base + (max(0, now - current.get("startTime", now)) if current.get("playing") else 0)
+        dur = current.get("duration", 0)
+        is_playing = current.get("playing", False)
+        current_elapsed = base + (max(0, now - current.get("startTime", now)) if is_playing else 0)
+        current["currentElapsed"] = current_elapsed
         current["history"] = read_history()
-        return current
+
+        proc_alive = is_valid_player_proc(current["pid"])
+        is_expired = is_playing and dur > 0 and current_elapsed >= dur + 1.5
+
+        if proc_alive and not is_expired:
+            return current
+
     if current and current.get("status") == "buffering":
         if int(time.time()) - current.get("startTime", 0) <= 35:
             current["currentElapsed"] = current.get("elapsed", 0)

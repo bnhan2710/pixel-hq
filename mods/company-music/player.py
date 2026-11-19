@@ -47,6 +47,45 @@ def set_cache_dir(new_dir):
     QUEUE_FILE = os.path.join(CACHE_DIR, "queue.json")
     PREFETCH_PID_FILE = os.path.join(CACHE_DIR, "prefetch.pid")
     HISTORY_FILE = os.path.join(CACHE_DIR, "history.json")
+
+def spawn_player_process(player_bin, stream_url, ua, start_seconds=0):
+    is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
+    if is_ffplay:
+        args = [
+            player_bin,
+            "-nodisp",
+            "-autoexit",
+            "-loglevel", "quiet",
+            "-reconnect", "1",
+            "-reconnect_streamed", "1",
+            "-reconnect_delay_max", "5",
+            "-reconnect_on_network_error", "1",
+            "-user_agent", ua
+        ]
+        if start_seconds > 0:
+            args.extend(["-ss", str(start_seconds)])
+        args.append(stream_url)
+    else:
+        args = [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}"]
+        if start_seconds > 0:
+            args.extend([f"--start={start_seconds}"])
+        args.append(stream_url)
+
+    env = os.environ.copy()
+    env["SDL_VIDEODRIVER"] = "dummy"
+
+    try:
+        proc = popen_cmd(
+            args,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True if sys.platform != "win32" else False
+        )
+        return proc, None
+    except Exception as e:
+        return None, str(e)
 POOL_SIZE = 5
 MAX_HISTORY = 3
 
@@ -699,7 +738,7 @@ def cmd_prefetch():
 
     return {"status": "ok"}
 
-def cmd_play_queue_index(index):
+def cmd_play_queue_index(index, start_seconds=0):
     queue = read_queue()
     if not queue or not queue.get("items") or index < 0 or index >= len(queue["items"]):
         return {"status": "error", "error": "Invalid queue index", "playing": False}
@@ -717,9 +756,9 @@ def cmd_play_queue_index(index):
     write_state({
         "pid": None,
         "startTime": now,
-        "elapsed": 0,
+        "elapsed": start_seconds,
         "duration": duration,
-        "currentElapsed": 0,
+        "currentElapsed": start_seconds,
         "url": url,
         "title": f"[{index + 1}/{len(queue['items'])}] {title}",
         "status": "buffering",
@@ -737,9 +776,9 @@ def cmd_play_queue_index(index):
     write_state({
         "pid": None,
         "startTime": now,
-        "elapsed": 0,
+        "elapsed": start_seconds,
         "duration": duration,
-        "currentElapsed": 0,
+        "currentElapsed": start_seconds,
         "url": url,
         "title": f"[{index + 1}/{len(queue['items'])}] {title}",
         "status": "buffering",
@@ -777,33 +816,20 @@ def cmd_play_queue_index(index):
         clear_state()
         return {"status": "error", "error": "Neither ffplay nor mpv found. Install ffmpeg or mpv to enable playback.", "playing": False}
 
-    is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
     ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    args = [player_bin, "-nodisp", "-autoexit", "-loglevel", "quiet", "-user_agent", ua, stream_url] if is_ffplay else [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}", stream_url]
-    env = os.environ.copy()
-    env["SDL_VIDEODRIVER"] = "dummy"
-
-    try:
-        proc = popen_cmd(
-            args,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True if sys.platform != "win32" else False
-        )
-    except Exception as e:
+    proc, err = spawn_player_process(player_bin, stream_url, ua, start_seconds=start_seconds)
+    if err or not proc:
         clear_queue()
         clear_state()
-        return {"status": "error", "error": f"Failed to start player process: {str(e)}", "playing": False}
+        return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False}
 
     display_title = f"[{index + 1}/{len(queue['items'])}] {title}"
     state = {
         "pid": proc.pid,
         "startTime": int(time.time()),
-        "elapsed": 0,
+        "elapsed": start_seconds,
         "duration": duration,
-        "currentElapsed": 0,
+        "currentElapsed": start_seconds,
         "url": url,
         "title": display_title,
         "status": "playing",
@@ -957,24 +983,11 @@ def cmd_play(url, preset_title=None):
             clear_state()
             return {"status": "error", "error": "Neither ffplay nor mpv found. Install ffmpeg or mpv to enable playback.", "playing": False, "history": read_history()}
 
-        is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
         ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        args = [player_bin, "-nodisp", "-autoexit", "-loglevel", "quiet", "-user_agent", ua, ext_stream] if is_ffplay else [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}", ext_stream]
-        env = os.environ.copy()
-        env["SDL_VIDEODRIVER"] = "dummy"
-
-        try:
-            proc = popen_cmd(
-                args,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                env=env,
-                start_new_session=True if sys.platform != "win32" else False
-            )
-        except Exception as e:
+        proc, err = spawn_player_process(player_bin, ext_stream, ua)
+        if err or not proc:
             clear_state()
-            return {"status": "error", "error": f"Failed to start player process: {str(e)}", "playing": False, "history": read_history()}
+            return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False, "history": read_history()}
 
         queue_data = {
             "playlist_url": res,
@@ -1059,24 +1072,11 @@ def cmd_play(url, preset_title=None):
             title = derive_direct_title(res)
             update_history_title(res, title)
 
-    is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
     ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    args = [player_bin, "-nodisp", "-autoexit", "-loglevel", "quiet", "-user_agent", ua, stream_url] if is_ffplay else [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}", stream_url]
-    env = os.environ.copy()
-    env["SDL_VIDEODRIVER"] = "dummy"
-
-    try:
-        proc = popen_cmd(
-            args,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True if sys.platform != "win32" else False
-        )
-    except Exception as e:
+    proc, err = spawn_player_process(player_bin, stream_url, ua)
+    if err or not proc:
         clear_state()
-        return {"status": "error", "error": f"Failed to start player process: {str(e)}", "playing": False, "history": read_history()}
+        return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False, "history": read_history()}
 
     state = {
         "pid": proc.pid,
@@ -1190,7 +1190,7 @@ def cmd_status():
             write_state(current)
             return current
 
-        is_completed = is_expired or (dur > 0 and current_elapsed >= max(15, dur * 0.85)) or (dur == 0 and current_elapsed >= 15)
+        is_completed = is_expired or (dur > 0 and current_elapsed >= max(15, min(dur - 3, int(dur * 0.95)))) or (dur == 0 and current_elapsed >= 15)
 
         queue = read_queue()
         if queue and queue.get("items"):
@@ -1211,7 +1211,7 @@ def cmd_status():
                     items[cur_idx]["resolved_at"] = 0
                     queue["items"] = items
                     write_queue(queue)
-                    res = cmd_play_queue_index(cur_idx)
+                    res = cmd_play_queue_index(cur_idx, start_seconds=current_elapsed)
                     res["retry_count"] = retry_count + 1
                     write_state(res)
                     return res

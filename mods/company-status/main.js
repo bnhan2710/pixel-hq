@@ -62,7 +62,14 @@ export default class WorkspaceStatus extends View {
       try {
         const res = await runPlayer(["status"], 15000);
         if (res) {
-          if (res.playing !== music?.playing || res.status !== music?.status || (res.title && res.title !== music?.title) || (res.url && res.url !== music?.url)) {
+          if (
+            res.playing !== music?.playing ||
+            res.status !== music?.status ||
+            (res.title && res.title !== music?.title) ||
+            (res.url && res.url !== music?.url) ||
+            res.startTime !== music?.startTime ||
+            res.pid !== music?.pid
+          ) {
             setShared("pixel-hq.music", res);
             cx.notify();
           }

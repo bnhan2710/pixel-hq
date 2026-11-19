@@ -1,5 +1,5 @@
 {
-  "version": "1.7.7",
+  "version": "1.7.8",
   "type": "urgent",
-  "notes": "Fix single-track skip/prev, modal timer double-counting, clean stop, and fix Codex config reader"
+  "notes": "Fix audio premature cutoff, add reconnect flags, and keep status bar in sync"
 }

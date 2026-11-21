@@ -13,7 +13,7 @@ import {
 import { PLAYS, svgToWebp } from "./animate.js";
 import { agentTaskArgv } from "./crew.js";
 
-const ICON = (n) => (n.includes("/") ? n : `mods/workspace-chrome/${n}.svg`);
+const ICON = (n) => (n.includes("/") ? n : `mods/company-agents/${n}.svg`);
 const SPEEDS = [{ ms: 800, label: "Slow" }, { ms: 400, label: "Normal" }, { ms: 180, label: "Fast" }];
 const EMOJI = ["🦆", "🐥", "🦢", "🐸", "🐢", "🦫", "🐟", "🪿", "🔪", "🙋", "😤", "😠", "🎉", "✨", "💤", "🌙", "☕", "🔥", "⏳", "✅"];
 const kindOf = (spec) => (spec?.image ? "image" : spec?.text ? "text" : "duck");

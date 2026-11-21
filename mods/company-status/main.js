@@ -208,7 +208,7 @@ export default class WorkspaceStatus extends View {
       this.badge = wants;
       try { setBadge(wants); } catch { this.badge = undefined; }
     }
-    const label = (icon, text) => h_flex().gap(6).items_center().child(svg(`mods/workspace-chrome/${icon}.svg`).size(13)).child(text.toUpperCase());
+    const label = (icon, text) => h_flex().gap(6).items_center().child(svg(`mods/company-status/${icon}.svg`).size(13)).child(text.toUpperCase());
     const pill = (color, text) => h_flex().gap(6).items_center().child(div().size(6).bg(color)).child(text.toUpperCase());
     return h_flex().size_full().px(14).gap(14).items_center().bg(t.chrome).border_t(1).border_color(t.surface).font_family(MONO).text_size(11).text_color(t.muted)
       .child(div().font_bold().text_size(11).text_color("#b4befe").child("PIXEL HQ"))

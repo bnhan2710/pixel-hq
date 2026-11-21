@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges">
+  <!-- Handle -->
+  <rect x="5" y="0" width="6" height="1" fill="#45475a" />
+  <rect x="5" y="1" width="1" height="2" fill="#45475a" />
+  <rect x="10" y="1" width="1" height="2" fill="#45475a" />
+  <!-- Main boombox chassis -->
+  <rect x="1" y="3" width="14" height="12" fill="#cba6f7" />
+  <rect x="2" y="4" width="12" height="10" fill="#1e1e2e" />
+  <!-- Left Speaker (Cyan) -->
+  <rect x="2" y="6" width="4" height="6" fill="#89dceb" />
+  <rect x="3" y="7" width="2" height="4" fill="#181825" />
+  <!-- Right Speaker (Cyan) -->
+  <rect x="10" y="6" width="4" height="6" fill="#89dceb" />
+  <rect x="11" y="7" width="2" height="4" fill="#181825" />
+  <!-- Center Cassette Tape Deck -->
+  <rect x="6" y="8" width="4" height="4" fill="#f9e2af" />
+  <rect x="7" y="9" width="2" height="2" fill="#fab387" />
+  <!-- Equalizer LED bars on top -->
+  <rect x="6" y="4" width="1" height="3" fill="#a6e3a1" />
+  <rect x="7" y="5" width="1" height="2" fill="#f9e2af" />
+  <rect x="8" y="4" width="1" height="3" fill="#fab387" />
+  <rect x="9" y="5" width="1" height="2" fill="#f38ba8" />
+</svg>

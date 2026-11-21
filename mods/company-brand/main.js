@@ -9,6 +9,12 @@ const notch = (c, [l, r, t, b]) => [
   div().absolute().left(l).right(r).top(t + 2).bottom(b + 2).bg(c),
 ];
 
+const box = (frame, fill, shadow) => [
+  ...notch(shadow, [2, 0, 2, 0]),
+  ...notch(frame, [0, 2, 0, 2]),
+  ...notch(fill, [2, 4, 2, 4]),
+];
+
 function find(node, id) {
   if (node?.id === id) return node;
   for (const child of node?.children ?? []) {
@@ -38,18 +44,20 @@ export default class WorkspaceChrome extends View {
     const t = theme();
     const collapsed = narrow();
     if (props()?.footer) {
-      const row = (id, icon, label, dim, action) => h_flex().id(id).h(26).px(8).gap(8).items_center().relative()
-        .when(collapsed, el => el.relative().w(32).px(0).justify_center().tooltip(label))
-        .text_color(dim ? t.dim : t.muted).hover(s => s.bg(t.hover).text_color(t.foreground)).cursor_pointer()
-        .font_family(MONO).font_bold().text_size(10.5)
-        .on_click(action).child(svg(`mods/company-brand/${icon}.svg`).size(14).text_color(dim ? t.dim : t.muted))
+      const row = (id, iconPath, label, action) => h_flex().id(id).relative().h(26).pl(8).pr(10).gap(7).items_center().cursor_pointer()
+        .children(box(t.raised, t.chrome, t.surface))
+        .font_family(MONO).font_bold().text_size(10).text_color(t.muted)
+        .hover(s => s.text_color(t.foreground))
+        .when(collapsed, el => el.w(30).px(0).justify_center().tooltip(label))
+        .on_click(action)
+        .child(svg(iconPath).size(15).flex_none())
         .when(!collapsed, el => el.child(label.toUpperCase()));
       const ready = div().size(6).bg(t.accent);
-      return v_flex().size_full().bg(t.chrome).border_t(1).border_color(t.border).px(collapsed ? 0 : 6).pt(3).pb(4).gap(2)
-        .when(collapsed, el => el.px(0).items_center())
-        .child(row("settings", "settings", "Settings", false, () => run("app.settings"))
-          .when(Boolean(updates().app.ready), el => el.child(collapsed ? ready.absolute().top(5).right(6) : ready)))
-        .child(row("machine", "plus", "Add machine", true, () => run("mod.open", { name: "machine-add" })));
+      return v_flex().size_full().bg(t.chrome).border_t(1).border_color(t.surface).px(collapsed ? 6 : 8).pt(4).pb(4).gap(3)
+        .when(collapsed, el => el.items_center())
+        .child(row("settings", "mods/company-brand/toolbox.svg", "Settings", () => run("app.settings"))
+          .when(Boolean(updates().app.ready), el => el.child(collapsed ? ready.absolute().top(3).right(4) : ready)))
+        .child(row("machine", "mods/company-brand/rig.svg", "Add machine", () => run("mod.open", { name: "machine-add" })));
     }
     const logo = image("mods/company-brand/logo.png").size(34).flex_none();
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center().text_size(13.5)

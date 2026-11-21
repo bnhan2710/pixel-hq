@@ -539,14 +539,11 @@ export default class Agents extends View {
     const on = sortOf().id;
     return div()
       .relative()
-      .w_full()
-      .h_full()
-      .min_h(0)
+      .w(200)
       .children(box("#45475a", "#181825", "#11111b"))
       .child(
         v_flex()
           .relative()
-          .size_full()
           .p(6)
           .font_family("JetBrains Mono")
           .text_size(11)
@@ -628,11 +625,11 @@ export default class Agents extends View {
       const label = tab ? title(many ? { ...tab, named: false } : tab, many ? a : leads.get(a.tab)) : (clean(a.title) || a.program?.name || a.tab_name || a.address);
       return /^\d+$/.test(label) ? (a.program?.name || label) : label;
     };
+    const h = Math.min(440, Math.max(150, 52 + waiting.length * 56));
     return div()
       .relative()
-      .w_full()
-      .h_full()
-      .min_h(0)
+      .w(340)
+      .h(h)
       .children(box("#45475a", "#181825", "#11111b"))
       .child(
         v_flex()
@@ -1039,11 +1036,11 @@ export default class Agents extends View {
     const total = rows.reduce((n, { x }) => n + load(x), 0);
     const mono = "JetBrains Mono";
     const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    const h = Math.min(440, Math.max(150, 52 + rows.length * 56));
     return div()
       .relative()
-      .w_full()
-      .h_full()
-      .min_h(0)
+      .w(340)
+      .h(h)
       .children(box("#45475a", "#181825", "#11111b"))
       .child(
         v_flex()
@@ -1112,21 +1109,18 @@ export default class Agents extends View {
     const mono = "JetBrains Mono";
     const hm = (ms) => { const m = Math.round(ms / 60000); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`; };
     const day = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()];
-    const line = (label, value) => h_flex().justify_between().px(10).py(5)
+    const line = (label, value) => h_flex().justify_between().px(10).py(4)
       .child(div().text_size(11.5).text_color(t.muted).child(label))
       .child(div().text_size(12).font_family(mono).font_bold().text_color(t.foreground).child(value));
     return div()
       .relative()
-      .w_full()
-      .h_full()
-      .min_h(0)
+      .w(300)
       .children(box("#45475a", "#181825", "#11111b"))
       .child(
         v_flex()
           .relative()
-          .size_full()
           .p(8)
-          .gap(6)
+          .gap(4)
           .font_family(mono)
           .child(
             h_flex()
@@ -1157,7 +1151,7 @@ export default class Agents extends View {
               )
           )
           .child(
-            v_flex().flex_1().min_h(0).gap(3).py(2)
+            v_flex().gap(2).pt(2)
               .child(line("Tasks shipped", String(d.shipped)))
               .child(line("Time agents worked", hm(d.workMs)))
               .child(line("Busiest floor", top ? `${top[0]} · ${hm(top[1])}` : "none yet"))

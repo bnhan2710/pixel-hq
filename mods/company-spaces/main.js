@@ -53,8 +53,10 @@ const soften = (c, k = 0.3) => {
   return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * k).toString(16).padStart(2, "0")).join("");
 };
 const GUTTER = 22;
-// The metro lines wear soft pastels from the layout's own blue-violet tone (periwinkle first), not the strong space colors.
 const LINES = ["#8fa3f0", "#7aa7e8", "#6fc7bd", "#b394f0", "#8fcf94", "#e49ac8"];
+
+const plus = (c) => div().relative().flex_none().size(10)
+  .children([div().absolute().left(4).top(0).w(2).h(10).bg(c), div().absolute().left(0).top(4).w(10).h(2).bg(c)]);
 
 function grip(color) {
   return div().absolute().left(1).top(9).w(5).h(10).children([0, 4, 8].flatMap((y) => [0, 3].map((x) => div().absolute().left(x).top(y).size(2).bg(color))));
@@ -623,7 +625,6 @@ export default class Spaces extends View {
       .h(rowHeight({ tree }))
       .flex_none()
       .justify_center()
-      .rounded(8)
       .when(on, (el) => el.bg(t.selected).child(div().absolute().left(0).top(12).bottom(12).w(3).bg(line)))
       .when(!on, (el) => el.hover((s) => s.bg(t.hover)))
       .when(this.pressed === w.id && this.over !== w.id, (el) => el.opacity(0.5))
@@ -664,8 +665,8 @@ export default class Spaces extends View {
         h_flex()
           .gap(9)
           .items_center()
-          .when(Boolean(tree), el => el.pl(4).child(svg("mods/workspace-chrome/branch.svg").size(13).text_color(t.dim)))
-          .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(5).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
+          .when(Boolean(tree), el => el.pl(4).child(div().relative().w(8).h(10).flex_none().children([[0, 0, 2, 2], [0, 8, 2, 2], [5, 2, 2, 2], [0, 2, 1, 6], [1, 4, 5, 1]].map(([x, y, w2, h2]) => div().absolute().left(x).top(y).w(w2).h(h2).bg(t.dim)))))
+          .when(!tree, el => el.child(h_flex().size(18).flex_none().relative().children(pix(fill, 18, 18)).items_center().justify_center().child(div().relative().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?"))))
           .child(div().flex_shrink(0).max_w(150).truncate().text_color(t.foreground).child(w.name))
           .child(g ? this.gitTail(g, tree, w.name, t) : div().flex_1()))),
       );
@@ -677,13 +678,12 @@ export default class Spaces extends View {
       .relative()
       .w(RAIL_CELL)
       .h(26)
-      .rounded(6)
       .justify_center()
       .items_center()
-      .when(w.active, (el) => el.bg(t.selected))
+      .children(pix(w.active ? t.selected : "transparent", RAIL_CELL, 26))
       .when(!w.active, (el) => el.hover((s) => s.bg(t.hover)))
       .on_click(() => run("space.select", { id: w.id }))
-      .child(div().text_color(w.active ? t.foreground : t.muted).child(String(i + 1)))
+      .child(div().relative().text_color(w.active ? t.foreground : t.muted).child(String(i + 1)))
       .child(div().absolute().right(5).text_color(tone(t, w.status)).child(glyph(w.status))));
   }
 
@@ -716,8 +716,7 @@ export default class Spaces extends View {
       .child(h_flex().h(31).pl(16).pr(10).items_center().justify_between().text_size(11.5).text_color(t.dim)
         .when(collapsed, el => el.pl(0).pr(0).justify_center())
         .when(!collapsed, el => el.child("Spaces"))
-        .child(div().id("space-new").size(26).flex_none().flex().items_center().justify_center().rounded(6).hover(s => s.bg(t.hover).text_color(t.foreground))
-          .on_click(() => run("space.new")).child(svg("mods/workspace-chrome/plus.svg").size(14))))
+        .child(div().id("space-new").size(24).flex_none().flex().items_center().justify_center().cursor_pointer().hover(s => s.bg(t.hover)).on_click(() => run("space.new")).child(plus(t.muted))))
       .child(v_flex().flex_1().min_h(0).px(collapsed ? 0 : 8).pb(14).overflow_y_scrollbar().mode("always")
         .on_mouse_up("left", (_e, cx) => { this.pressed = null; this.dragLine = null; this.overLine = null; cx.notify(); })
         .children(this.grouped(t, collapsed)));

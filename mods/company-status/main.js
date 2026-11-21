@@ -103,11 +103,10 @@ const box = (frame, fill, shadow) => [
   ...notch(frame, [0, 2, 0, 2]),
   ...notch(fill, [2, 4, 2, 4]),
 ];
-// A pixel button: a framed, hard-shadowed chip with mono text and optional pixel icon.
-const chip = (el, t, iconPath) => el.relative().h(24).pl(iconPath ? 7 : 9).pr(10).pt(4).pb(6).gap(5).items_center().cursor_pointer()
+// A pixel button: a framed, hard-shadowed chip with mono text.
+const chip = (el, t) => el.relative().h(24).pl(9).pr(11).pt(4).pb(6).items_center().cursor_pointer()
   .children(box(t.raised, t.chrome, t.surface)).font_family(MONO).font_bold().text_size(10).text_color(t.muted)
-  .hover(s => s.text_color(t.foreground))
-  .when(Boolean(iconPath), b => b.child(svg(iconPath).size(13).flex_none()));
+  .hover(s => s.text_color(t.foreground));
 
 export default class WorkspaceStatus extends View {
   init(_props, cx) {
@@ -210,22 +209,12 @@ export default class WorkspaceStatus extends View {
       try { setBadge(wants); } catch { this.badge = undefined; }
     }
     const label = (icon, text) => h_flex().gap(6).items_center().child(svg(`mods/company-status/${icon}.svg`).size(13)).child(text.toUpperCase());
-    const pill = (icon, text, color) => h_flex().gap(5).items_center()
-      .child(svg(`mods/company-status/${icon}.svg`).size(13).flex_none())
-      .child(div().text_color(color ?? t.muted).child(text.toUpperCase()));
+    const pill = (color, text) => h_flex().gap(6).items_center().child(div().size(6).bg(color)).child(text.toUpperCase());
     return h_flex().size_full().px(14).gap(14).items_center().bg(t.chrome).border_t(1).border_color(t.surface).font_family(MONO).text_size(11).text_color(t.muted)
-      .child(
-        h_flex().gap(6).items_center()
-          .child(svg("mods/company-status/pixel-heart.svg").size(13).flex_none())
-          .child(div().font_bold().text_size(11).text_color("#b4befe").child("PIXEL HQ"))
-      )
+      .child(div().font_bold().text_size(11).text_color("#b4befe").child("PIXEL HQ"))
       .child(label(space?.machine ? "server" : "monitor", space?.machine ?? "This computer"))
       .when(Boolean(currentBranch), el => el.child(label("branch", currentBranch)))
-      .child(
-        h_flex().gap(5).items_center().text_color(t.dim)
-          .child(svg("mods/company-status/team.svg").size(13).flex_none())
-          .child(`${list.length} ON THE TEAM`)
-      )
+      .child(div().text_color(t.dim).child(`${list.length} ON THE TEAM`))
       .when(Boolean(shared("pixel-hq.updating")), (el) => el.child(
         h_flex().id("update-status-pill").gap(6).items_center().px(7).py(2)
           .bg("#89b4fa").text_color(t.chrome)
@@ -249,13 +238,13 @@ export default class WorkspaceStatus extends View {
             .child(div().font_bold().text_size(11).child(pillText))
         );
       })
-      .when(n("working") > 0, el => el.child(pill("keyboard", `${n("working")} typing`, "#89b4fa")))
+      .when(n("working") > 0, el => el.child(pill("#89b4fa", `${n("working")} typing`)))
       .when(n("blocked") > 0, el => el.child(div().id("needs-you-pill").cursor_pointer().px(4).hover(s => s.bg(t.hover))
         .tooltip("Open the needs-you list")
         .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", width: 340, height: Math.min(440, Math.max(150, 52 + n("blocked") * 56)), props: { needsYou: true } }))
-        .child(pill("bell", `${n("blocked")} ${n("blocked") === 1 ? "needs" : "need"} you`, t.blocked ?? "#f38ba8"))))
-      .when(n("done") > 0, el => el.child(pill("star-box", `${n("done")} shipped`, t.done ?? "#a6e3a1")))
-      .when(list.length - n("working") - n("blocked") - n("done") > 0, el => el.child(pill("coffee", `${list.length - n("working") - n("blocked") - n("done")} on break`, t.dim ?? "#9399b2")))
+        .child(pill(t.blocked ?? "#e8744f", `${n("blocked")} ${n("blocked") === 1 ? "needs" : "need"} you`))))
+      .when(n("done") > 0, el => el.child(pill(t.done ?? "#8ec07c", `${n("done")} shipped`)))
+      .when(list.length - n("working") - n("blocked") - n("done") > 0, el => el.child(pill(t.dim ?? "#9a8f86", `${list.length - n("working") - n("blocked") - n("done")} on break`)))
       .child(div().flex_1())
       .when(!isMusicBoxDisabled(), (el) =>
         el.child(
@@ -388,7 +377,7 @@ export default class WorkspaceStatus extends View {
                     .hover((s) => s.bg(t.hover))
                     .tooltip(`Pixel MusicBox: ${title} (${timeText}) · Open controls · Right-click to hide from status bar`)
                     .on_click(() => run("mod.open", { name: "company-music" }))
-                    .child(div().text_size(12).child("📻"))
+                    .child(svg("mods/company-status/boombox.svg").size(14).flex_none())
                     .child(div().truncate().text_size(11.5).font_semibold().text_color(t.foreground).child(title))
                     .child(
                       div()
@@ -399,7 +388,7 @@ export default class WorkspaceStatus extends View {
                     )
                 );
             }
-            return chip(h_flex(), t, "mods/company-status/boombox.svg")
+            return chip(h_flex(), t)
               .id("btn-music")
               .tooltip("Open Pixel MusicBox · Right-click to hide from status bar")
               .on_click(() => run("mod.open", { name: "company-music" }))
@@ -412,21 +401,21 @@ export default class WorkspaceStatus extends View {
         )
       )
       .child(
-        chip(h_flex(), t, "mods/company-status/elevator.svg")
+        chip(h_flex(), t)
           .id("btn-switcher")
           .tooltip("Open Floor Switcher")
           .on_click(() => run("mod.open", { name: "company-switcher" }))
           .child(this.switcherHint().toUpperCase())
       )
       .child(
-        chip(h_flex(), t, "mods/company-status/gamepad.svg")
+        chip(h_flex(), t)
           .id("btn-hotkeys")
           .tooltip("Configure Hotkeys")
           .on_click(() => run("mod.open", { name: "company-hotkeys" }))
           .child("HOTKEYS")
       )
       .child(
-        chip(h_flex().id("palette"), t, "mods/company-status/terminal-wand.svg")
+        chip(h_flex().id("palette"), t)
           .on_click(() => run("app.palette"))
           .child(this.hint(t).replace("  commands", " COMMANDS").replace(/^commands$/, "COMMANDS"))
       );

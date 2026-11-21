@@ -55,9 +55,9 @@ export default class WorkspaceChrome extends View {
       const ready = div().size(6).bg(t.accent);
       return v_flex().size_full().bg(t.chrome).border_t(1).border_color(t.surface).px(collapsed ? 6 : 8).pt(4).pb(4).gap(3)
         .when(collapsed, el => el.items_center())
-        .child(row("settings", "mods/company-brand/toolbox.svg", "Settings", () => run("app.settings"))
+        .child(row("settings", "mods/company-brand/settings.svg", "Settings", () => run("app.settings"))
           .when(Boolean(updates().app.ready), el => el.child(collapsed ? ready.absolute().top(3).right(4) : ready)))
-        .child(row("machine", "mods/company-brand/rig.svg", "Add machine", () => run("mod.open", { name: "machine-add" })));
+        .child(row("machine", "mods/company-brand/plus.svg", "Add machine", () => run("mod.open", { name: "machine-add" })));
     }
     const logo = image("mods/company-brand/logo.png").size(34).flex_none();
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center().text_size(13.5)

@@ -84,8 +84,8 @@ function rail(t, line, h, { stop = null, here = false, last = false, crew = [] }
     .when(stop === "station" && (here || blocked), (el) => el.child(div().absolute().left(0).top(c - 10).w(20).h(20).children(pix(blocked ? "#f38ba8" : "#f9e2af", 20, 20)).opacity(0.28)
       .loop("opacity", { from: 0.1, to: 0.45, period: blocked ? 800 : 1800, easing: "ease-in-out" })))
     .when(stop === "station", (el) => el.child(node))
-    .when(stop === "end", (el) => el.child(div().absolute().left(4).top(c - 6).w(12).h(12).rounded(2).border_2().border_dashed().border_color(line).bg(t.chrome)))
-    .when(moving, (el) => el.child(div().absolute().left(5).w(10).h(14).rounded(2).border_1().border_color("#2a2c40").bg("#e8ecf8")
+    .when(stop === "end", (el) => el.child(div().absolute().left(4).top(c - 6).w(12).h(12).border_2().border_dashed().border_color(line).bg(t.chrome)))
+    .when(moving, (el) => el.child(div().absolute().left(5).w(10).h(14).border_1().border_color("#2a2c40").bg("#e8ecf8")
       .child(div().absolute().left(1).top(2).w(6).h(3).bg("#2a2c40"))
       .child(blocked ? lamp.loop("opacity", { from: 0.3, to: 1, period: 700, easing: "linear" }) : lamp)
       .loop("top", { from: c - 25, to: c - 19, period: 2400 })));
@@ -392,9 +392,9 @@ export default class Spaces extends View {
           .child([...(m ?? "this computer")][0].toUpperCase()))
         .when(!folded && !rebuilt && !login && (mine.length > 0 || !loading(m)), (el) => el.child(div().absolute().left(8).top(18).w(4).h(10).bg(line)));
       const icon = svg(`mods/workspace-chrome/${m ? "server" : "monitor"}.svg`).size(13).flex_none();
-      const badge = div().absolute().right(-3).bottom(-2).size(6).rounded(3).border_1().border_color(t.chrome).bg(connected ? t.ansi2 : t.dim);
+      const badge = div().absolute().right(-3).bottom(-2).size(6).border_1().border_color(t.chrome).bg(connected ? t.ansi2 : t.dim);
       const head = h_flex().relative().id(`machine-${m ?? "local"}`).h(collapsed ? 26 : 28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().text_size(11).text_color(t.dim)
-        .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().rounded(6).tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
+        .when(collapsed, el => el.mt(4).w(RAIL_CELL).justify_center().tooltip(login ? `${m} needs a login: run ${login}. Click for Copy.` : m ? `${m} · ${connected ? "connected" : (machine?.state ?? "asleep").replace(/_/g, " ")}` : "This computer"))
         .when(collapsed, el => el.cursor_pointer())
         .when(!collapsed, el => el.bg("#181825").mb(2).h(30).child(div().absolute().left(0).right(0).bottom(0).h(2).bg(line)))
         .hover(s => s.bg(t.hover))
@@ -435,16 +435,16 @@ export default class Spaces extends View {
               .tooltip(repair?.error || "This machine was rebuilt or replaced. Click to connect to the new one.")
               .on_click((_e, cx) => { cx.stop_propagation(); this.reconnect(machine, cx); })
               .child(repair?.busy ? "Connecting…" : "Connect"))))
-          .when(hovered && connected, el => el.child(div().id(`machine-add-${lineKey}`).flex_none().px(4).rounded(4).hover(s => s.bg(t.hover).text_color(t.foreground))
+          .when(hovered && connected, el => el.child(div().id(`machine-add-${lineKey}`).flex_none().px(4).hover(s => s.bg(t.hover).text_color(t.foreground))
             .tooltip(`New station on ${m ?? "this computer"}`)
             .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", { machine: m ?? "" }); }).child("+")))
           .child(div().flex_none().child(`${mine.length} ${mine.length === 1 ? "station" : "stations"}`))
           .child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none()));
-      const empty = h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center().rounded(7)
+      const empty = h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center()
         .text_size(12).text_color(t.dim)
         .when(collapsed || connected, el => el.hover(s => s.bg(t.hover).text_color(t.foreground)).on_click(() => run("space.new", { machine: m ?? "" })))
-        .when(collapsed, el => el.w(RAIL_CELL).rounded(6).justify_center().tooltip(`New space on ${m ?? "this computer"}`)
-          .child(h_flex().size(18).rounded(5).border_1().border_color(t.dim).items_center().justify_center()
+        .when(collapsed, el => el.w(RAIL_CELL).justify_center().tooltip(`New space on ${m ?? "this computer"}`)
+          .child(h_flex().size(18).border_1().border_color(t.dim).items_center().justify_center()
             .child(svg("mods/workspace-chrome/plus.svg").size(10))))
         .when(!collapsed, el => el.h(26).gap(6).text_size(11.5).child(rail(t, line, 26, { stop: "end", last: true })).child("new station"));
       if (!collapsed && rebuilt) return [head];
@@ -454,7 +454,7 @@ export default class Spaces extends View {
         .child(div().text_size(11).text_color(t.blocked).child("needs a login: run"))
         .child(h_flex().gap(5).items_center()
           .child(div().flex_1().min_w(0).truncate().tooltip(login).text_size(11).text_color(t.muted).child(login))
-          .child(div().id(`machine-login-copy-${m}`).flex_none().px(5).py(2).rounded(4)
+          .child(div().id(`machine-login-copy-${m}`).flex_none().px(5).py(2)
             .text_size(11).text_color(t.foreground).bg(t.raised).cursor_pointer().hover(s => s.bg(t.hover))
             .on_click((_e, cx) => { cx.stop_propagation(); cx.write_to_clipboard(login); this.copiedLogin = login; cx.notify(); })
             .child(this.copiedLogin === login ? "Copied" : "Copy")))] : [];
@@ -579,7 +579,7 @@ export default class Spaces extends View {
     const idle = crew.length - blocked - working - done;
     const dot = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : null;
     const chip = (text, color, pulse) => {
-      const c = h_flex().flex_none().px(5).h(15).items_center().rounded(2).border_1().border_color(color + "77").bg(color + "26")
+      const c = h_flex().flex_none().px(5).h(15).items_center().border_1().border_color(color + "77").bg(color + "26")
         .font_family(MONO).font_bold().text_size(9.5).text_color(color).child(text);
       return pulse ? c.loop("opacity", { from: 0.55, to: 1, period: 900, easing: "ease-in-out" }) : c;
     };

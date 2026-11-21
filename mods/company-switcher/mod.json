@@ -3,7 +3,8 @@
   "title": "Floor Switcher",
   "overlay": {
     "kind": "dialog",
+    "frame": "none",
     "width": 600,
-    "height": 430
+    "height": 380
   }
 }

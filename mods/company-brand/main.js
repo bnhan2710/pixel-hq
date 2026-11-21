@@ -1,6 +1,6 @@
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { theme, run, props, window, shared, setShared, updates, layout } from "herdr";
+import { theme, run, props, window, shared, setShared, updates, layout, notify } from "herdr";
 
 const MONO = "JetBrains Mono";
 
@@ -62,7 +62,10 @@ export default class WorkspaceChrome extends View {
     const logo = image("mods/company-brand/logo.png").size(34).flex_none();
     return h_flex().size_full().bg(t.chrome).pl(collapsed ? 6 : 14).pr(10).gap(4).items_center().text_size(13.5)
       .when(window()?.platform === "macos" && !window()?.fullscreen && !collapsed, el => el.pl(76))
-      .when(!collapsed, el => el.child(h_flex().flex_1().gap(9).items_center().child(logo)
+      .when(!collapsed, el => el.child(h_flex().flex_1().gap(9).items_center().cursor_pointer()
+        .tooltip("Pixel HQ - Click to test pixel notification")
+        .on_click(() => notify({ title: "PIXEL HQ", body: "Pixel art toast notification online!", level: "success" }))
+        .child(logo)
         .child(v_flex().gap(0).child(div().font_family(MONO).font_bold().text_size(13).text_color(t.foreground).child("PIXEL HQ"))
           .child(div().font_family(MONO).font_bold().text_size(9.5).text_color(t.dim).child("ENGINEERING FLOOR")))))
       .when(!collapsed, el => el.child(this.button("hotkeys", svg("mods/company-brand/keyboard.svg").size(15).text_color(t.muted), () => run("mod.open", { name: "company-hotkeys" }))))

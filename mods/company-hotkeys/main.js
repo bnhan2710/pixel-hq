@@ -196,15 +196,15 @@ export default class CompanyHotkeys extends View {
                   .relative()
                   .h(22)
                   .px(8)
-                  .pt(2)
-                  .pb(4)
                   .items_center()
+                  .justify_center()
                   .cursor_pointer()
                   .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
                   .on_click((_e, _cx) => this.closeModal())
                   .child(
                     div()
+                      .font_family(MONO)
                       .text_size(9.5)
                       .font_bold()
                       .text_color("#a6adc8")
@@ -217,23 +217,33 @@ export default class CompanyHotkeys extends View {
           .id("hotkeys-scroll-area")
           .flex_1()
           .min_h(0)
-          .gap(10)
+          .gap(8)
           .overflow_y_scrollbar()
           .children(
             HOTKEY_CATEGORIES.map((cat, catIdx) =>
               v_flex()
                 .id(`hotkey-cat-${catIdx}`)
-                .p(8)
-                .gap(6)
-                .bg("#1e1e2e")
+                .p(6)
+                .gap(5)
+                .bg("#14141e")
                 .border_1()
-                .border_color("#313244")
+                .border_color("#262637")
                 .child(
-                  div()
-                    .font_bold()
-                    .text_size(11)
-                    .text_color("#89b4fa")
-                    .child(cat.category.toUpperCase()),
+                  h_flex()
+                    .px(8)
+                    .py(3)
+                    .bg("#1e1e2e")
+                    .border_1()
+                    .border_color("#313244")
+                    .items_center()
+                    .child(
+                      div()
+                        .font_bold()
+                        .font_family(MONO)
+                        .text_size(10)
+                        .text_color("#89b4fa")
+                        .child(`■ ${cat.category.toUpperCase()} ■`),
+                    ),
                 )
                 .child(
                   v_flex()
@@ -244,12 +254,14 @@ export default class CompanyHotkeys extends View {
 
                         return h_flex()
                           .id(`hotkey-row-${catIdx}-${itemIdx}`)
-                          .px(6)
+                          .px(8)
                           .py(4)
                           .bg("#181825")
+                          .border_1()
+                          .border_color("#262637")
                           .items_center()
                           .justify_between()
-                          .hover((s) => s.bg("#1e1e30"))
+                          .hover((s) => s.bg("#222334").border_color("#3b3e5b"))
                           .child(
                             v_flex()
                               .flex_1()
@@ -257,6 +269,7 @@ export default class CompanyHotkeys extends View {
                               .gap(1)
                               .child(
                                 div()
+                                  .font_family(MONO)
                                   .text_size(11)
                                   .font_bold()
                                   .text_color("#cdd6f4")
@@ -264,7 +277,8 @@ export default class CompanyHotkeys extends View {
                               )
                               .child(
                                 div()
-                                  .text_size(9.5)
+                                  .font_family(MONO)
+                                  .text_size(9)
                                   .text_color("#6c7086")
                                   .child(item.desc),
                               ),
@@ -277,25 +291,21 @@ export default class CompanyHotkeys extends View {
                               .children(
                                 boundChords.length > 0
                                   ? boundChords.map((chord) =>
-                                      h_flex()
-                                        .relative()
-                                        .h(20)
+                                      div()
                                         .px(6)
-                                        .pt(2)
-                                        .pb(3)
-                                        .items_center()
-                                        .children(box("#45475a", "#11111b", "#11111b"))
-                                        .child(
-                                          div()
-                                            .text_size(9.5)
-                                            .font_bold()
-                                            .font_family(MONO)
-                                            .text_color("#89b4fa")
-                                            .child(formatChord(chord)),
-                                        ),
+                                        .py(1.5)
+                                        .bg("#11111b")
+                                        .border_1()
+                                        .border_color("#45475a")
+                                        .text_size(9)
+                                        .font_bold()
+                                        .font_family(MONO)
+                                        .text_color("#89b4fa")
+                                        .child(formatChord(chord)),
                                     )
                                   : [
                                       div()
+                                        .font_family(MONO)
                                         .text_size(11)
                                         .text_color("#585b70")
                                         .child("—"),
@@ -310,11 +320,14 @@ export default class CompanyHotkeys extends View {
       )
           .child(
             h_flex()
+              .h(24)
+              .px(6)
+              .items_center()
               .justify_between()
-              .pt(4)
               .border_t(1)
               .border_color("#313244")
-              .text_size(10)
+              .font_family(MONO)
+              .text_size(9)
               .text_color("#6c7086")
               .child("HOLD CTRL + TAP P TO CYCLE FLOORS · ALT+[ / ALT+] SWITCH FLOORS")
               .child("ESC CLOSE"),

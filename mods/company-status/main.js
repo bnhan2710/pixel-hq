@@ -241,7 +241,7 @@ export default class WorkspaceStatus extends View {
       .when(n("working") > 0, el => el.child(pill("#89b4fa", `${n("working")} typing`)))
       .when(n("blocked") > 0, el => el.child(div().id("needs-you-pill").cursor_pointer().px(4).hover(s => s.bg(t.hover))
         .tooltip("Open the needs-you list")
-        .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", width: 340, height: Math.min(440, Math.max(150, 52 + n("blocked") * 56)), props: { needsYou: true } }))
+        .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 340, height: Math.min(440, Math.max(150, 52 + n("blocked") * 56)), props: { needsYou: true } }))
         .child(pill(t.blocked ?? "#e8744f", `${n("blocked")} ${n("blocked") === 1 ? "needs" : "need"} you`))))
       .when(n("done") > 0, el => el.child(pill(t.done ?? "#8ec07c", `${n("done")} shipped`)))
       .when(list.length - n("working") - n("blocked") - n("done") > 0, el => el.child(pill(t.dim ?? "#9a8f86", `${list.length - n("working") - n("blocked") - n("done")} on break`)))

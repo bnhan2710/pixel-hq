@@ -12,7 +12,7 @@ import { checkPixelHqUpdate, executePixelHqUpdate } from "./updater.js";
 import { snapshot, clashes, hire, agentTaskArgv } from "./crew.js";
 
 // The figure editor, as a dialog; `space` opens it on that space's pick.
-const openFigures = (space) => openOverlay({ mod: "company-agents", kind: "dialog", width: 860, height: 640, props: { figures: true, ...(space ? { space } : {}) } });
+const openFigures = (space) => openOverlay({ mod: "company-agents", kind: "dialog", frame: "none", width: 860, height: 640, props: { figures: true, ...(space ? { space } : {}) } });
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -561,13 +561,17 @@ export default class Agents extends View {
               .items_center()
               .child(div().font_bold().text_size(10).text_color(t.dim).child("SORT AGENTS"))
               .child(
-                div()
+                h_flex()
+                  .relative()
+                  .h(20)
+                  .px(6)
+                  .items_center()
+                  .justify_center()
                   .cursor_pointer()
-                  .px(4)
-                  .py(1)
+                  .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
                   .on_click(() => closeOverlay(props().overlay))
-                  .child(div().text_size(9).font_bold().text_color("#a6adc8").child("ESC"))
+                  .child(div().font_family("JetBrains Mono").text_size(8.5).font_bold().text_color("#a6adc8").child("ESC"))
               )
           )
           .child(
@@ -656,9 +660,8 @@ export default class Agents extends View {
                   .relative()
                   .h(20)
                   .px(6)
-                  .pt(2)
-                  .pb(3)
                   .items_center()
+                  .justify_center()
                   .cursor_pointer()
                   .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
@@ -940,7 +943,7 @@ export default class Agents extends View {
       if (sp) out.push(spot(`bld-${sp.id}`, b.x, b.y - 4, b.w, b.h + 4, `${sp.name} · ${word[sp.status] ?? "quiet"}${sp.active ? " · you are here" : " · click to go there"}`,
         () => run("space.select", { id: sp.id })));
     });
-    const openToday = () => openOverlay({ mod: "company-agents", kind: "popup", width: 300, height: 214, props: { today: true } });
+    const openToday = () => openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 300, height: 214, props: { today: true } });
     out.push(spot("wall-clock", Lo.cx - Lo.rr, Lo.cy - Lo.rr, Lo.rr * 2, Lo.rr * 2, "Today: tasks shipped, time at work, busiest floor", openToday));
     if (!Lo.sign && o.needYou > 0) out.push(spot("wall-badge", Lo.cx + Lo.rr - 6, Lo.cy + Lo.rr - 8, 12, 10,
       `${o.needYou} ${o.needYou > 1 ? "agents need" : "agent needs"} you · click to see who`, () => this.openNeedsYou()));
@@ -1017,7 +1020,7 @@ export default class Agents extends View {
       .children([4, 8, 12].map((y) => div().absolute().left(B.x + 1).top(B.y + y).w(B.w - 2).h(1).bg("#00000033")))
       .child(div().absolute().left(B.x + 1).top(B.y - 5).w(2).h(2).bg("#6b7194"))
       .child(div().absolute().left(B.x + B.w - 3).top(B.y - 5).w(2).h(2).bg("#6b7194"));
-    const openToday = () => openOverlay({ mod: "company-agents", kind: "popup", width: 300, height: 214, props: { today: true } });
+    const openToday = () => openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 300, height: 214, props: { today: true } });
     return spot("wall-board", B.x - 2, B.y - 6, B.w + 4, B.h + 8, tip, () => (needs ? this.openNeedsYou() : openToday()))
       .child(board.left(-(B.x - 2)).top(-(B.y - 6)));
   }
@@ -1025,7 +1028,7 @@ export default class Agents extends View {
   openWorkload() {
     const act = activityAll(terminals());
     const n = agents().filter((a) => { const x = act.get(a.address); return x && (x.interns.length || x.jobs); }).length;
-    openOverlay({ mod: "company-agents", kind: "popup", width: 340, height: Math.min(440, Math.max(150, 52 + n * 56)), props: { workload: true } });
+    openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 340, height: Math.min(440, Math.max(150, 52 + n * 56)), props: { workload: true } });
   }
 
   // The rack's list: every desk with sub-agents or shell jobs running, busiest first; a click shows that agent.
@@ -1068,9 +1071,8 @@ export default class Agents extends View {
                   .relative()
                   .h(20)
                   .px(6)
-                  .pt(2)
-                  .pb(3)
                   .items_center()
+                  .justify_center()
                   .cursor_pointer()
                   .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
@@ -1145,9 +1147,8 @@ export default class Agents extends View {
                   .relative()
                   .h(20)
                   .px(6)
-                  .pt(2)
-                  .pb(3)
                   .items_center()
+                  .justify_center()
                   .cursor_pointer()
                   .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
@@ -1168,7 +1169,7 @@ export default class Agents extends View {
 
   openNeedsYou() {
     const n = agents().filter((a) => a.status === "blocked").length;
-    openOverlay({ mod: "company-agents", kind: "popup", width: 340, height: Math.min(440, Math.max(150, 52 + n * 56)), props: { needsYou: true } });
+    openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 340, height: Math.min(440, Math.max(150, 52 + n * 56)), props: { needsYou: true } });
   }
 
   openHire(cx) {
@@ -2133,7 +2134,7 @@ export default class Agents extends View {
                     .text_size(11)
                     .text_color(t.dim)
                     .hover((s) => s.text_color(t.foreground))
-                    .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", width: 200, height: 140, props: { sortMenu: true } }))
+                    .on_click(() => openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 200, height: 140, props: { sortMenu: true } }))
                     .tooltip(`Sort agents: ${sort.label}`)
                     .child(svg(`mods/company-agents/${sort.icon}.svg`).size(14)),
                 ))),

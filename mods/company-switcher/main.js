@@ -170,13 +170,12 @@ export default class CompanySwitcher extends View {
         v_flex()
           .relative()
           .size_full()
-          .p(12)
+          .p(10)
           .gap(8)
           .font_family(MONO)
           .child(
             h_flex()
-              .h(30)
-              .px(4)
+              .w_full()
               .pb(6)
               .items_center()
               .justify_between()
@@ -186,13 +185,27 @@ export default class CompanySwitcher extends View {
                 h_flex()
                   .gap(8)
                   .items_center()
-                  .child(svg("mods/company-spaces/monitor.svg").size(14).text_color("#89b4fa"))
+                  .child(svg("mods/company-spaces/monitor.svg").size(15).text_color("#89b4fa"))
                   .child(
                     div()
+                      .font_family(MONO)
                       .text_size(12)
                       .font_bold()
                       .text_color("#cdd6f4")
-                      .child("FLOOR SWITCHER"),
+                      .child("FLOOR SWITCHER // DIRECTORY"),
+                  )
+                  .child(
+                    div()
+                      .px(4)
+                      .py(1)
+                      .bg("#89b4fa18")
+                      .border_1()
+                      .border_color("#89b4fa44")
+                      .font_family(MONO)
+                      .text_size(8.5)
+                      .font_bold()
+                      .text_color("#89b4fa")
+                      .child("CTRL+P"),
                   ),
               )
               .child(
@@ -201,15 +214,15 @@ export default class CompanySwitcher extends View {
                   .relative()
                   .h(22)
                   .px(8)
-                  .pt(2)
-                  .pb(4)
                   .items_center()
+                  .justify_center()
                   .cursor_pointer()
                   .children(box("#45475a", "#313244", "#11111b"))
                   .hover((s) => s.text_color("#ffffff"))
                   .on_click(() => closeOverlay(props()?.overlay))
                   .child(
                     div()
+                      .font_family(MONO)
                       .text_size(9.5)
                       .font_bold()
                       .text_color("#a6adc8")
@@ -222,9 +235,9 @@ export default class CompanySwitcher extends View {
               .relative()
               .h(32)
               .px(8)
-              .gap(6)
+              .gap(8)
               .items_center()
-              .bg("#11111b")
+              .bg("#0d0e15")
               .border_1()
               .border_color("#313244")
               .child(div().font_family(MONO).font_bold().text_size(13).text_color("#89b4fa").child(">"))
@@ -233,7 +246,7 @@ export default class CompanySwitcher extends View {
                   .h_full()
                   .w_full()
                   .font_family(MONO)
-                  .text_size(12)
+                  .text_size(11.5)
                   .text_color("#cdd6f4"),
               ),
           )
@@ -243,7 +256,7 @@ export default class CompanySwitcher extends View {
               .min_h(0)
               .overflow_y_scrollbar()
               .py(2)
-              .gap(5)
+              .gap(6)
               .children(
                 list.map((s, i) => {
                   const on = s.active;
@@ -255,14 +268,15 @@ export default class CompanySwitcher extends View {
 
                   return h_flex()
                     .id(`space-row-${s.id}`)
-                    .relative()
-                    .h(38)
-                    .px(8)
+                    .h(42)
+                    .px(10)
                     .items_center()
                     .justify_between()
                     .cursor_pointer()
-                    .children(box(isSel ? "#89b4fa" : on ? "#45475a" : "#313244", isSel ? "#313244" : on ? "#1e1e2e" : "#181825", "#11111b"))
-                    .hover((st) => st.bg("#313244"))
+                    .bg(isSel ? "#2a2b3d" : on ? "#1e1e2e" : "#14141e")
+                    .border_1()
+                    .border_color(isSel ? "#89b4fa" : on ? "#45475a" : "#262637")
+                    .hover((st) => st.bg("#2e3146"))
                     .on_click(() => {
                       run("space.select", { id: s.id });
                       closeOverlay(props()?.overlay);
@@ -272,24 +286,19 @@ export default class CompanySwitcher extends View {
                         .gap(8)
                         .items_center()
                         .when(isSel, (el) => el.child(div().font_family(MONO).font_bold().text_size(11).text_color("#89b4fa").child("▶")))
+                        .when(!isSel, (el) => el.child(div().w(8)))
                         .child(
-                          h_flex()
-                            .relative()
-                            .h(20)
-                            .px(6)
-                            .pt(2)
-                            .pb(3)
-                            .items_center()
-                            .justify_center()
-                            .children(box(isSel ? "#89b4fa" : "#45475a", "#11111b", "#11111b"))
-                            .child(
-                              div()
-                                .font_family(MONO)
-                                .text_size(10)
-                                .font_bold()
-                                .text_color(isSel ? "#89b4fa" : "#a6adc8")
-                                .child(`F${i + 1}`),
-                            ),
+                          div()
+                            .px(5)
+                            .py(1.5)
+                            .bg("#11111b")
+                            .border_1()
+                            .border_color(isSel ? "#89b4fa" : "#45475a")
+                            .font_family(MONO)
+                            .text_size(9.5)
+                            .font_bold()
+                            .text_color(isSel ? "#89b4fa" : "#a6adc8")
+                            .child(`F${i + 1}`)
                         )
                         .child(
                           v_flex()
@@ -300,9 +309,10 @@ export default class CompanySwitcher extends View {
                                 .items_center()
                                 .child(
                                   div()
+                                    .font_family(MONO)
                                     .text_size(12)
                                     .font_bold()
-                                    .text_color("#cdd6f4")
+                                    .text_color(isSel ? "#89b4fa" : "#cdd6f4")
                                     .child(s.name ?? "unnamed"),
                                 )
                                 .when(on, (ch) =>
@@ -310,17 +320,21 @@ export default class CompanySwitcher extends View {
                                     div()
                                       .px(4)
                                       .py(0.5)
-                                      .text_size(9)
+                                      .font_family(MONO)
+                                      .text_size(8.5)
                                       .font_bold()
                                       .bg("#89b4fa26")
+                                      .border_1()
+                                      .border_color("#89b4fa55")
                                       .text_color("#89b4fa")
-                                      .child("CURRENT"),
+                                      .child("CURRENT FLOOR"),
                                   ),
                                 ),
                             )
                             .child(
                               div()
-                                .text_size(10)
+                                .font_family(MONO)
+                                .text_size(9.5)
                                 .text_color("#6c7086")
                                 .child(s.folder ? s.folder.replace(/\/+$/, "").split("/").pop() : "~"),
                             ),
@@ -338,28 +352,25 @@ export default class CompanySwitcher extends View {
                               .child(div().size(6).bg(dotColor))
                               .child(
                                 div()
-                                  .text_size(10.5)
+                                  .font_family(MONO)
+                                  .text_size(9.5)
                                   .text_color("#a6adc8")
                                   .child(`${crew.length} ABOARD`),
                               ),
                           ),
                         )
                         .child(
-                          h_flex()
-                            .relative()
-                            .h(20)
+                          div()
                             .px(5)
-                            .pt(2)
-                            .pb(3)
-                            .items_center()
-                            .children(box("#45475a", "#11111b", "#11111b"))
-                            .child(
-                              div()
-                                .text_size(9.5)
-                                .font_family(MONO)
-                                .text_color("#a6adc8")
-                                .child(`ALT+${i + 1}`),
-                            ),
+                            .py(1.5)
+                            .bg("#11111b")
+                            .border_1()
+                            .border_color("#45475a")
+                            .text_size(9)
+                            .font_family(MONO)
+                            .font_bold()
+                            .text_color("#a6adc8")
+                            .child(`ALT+${i + 1}`)
                         ),
                     );
                 }),
@@ -367,14 +378,17 @@ export default class CompanySwitcher extends View {
           )
           .child(
             h_flex()
+              .h(24)
+              .px(6)
+              .items_center()
               .justify_between()
-              .pt(4)
               .border_t(1)
               .border_color("#313244")
-              .text_size(10)
+              .font_family(MONO)
+              .text_size(9)
               .text_color("#6c7086")
-              .child("CTRL+P TO CYCLE · 1–9 TO JUMP")
-              .child("ESC TO CLOSE"),
+              .child("CTRL+P TO CYCLE · 1–9 TO JUMP · ENTER SELECT")
+              .child("ESC CLOSE"),
           ),
       );
   }

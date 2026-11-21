@@ -3,6 +3,7 @@
   "title": "Pixel MusicBox",
   "overlay": {
     "kind": "dialog",
+    "frame": "none",
     "width": 560,
     "height": 580
   }

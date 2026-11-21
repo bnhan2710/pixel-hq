@@ -38,16 +38,15 @@ export default class WorkspaceChrome extends View {
     const t = theme();
     const collapsed = narrow();
     if (props()?.footer) {
-      const row = (id, icon, label, dim, action) => h_flex().id(id).h(28).px(8).gap(9).items_center().relative()
+      const row = (id, icon, label, dim, action) => h_flex().id(id).h(26).px(8).gap(8).items_center().relative()
         .when(collapsed, el => el.relative().w(32).px(0).justify_center().tooltip(label))
         .text_color(dim ? t.dim : t.muted).hover(s => s.bg(t.hover).text_color(t.foreground)).cursor_pointer()
-        .font_family(MONO).font_bold().text_size(11)
+        .font_family(MONO).font_bold().text_size(10.5)
         .on_click(action).child(svg(`mods/company-brand/${icon}.svg`).size(14).text_color(dim ? t.dim : t.muted))
         .when(!collapsed, el => el.child(label.toUpperCase()));
       const ready = div().size(6).bg(t.accent);
-      return v_flex().size_full().bg(t.chrome).border_t(1).border_color(t.border).px(8).pt(4).pb(8).text_size(13)
+      return v_flex().size_full().bg(t.chrome).border_t(1).border_color(t.border).px(collapsed ? 0 : 6).pt(3).pb(4).gap(2)
         .when(collapsed, el => el.px(0).items_center())
-        .child(row("hotkeys", "keyboard", "Hotkeys", false, () => run("mod.open", { name: "company-hotkeys" })))
         .child(row("settings", "settings", "Settings", false, () => run("app.settings"))
           .when(Boolean(updates().app.ready), el => el.child(collapsed ? ready.absolute().top(5).right(6) : ready)))
         .child(row("machine", "plus", "Add machine", true, () => run("mod.open", { name: "machine-add" })));

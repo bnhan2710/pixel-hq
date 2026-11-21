@@ -50,13 +50,13 @@
           "id": "sidebar-footer",
           "type": "block",
           "content": {
-            "mod": "workspace-chrome",
+            "mod": "company-brand",
             "props": {
               "footer": true
             }
           },
           "size": {
-            "px": 69
+            "px": 62
           }
         }
       ],
@@ -68,10 +68,9 @@
       "background": "#181825",
       "border": {
         "width": 1,
-        "color": "#ffffff14"
+        "color": "#313244"
       },
-      "radius": 14,
-      "shadow": "md",
+      "radius": 0,
       "resizable": false
     },
     {
@@ -90,9 +89,9 @@
           "background": "#181825",
           "border": {
             "width": 1,
-            "color": "#ffffff14"
+            "color": "#313244"
           },
-          "radius": 12,
+          "radius": 0,
           "window_drag": true
         },
         {
@@ -116,13 +115,13 @@
                   "background": "#1e1e2e",
                   "border": {
                     "width": 1,
-                    "color": "#ffffff14"
+                    "color": "#313244"
                   },
                   "focus": {
-                    "width": 1.5,
+                    "width": 1,
                     "color": "#89b4fa"
                   },
-                  "radius": 14,
+                  "radius": 0,
                   "gap": 8,
                   "lone": true
                 }
@@ -177,9 +176,9 @@
           "background": "#181825",
           "border": {
             "width": 1,
-            "color": "#ffffff14"
+            "color": "#313244"
           },
-          "radius": 12
+          "radius": 0
         }
       ],
       "gap": 8,

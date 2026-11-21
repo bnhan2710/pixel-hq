@@ -56,7 +56,7 @@ const GUTTER = 22;
 const LINES = ["#8fa3f0", "#7aa7e8", "#6fc7bd", "#b394f0", "#8fcf94", "#e49ac8"];
 
 const plus = (c) => div().relative().flex_none().size(10)
-  .children([div().absolute().left(4).top(0).w(2).h(10).bg(c), div().absolute().left(0).top(4).w(10).h(2).bg(c)]);
+  .children([div().absolute().left(3).top(0).w(4).h(10).bg(c), div().absolute().left(0).top(3).w(10).h(4).bg(c)]);
 
 function grip(color) {
   return div().absolute().left(1).top(9).w(5).h(10).children([0, 4, 8].flatMap((y) => [0, 3].map((x) => div().absolute().left(x).top(y).size(2).bg(color))));
@@ -437,7 +437,7 @@ export default class Spaces extends View {
               .child(repair?.busy ? "Connecting…" : "Connect"))))
           .when(hovered && connected, el => el.child(div().id(`machine-add-${lineKey}`).flex_none().px(4).hover(s => s.bg(t.hover).text_color(t.foreground))
             .tooltip(`New station on ${m ?? "this computer"}`)
-            .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", { machine: m ?? "" }); }).child("+")))
+            .on_click((_e, cx) => { cx.stop_propagation(); run("space.new", { machine: m ?? "" }); }).child(svg("mods/company-spaces/plus.svg").size(10))))
           .child(div().flex_none().child(`${mine.length} ${mine.length === 1 ? "station" : "stations"}`))
           .child(svg(`mods/company-spaces/chevron-${folded ? "right" : "down"}.svg`).size(11).flex_none()));
       const empty = h_flex().id(`machine-new-${m ?? "local"}`).h(28).flex_none().px(collapsed ? 0 : 8).gap(7).items_center()

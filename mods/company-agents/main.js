@@ -23,6 +23,16 @@ function find(node, id) {
   return null;
 }
 
+const notch = (c, [l, r, t, b]) => [
+  div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
+  div().absolute().left(l).right(r).top(t + 2).bottom(b + 2).bg(c),
+];
+const box = (frame, fill, shadow) => [
+  ...notch(shadow, [2, 0, 2, 0]),
+  ...notch(frame, [0, 2, 0, 2]),
+  ...notch(fill, [2, 4, 2, 4]),
+];
+
 // The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
 const narrow = () => (find(layout(), "sidebar")?.size?.px ?? Infinity) < 160;
 
@@ -527,30 +537,65 @@ export default class Agents extends View {
 
   sortMenu(t) {
     const on = sortOf().id;
-    return v_flex()
+    return div()
+      .relative()
       .w_full()
-      .p(6)
-      .bg(t.popover)
-      .border_1()
-      .border_color("#313244")
-      .font_family("JetBrains Mono")
-      .text_size(11)
-      .child(div().px(8).pt(4).pb(6).font_bold().text_size(10).text_color(t.dim).child("SORT AGENTS"))
-      .children(SORTS.map((s) => h_flex()
-        .id(`sort-${s.id}`)
-        .h(28)
-        .px(8)
-        .gap(8)
-        .items_center()
-        .text_color(t.foreground)
-        .hover((el) => el.bg(t.hover))
-        .on_click(() => {
-          setShared("agents.sort", s.id);
-          closeOverlay(props().overlay);
-        })
-        .child(svg(`mods/company-agents/${s.icon}.svg`).size(13).flex_none().text_color(t.muted))
-        .child(div().flex_1().child(s.label.toUpperCase()))
-        .when(s.id === on, (el) => el.child(div().size(6).bg(t.accent)))));
+      .h_full()
+      .min_h(0)
+      .children(box("#45475a", "#181825", "#11111b"))
+      .child(
+        v_flex()
+          .relative()
+          .size_full()
+          .p(6)
+          .font_family("JetBrains Mono")
+          .text_size(11)
+          .child(
+            h_flex()
+              .px(6)
+              .pt(2)
+              .pb(4)
+              .border_b(1)
+              .border_color("#313244")
+              .justify_between()
+              .items_center()
+              .child(div().font_bold().text_size(10).text_color(t.dim).child("SORT AGENTS"))
+              .child(
+                div()
+                  .cursor_pointer()
+                  .px(4)
+                  .py(1)
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click(() => closeOverlay(props().overlay))
+                  .child(div().text_size(9).font_bold().text_color("#a6adc8").child("ESC"))
+              )
+          )
+          .child(
+            v_flex()
+              .py(2)
+              .gap(2)
+              .children(
+                SORTS.map((s) =>
+                  h_flex()
+                    .id(`sort-${s.id}`)
+                    .h(28)
+                    .px(8)
+                    .gap(8)
+                    .items_center()
+                    .cursor_pointer()
+                    .text_color(t.foreground)
+                    .hover((el) => el.bg("#313244"))
+                    .on_click(() => {
+                      setShared("agents.sort", s.id);
+                      closeOverlay(props().overlay);
+                    })
+                    .child(svg(`mods/company-agents/${s.icon}.svg`).size(13).flex_none().text_color(t.muted))
+                    .child(div().flex_1().child(s.label.toUpperCase()))
+                    .when(s.id === on, (el) => el.child(div().size(6).bg(t.accent)))
+                )
+              )
+          )
+      );
   }
 
   needsYou(t) {
@@ -579,37 +624,81 @@ export default class Agents extends View {
       const label = tab ? title(many ? { ...tab, named: false } : tab, many ? a : leads.get(a.tab)) : (clean(a.title) || a.program?.name || a.tab_name || a.address);
       return /^\d+$/.test(label) ? (a.program?.name || label) : label;
     };
-    return v_flex()
+    return div()
+      .relative()
       .w_full()
-      .p(6)
-      .bg(t.popover)
-      .overflow_y_scrollbar()
-      .child(h_flex().px(6).pt(2).pb(6).gap(8).items_center()
-        .child(div().font_family(mono).font_bold().text_size(10).text_color("#f9e2af").child("NEEDS YOU"))
-        .when(waiting.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim).child(`${waiting.length} waiting · longest first`))))
-      .when(waiting.length === 0, (el) => el.child(div().px(10).py(18).text_size(12).text_color(t.dim).child("All hands on deck. Nobody needs you right now.")))
-      .children(waiting.map((a) => {
-        const at = stamp(a);
-        const name = nameOf(a);
-        const sub = [a.space_name, a.program?.name, at ? `waiting ${duration(now - at)}` : null].filter(Boolean).join(" · ");
-        return h_flex()
-          .id(`ny-${a.address}`)
-          .h(50)
-          .px(6)
-          .gap(8)
-          .items_center()
-          .cursor_pointer()
-          .hover((s) => s.bg(t.hover))
-          .on_click(() => {
-            run("pane.focus", { pane: a.pane });
-            closeOverlay(props().overlay);
-          })
-          .child(div().flex_none().child(figureFor(a.space_name, "blocked", 34, at ? Math.max(0, now - at) : 0, speciesOf(progOf(a)))))
-          .child(v_flex().flex_1().min_w(0).gap(1)
-            .child(div().truncate().text_size(12.5).text_color(t.foreground).child(name))
-            .child(div().truncate().text_size(10.5).text_color(t.muted).child(sub)))
-          .child(div().flex_none().text_size(14).text_color("#89b4fa").child("→"));
-      }));
+      .h_full()
+      .min_h(0)
+      .children(box("#45475a", "#181825", "#11111b"))
+      .child(
+        v_flex()
+          .relative()
+          .size_full()
+          .p(8)
+          .gap(6)
+          .font_family(mono)
+          .child(
+            h_flex()
+              .h(28)
+              .px(6)
+              .pb(4)
+              .border_b(1)
+              .border_color("#313244")
+              .items_center()
+              .justify_between()
+              .child(
+                h_flex().gap(6).items_center()
+                  .child(div().font_family(mono).font_bold().text_size(11).text_color("#f9e2af").child("NEEDS YOU"))
+                  .when(waiting.length > 0, (el) => el.child(div().text_size(9.5).text_color(t.dim).child(`(${waiting.length})`)))
+              )
+              .child(
+                h_flex()
+                  .relative()
+                  .h(20)
+                  .px(6)
+                  .pt(2)
+                  .pb(3)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#45475a", "#313244", "#11111b"))
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click(() => closeOverlay(props()?.overlay))
+                  .child(div().text_size(9).font_bold().text_color("#a6adc8").child("ESC"))
+              )
+          )
+          .child(
+            v_flex()
+              .flex_1()
+              .min_h(0)
+              .overflow_y_scrollbar()
+              .gap(4)
+              .when(waiting.length === 0, (el) => el.child(div().px(10).py(18).text_size(11.5).text_color(t.dim).child("All hands on deck. Nobody needs you right now.")))
+              .children(waiting.map((a) => {
+                const at = stamp(a);
+                const name = nameOf(a);
+                const sub = [a.space_name, a.program?.name, at ? `waiting ${duration(now - at)}` : null].filter(Boolean).join(" · ");
+                return h_flex()
+                  .id(`ny-${a.address}`)
+                  .relative()
+                  .h(50)
+                  .px(6)
+                  .gap(8)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#313244", "#1e1e2e", "#11111b"))
+                  .hover((s) => s.bg("#313244"))
+                  .on_click(() => {
+                    run("pane.focus", { pane: a.pane });
+                    closeOverlay(props()?.overlay);
+                  })
+                  .child(div().flex_none().child(figureFor(a.space_name, "blocked", 34, at ? Math.max(0, now - at) : 0, speciesOf(progOf(a)))))
+                  .child(v_flex().flex_1().min_w(0).gap(1)
+                    .child(div().truncate().font_family(mono).font_bold().text_size(11.5).text_color(t.foreground).child(name))
+                    .child(div().truncate().font_family(mono).text_size(9.5).text_color(t.muted).child(sub)))
+                  .child(div().flex_none().font_family(mono).font_bold().text_size(12).text_color("#89b4fa").child("→"));
+              }))
+          )
+      );
   }
 
   peek(addr) {
@@ -947,21 +1036,69 @@ export default class Agents extends View {
     const total = rows.reduce((n, { x }) => n + load(x), 0);
     const mono = "JetBrains Mono";
     const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
-    return v_flex().w_full().p(6).bg(t.popover).overflow_y_scrollbar()
-      .child(h_flex().px(6).pt(2).pb(6).gap(8).items_center()
-        .child(div().font_family(mono).font_bold().text_size(10).text_color("#a6e3a1").child("SERVER RACK"))
-        .when(rows.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim).child(`${total} running · busiest first`))))
-      .when(rows.length === 0, (el) => el.child(div().px(10).py(18).text_size(12).text_color(t.dim).child("Quiet: no sub-agents or shell jobs running.")))
-      .children(rows.map(({ a, x }) => {
-        const parts = [x.interns.length ? plural(x.interns.length, "sub-agent") : null, x.jobs ? `${plural(x.jobs, "shell job")}${x.long ? ` (${x.long} over a minute)` : ""}` : null].filter(Boolean).join(" · ");
-        return h_flex().id(`wl-${a.address}`).h(52).px(6).gap(8).border(1).border_color(t.border).bg(t.surface).items_center().cursor_pointer().hover((st) => st.bg(t.hover))
-          .on_click(() => { run("agent.focus", { terminal: a.address }); closeOverlay(props().overlay); })
-          .child(div().flex_none().child(figureFor(a.space_name, a.status, 34, 0, speciesOf(progOf(a)))))
-          .child(v_flex().flex_1().min_w(0).gap(1)
-            .child(div().truncate().text_size(12.5).text_color(t.foreground).child([a.space_name, a.program?.name].filter(Boolean).join(" · ")))
-            .child(div().truncate().text_size(10.5).text_color(t.muted).child(parts)))
-          .child(div().flex_none().text_size(14).text_color("#89b4fa").child("→"));
-      }));
+    return div()
+      .relative()
+      .w_full()
+      .h_full()
+      .min_h(0)
+      .children(box("#45475a", "#181825", "#11111b"))
+      .child(
+        v_flex()
+          .relative()
+          .size_full()
+          .p(8)
+          .gap(6)
+          .font_family(mono)
+          .child(
+            h_flex()
+              .h(28)
+              .px(6)
+              .pb(4)
+              .border_b(1)
+              .border_color("#313244")
+              .items_center()
+              .justify_between()
+              .child(
+                h_flex().gap(6).items_center()
+                  .child(div().font_family(mono).font_bold().text_size(11).text_color("#a6e3a1").child("SERVER RACK"))
+                  .when(rows.length > 0, (el) => el.child(div().text_size(9.5).text_color(t.dim).child(`(${total} running)`)))
+              )
+              .child(
+                h_flex()
+                  .relative()
+                  .h(20)
+                  .px(6)
+                  .pt(2)
+                  .pb(3)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#45475a", "#313244", "#11111b"))
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click(() => closeOverlay(props()?.overlay))
+                  .child(div().text_size(9).font_bold().text_color("#a6adc8").child("ESC"))
+              )
+          )
+          .child(
+            v_flex()
+              .flex_1()
+              .min_h(0)
+              .overflow_y_scrollbar()
+              .gap(4)
+              .when(rows.length === 0, (el) => el.child(div().px(10).py(18).text_size(11.5).text_color(t.dim).child("Quiet: no sub-agents or shell jobs running.")))
+              .children(rows.map(({ a, x }) => {
+                const parts = [x.interns.length ? plural(x.interns.length, "sub-agent") : null, x.jobs ? `${plural(x.jobs, "shell job")}${x.long ? ` (${x.long} over a minute)` : ""}` : null].filter(Boolean).join(" · ");
+                return h_flex().id(`wl-${a.address}`).relative().h(52).px(6).gap(8).items_center().cursor_pointer()
+                  .children(box("#313244", "#1e1e2e", "#11111b"))
+                  .hover((st) => st.bg("#313244"))
+                  .on_click(() => { run("agent.focus", { terminal: a.address }); closeOverlay(props().overlay); })
+                  .child(div().flex_none().child(figureFor(a.space_name, a.status, 34, 0, speciesOf(progOf(a)))))
+                  .child(v_flex().flex_1().min_w(0).gap(1)
+                    .child(div().truncate().font_family(mono).font_bold().text_size(11.5).text_color(t.foreground).child([a.space_name, a.program?.name].filter(Boolean).join(" · ")))
+                    .child(div().truncate().font_family(mono).text_size(9.5).text_color(t.muted).child(parts)))
+                  .child(div().flex_none().font_family(mono).font_bold().text_size(12).text_color("#89b4fa").child("→"));
+              }))
+          )
+      );
   }
 
   // The clock's summary of the day.
@@ -974,17 +1111,59 @@ export default class Agents extends View {
     const hm = (ms) => { const m = Math.round(ms / 60000); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`; };
     const day = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()];
     const line = (label, value) => h_flex().justify_between().px(10).py(5)
-      .child(div().text_size(12).text_color(t.muted).child(label))
-      .child(div().text_size(12.5).font_family(mono).text_color(t.foreground).child(value));
-    return v_flex().w_full().p(6).bg(t.popover)
-      .child(h_flex().px(6).pt(2).pb(6).gap(8).items_center()
-        .child(div().font_family(mono).font_bold().text_size(10).text_color("#f9e2af").child("TODAY"))
-        .child(div().text_size(10).text_color(t.dim).child(`${day} ${d.day}`)))
-      .child(line("Tasks shipped", String(d.shipped)))
-      .child(line("Time agents worked", hm(d.workMs)))
-      .child(line("Busiest floor", top ? `${top[0]} · ${hm(top[1])}` : "none yet"))
-      .child(line("Working now", String(list.filter((a) => a.status === "working").length)))
-      .child(line("Waiting on you", String(list.filter((a) => a.status === "blocked").length)));
+      .child(div().text_size(11.5).text_color(t.muted).child(label))
+      .child(div().text_size(12).font_family(mono).font_bold().text_color(t.foreground).child(value));
+    return div()
+      .relative()
+      .w_full()
+      .h_full()
+      .min_h(0)
+      .children(box("#45475a", "#181825", "#11111b"))
+      .child(
+        v_flex()
+          .relative()
+          .size_full()
+          .p(8)
+          .gap(6)
+          .font_family(mono)
+          .child(
+            h_flex()
+              .h(28)
+              .px(6)
+              .pb(4)
+              .border_b(1)
+              .border_color("#313244")
+              .items_center()
+              .justify_between()
+              .child(
+                h_flex().gap(6).items_center()
+                  .child(div().font_family(mono).font_bold().text_size(11).text_color("#f9e2af").child("TODAY STATS"))
+                  .child(div().text_size(9.5).text_color(t.dim).child(`${day} ${d.day}`))
+              )
+              .child(
+                h_flex()
+                  .relative()
+                  .h(20)
+                  .px(6)
+                  .pt(2)
+                  .pb(3)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#45475a", "#313244", "#11111b"))
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click(() => closeOverlay(props()?.overlay))
+                  .child(div().text_size(9).font_bold().text_color("#a6adc8").child("ESC"))
+              )
+          )
+          .child(
+            v_flex().flex_1().min_h(0).gap(3).py(2)
+              .child(line("Tasks shipped", String(d.shipped)))
+              .child(line("Time agents worked", hm(d.workMs)))
+              .child(line("Busiest floor", top ? `${top[0]} · ${hm(top[1])}` : "none yet"))
+              .child(line("Working now", String(list.filter((a) => a.status === "working").length)))
+              .child(line("Waiting on you", String(list.filter((a) => a.status === "blocked").length)))
+          )
+      );
   }
 
   openNeedsYou() {
@@ -1940,7 +2119,7 @@ export default class Agents extends View {
                 .child(div().id("ag-hire").relative().w(14).h(14).flex_none().cursor_pointer()
                   .tooltip("Hire staff: a new agent in its own git worktree")
                   .on_click((_e, cx) => this.openHire(cx))
-                  .children([[6, 0, 2, 14], [0, 6, 14, 2]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg(this.hiring.open ? "#f9e2af" : "#89b4fa"))))
+                  .children([[5, 1, 4, 12], [1, 5, 12, 4]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg(this.hiring.open ? "#f9e2af" : "#89b4fa"))))
                 .child(div()
                   .id("ag-figures")
                   .text_color(t.dim)

@@ -60,7 +60,7 @@ const tick = (c) => div().relative().flex_none().w(10).h(10)
 const bang = (c) => div().relative().flex_none().w(4).h(10)
   .children([div().absolute().left(1).top(0).w(2).h(6).bg(c), div().absolute().left(1).top(8).w(2).h(2).bg(c)]);
 const plus = (c) => div().relative().flex_none().w(10).h(10)
-  .children([div().absolute().left(4).top(0).w(2).h(10).bg(c), div().absolute().left(0).top(4).w(10).h(2).bg(c)]);
+  .children([div().absolute().left(3).top(0).w(4).h(10).bg(c), div().absolute().left(0).top(3).w(10).h(4).bg(c)]);
 
 export default class Tabs extends View {
   init(_props, cx) {

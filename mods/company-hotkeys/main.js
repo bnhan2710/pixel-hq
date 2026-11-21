@@ -1,8 +1,18 @@
-import { View, div } from "gpui-kit";
+import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, props, closeOverlay, keys, appHome, readTextFile } from "herdr";
 
 const MONO = "JetBrains Mono, Menlo, monospace";
+
+const notch = (c, [l, r, t, b]) => [
+  div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
+  div().absolute().left(l).right(r).top(t + 2).bottom(b + 2).bg(c),
+];
+const box = (frame, fill, shadow) => [
+  ...notch(shadow, [2, 0, 2, 0]),
+  ...notch(frame, [0, 2, 0, 2]),
+  ...notch(fill, [2, 4, 2, 4]),
+];
 
 const HOTKEY_CATEGORIES = [
   {
@@ -136,85 +146,72 @@ export default class CompanyHotkeys extends View {
       })
       .size_full()
       .min_h(0)
-      .p(14)
-      .gap(10)
-      .bg("#181825")
-      .border_2()
-      .border_color("#313244")
-      .font_family(MONO)
-      .text_size(12)
+      .relative()
+      .children(box("#45475a", "#181825", "#11111b"))
       .child(
-        h_flex()
-          .h(30)
-          .items_center()
-          .justify_between()
+        v_flex()
+          .relative()
+          .size_full()
+          .p(12)
+          .gap(8)
+          .font_family(MONO)
+          .text_size(12)
           .child(
             h_flex()
-              .gap(8)
+              .h(30)
+              .px(4)
+              .pb(6)
               .items_center()
+              .justify_between()
+              .border_b(1)
+              .border_color("#313244")
               .child(
                 h_flex()
-                  .size(20)
-                  .bg("#313244")
+                  .gap(8)
                   .items_center()
-                  .justify_center()
-                  .child(div().text_size(11).font_bold().text_color("#89b4fa").child("⌨")),
-              )
-              .child(
-                v_flex()
-                  .gap(1)
+                  .child(svg("mods/company-brand/keyboard.svg").size(15).text_color("#89b4fa"))
                   .child(
-                    h_flex()
-                      .gap(8)
-                      .items_center()
-                      .child(
-                        div()
-                          .text_size(12)
-                          .font_bold()
-                          .text_color("#cdd6f4")
-                          .child("HOTKEYS REFERENCE"),
-                      )
-                      .child(
-                        h_flex()
-                          .px(5)
-                          .py(1)
-                          .bg("#89b4fa18")
-                          .border_1()
-                          .border_color("#89b4fa44")
-                          .child(
-                            div()
-                              .text_size(9)
-                              .font_bold()
-                              .text_color("#89b4fa")
-                              .child("READ-ONLY"),
-                          ),
-                      ),
+                    div()
+                      .text_size(12)
+                      .font_bold()
+                      .text_color("#cdd6f4")
+                      .child("HOTKEYS REFERENCE"),
                   )
                   .child(
                     div()
-                      .text_size(10)
-                      .text_color("#6c7086")
-                      .child("Active system keybindings cheat sheet"),
+                      .px(5)
+                      .py(1)
+                      .bg("#89b4fa18")
+                      .border_1()
+                      .border_color("#89b4fa44")
+                      .text_size(9)
+                      .font_bold()
+                      .text_color("#89b4fa")
+                      .child("READ-ONLY"),
+                  ),
+              )
+              .child(
+                h_flex()
+                  .id("btn-esc-hotkeys")
+                  .relative()
+                  .h(22)
+                  .px(8)
+                  .pt(2)
+                  .pb(4)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#45475a", "#313244", "#11111b"))
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click((_e, _cx) => this.closeModal())
+                  .child(
+                    div()
+                      .text_size(9.5)
+                      .font_bold()
+                      .text_color("#a6adc8")
+                      .child("ESC"),
                   ),
               ),
           )
-          .child(
-            h_flex()
-              .id("btn-esc-hotkeys")
-              .px(7)
-              .py(2)
-              .bg("#313244")
-              .border_1()
-              .border_color("#45475a")
-              .text_size(10)
-              .font_bold()
-              .text_color("#a6adc8")
-              .cursor_pointer()
-              .hover((s) => s.bg("#45475a").text_color("#cdd6f4"))
-              .on_click((_e, _cx) => this.closeModal())
-              .child("ESC CLOSE"),
-          ),
-      )
       .child(
         v_flex()
           .id("hotkeys-scroll-area")
@@ -281,15 +278,16 @@ export default class CompanyHotkeys extends View {
                                 boundChords.length > 0
                                   ? boundChords.map((chord) =>
                                       h_flex()
+                                        .relative()
                                         .h(20)
                                         .px(6)
-                                        .bg("#11111b")
-                                        .border_1()
-                                        .border_color("#89b4fa44")
+                                        .pt(2)
+                                        .pb(3)
                                         .items_center()
+                                        .children(box("#45475a", "#11111b", "#11111b"))
                                         .child(
                                           div()
-                                            .text_size(10)
+                                            .text_size(9.5)
                                             .font_bold()
                                             .font_family(MONO)
                                             .text_color("#89b4fa")
@@ -310,13 +308,17 @@ export default class CompanyHotkeys extends View {
             ),
           ),
       )
-      .child(
-        h_flex()
-          .justify_between()
-          .text_size(10)
-          .text_color("#6c7086")
-          .child("HOLD CTRL + TAP P TO CYCLE FLOORS · ALT+[ / ALT+] SWITCH FLOORS")
-          .child("ESC CLOSE"),
+          .child(
+            h_flex()
+              .justify_between()
+              .pt(4)
+              .border_t(1)
+              .border_color("#313244")
+              .text_size(10)
+              .text_color("#6c7086")
+              .child("HOLD CTRL + TAP P TO CYCLE FLOORS · ALT+[ / ALT+] SWITCH FLOORS")
+              .child("ESC CLOSE"),
+          ),
       );
   }
 }

@@ -1,11 +1,21 @@
 // Pixel HQ Floor Switcher
 // Instant switching between workspace floors with quick search, arrow navigation, 1-9 shortcuts, and Ctrl+P cycling.
 
-import { View, div } from "gpui-kit";
+import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { spaces, agents, run, theme, props, closeOverlay, nextCommand } from "herdr";
 
 const MONO = "JetBrains Mono, Menlo, monospace";
+
+const notch = (c, [l, r, t, b]) => [
+  div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
+  div().absolute().left(l).right(r).top(t + 2).bottom(b + 2).bg(c),
+];
+const box = (frame, fill, shadow) => [
+  ...notch(shadow, [2, 0, 2, 0]),
+  ...notch(frame, [0, 2, 0, 2]),
+  ...notch(fill, [2, 4, 2, 4]),
+];
 
 export default class CompanySwitcher extends View {
   init(_props, cx) {
@@ -154,199 +164,218 @@ export default class CompanySwitcher extends View {
       })
       .size_full()
       .min_h(0)
-      .p(14)
-      .gap(10)
-      .bg("#181825")
-      .border_2()
-      .border_color("#313244")
-      .font_family(MONO)
-      .text_size(12)
+      .relative()
+      .children(box("#45475a", "#181825", "#11111b"))
       .child(
-        h_flex()
-          .h(30)
-          .items_center()
-          .justify_between()
+        v_flex()
+          .relative()
+          .size_full()
+          .p(12)
+          .gap(8)
+          .font_family(MONO)
           .child(
             h_flex()
-              .gap(8)
+              .h(30)
+              .px(4)
+              .pb(6)
               .items_center()
+              .justify_between()
+              .border_b(1)
+              .border_color("#313244")
               .child(
                 h_flex()
-                  .size(20)
-                  .bg("#313244")
+                  .gap(8)
                   .items_center()
-                  .justify_center()
-                  .child(div().text_size(11).font_bold().text_color("#89b4fa").child("⌘")),
+                  .child(svg("mods/company-spaces/monitor.svg").size(14).text_color("#89b4fa"))
+                  .child(
+                    div()
+                      .text_size(12)
+                      .font_bold()
+                      .text_color("#cdd6f4")
+                      .child("FLOOR SWITCHER"),
+                  ),
               )
               .child(
-                div()
-                  .text_size(12)
-                  .font_bold()
-                  .text_color("#cdd6f4")
-                  .child("FLOOR SWITCHER"),
+                h_flex()
+                  .id("btn-esc-switcher")
+                  .relative()
+                  .h(22)
+                  .px(8)
+                  .pt(2)
+                  .pb(4)
+                  .items_center()
+                  .cursor_pointer()
+                  .children(box("#45475a", "#313244", "#11111b"))
+                  .hover((s) => s.text_color("#ffffff"))
+                  .on_click(() => closeOverlay(props()?.overlay))
+                  .child(
+                    div()
+                      .text_size(9.5)
+                      .font_bold()
+                      .text_color("#a6adc8")
+                      .child("ESC"),
+                  ),
               ),
           )
           .child(
-            div()
-              .id("btn-esc-switcher")
-              .px(7)
-              .py(2)
-              .bg("#313244")
+            h_flex()
+              .relative()
+              .h(32)
+              .px(8)
+              .gap(6)
+              .items_center()
+              .bg("#11111b")
               .border_1()
-              .border_color("#45475a")
-              .text_size(10)
-              .font_bold()
-              .text_color("#a6adc8")
-              .cursor_pointer()
-              .hover((s) => s.bg("#45475a").text_color("#cdd6f4"))
-              .on_click(() => closeOverlay(props()?.overlay))
-              .child("ESC"),
-          ),
-      )
-      .child(
-        Input.new(this.input)
-          .h(32)
-          .flex_none()
-          .px(8)
-          .border_1()
-          .border_color("#89b4fa")
-          .bg("#1e1e2e")
-          .font_family(MONO)
-          .text_size(12)
-          .text_color("#cdd6f4"),
-      )
-      .child(
-        v_flex()
-          .flex_1()
-          .min_h(0)
-          .overflow_y_scrollbar()
-          .py(2)
-          .gap(4)
-          .children(
-            list.map((s, i) => {
-              const on = s.active;
-              const isSel = this.selected === i;
-              const crew = crewMap.get(s.id) ?? [];
-              const working = crew.filter((a) => a.status === "working").length;
-              const blocked = crew.filter((a) => a.status === "blocked").length;
-              const dotColor = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : "#a6e3a1";
+              .border_color("#313244")
+              .child(div().font_family(MONO).font_bold().text_size(13).text_color("#89b4fa").child(">"))
+              .child(
+                Input.new(this.input)
+                  .h_full()
+                  .w_full()
+                  .font_family(MONO)
+                  .text_size(12)
+                  .text_color("#cdd6f4"),
+              ),
+          )
+          .child(
+            v_flex()
+              .flex_1()
+              .min_h(0)
+              .overflow_y_scrollbar()
+              .py(2)
+              .gap(5)
+              .children(
+                list.map((s, i) => {
+                  const on = s.active;
+                  const isSel = this.selected === i;
+                  const crew = crewMap.get(s.id) ?? [];
+                  const working = crew.filter((a) => a.status === "working").length;
+                  const blocked = crew.filter((a) => a.status === "blocked").length;
+                  const dotColor = blocked > 0 ? "#f38ba8" : working > 0 ? "#89b4fa" : "#a6e3a1";
 
-              return h_flex()
-                .id(`space-row-${s.id}`)
-                .h(38)
-                .px(8)
-                .items_center()
-                .justify_between()
-                .cursor_pointer()
-                .bg(isSel ? "#313244" : on ? "#1e1e2e" : "#00000000")
-                .border_1()
-                .border_color(isSel ? "#89b4fa" : on ? "#45475a" : "#00000000")
-                .hover((st) => st.bg("#313244"))
-                .on_click(() => {
-                  run("space.select", { id: s.id });
-                  closeOverlay(props()?.overlay);
-                })
-                .child(
-                  h_flex()
-                    .gap(8)
+                  return h_flex()
+                    .id(`space-row-${s.id}`)
+                    .relative()
+                    .h(38)
+                    .px(8)
                     .items_center()
+                    .justify_between()
+                    .cursor_pointer()
+                    .children(box(isSel ? "#89b4fa" : on ? "#45475a" : "#313244", isSel ? "#313244" : on ? "#1e1e2e" : "#181825", "#11111b"))
+                    .hover((st) => st.bg("#313244"))
+                    .on_click(() => {
+                      run("space.select", { id: s.id });
+                      closeOverlay(props()?.overlay);
+                    })
                     .child(
                       h_flex()
-                        .h(20)
-                        .px(6)
-                        .bg("#11111b")
-                        .border_1()
-                        .border_color(isSel ? "#89b4fa" : "#313244")
+                        .gap(8)
                         .items_center()
-                        .justify_center()
-                        .child(
-                          div()
-                            .text_size(10.5)
-                            .font_bold()
-                            .text_color("#89b4fa")
-                            .child(`F${i + 1}`),
-                        ),
-                    )
-                    .child(
-                      v_flex()
-                        .gap(1)
+                        .when(isSel, (el) => el.child(div().font_family(MONO).font_bold().text_size(11).text_color("#89b4fa").child("▶")))
                         .child(
                           h_flex()
-                            .gap(6)
+                            .relative()
+                            .h(20)
+                            .px(6)
+                            .pt(2)
+                            .pb(3)
                             .items_center()
+                            .justify_center()
+                            .children(box(isSel ? "#89b4fa" : "#45475a", "#11111b", "#11111b"))
                             .child(
                               div()
-                                .text_size(12)
+                                .font_family(MONO)
+                                .text_size(10)
                                 .font_bold()
-                                .text_color("#cdd6f4")
-                                .child(s.name ?? "unnamed"),
-                            )
-                            .when(on, (ch) =>
-                              ch.child(
-                                div()
-                                  .px(4)
-                                  .py(0.5)
-                                  .text_size(9)
-                                  .font_bold()
-                                  .bg("#89b4fa26")
-                                  .text_color("#89b4fa")
-                                  .child("CURRENT"),
-                              ),
+                                .text_color(isSel ? "#89b4fa" : "#a6adc8")
+                                .child(`F${i + 1}`),
                             ),
                         )
                         .child(
-                          div()
-                            .text_size(10)
-                            .text_color("#6c7086")
-                            .child(s.folder ? s.folder.replace(/\/+$/, "").split("/").pop() : "~"),
+                          v_flex()
+                            .gap(1)
+                            .child(
+                              h_flex()
+                                .gap(6)
+                                .items_center()
+                                .child(
+                                  div()
+                                    .text_size(12)
+                                    .font_bold()
+                                    .text_color("#cdd6f4")
+                                    .child(s.name ?? "unnamed"),
+                                )
+                                .when(on, (ch) =>
+                                  ch.child(
+                                    div()
+                                      .px(4)
+                                      .py(0.5)
+                                      .text_size(9)
+                                      .font_bold()
+                                      .bg("#89b4fa26")
+                                      .text_color("#89b4fa")
+                                      .child("CURRENT"),
+                                  ),
+                                ),
+                            )
+                            .child(
+                              div()
+                                .text_size(10)
+                                .text_color("#6c7086")
+                                .child(s.folder ? s.folder.replace(/\/+$/, "").split("/").pop() : "~"),
+                            ),
                         ),
-                    ),
-                )
-                .child(
-                  h_flex()
-                    .gap(8)
-                    .items_center()
-                    .when(crew.length > 0, (ch) =>
-                      ch.child(
-                        h_flex()
-                          .gap(5)
-                          .items_center()
-                          .child(div().size(6).bg(dotColor))
-                          .child(
-                            div()
-                              .text_size(10.5)
-                              .text_color("#a6adc8")
-                              .child(`${crew.length} ABOARD`),
-                          ),
-                      ),
                     )
                     .child(
                       h_flex()
-                        .h(18)
-                        .px(5)
-                        .bg("#11111b")
-                        .border_1()
-                        .border_color("#313244")
+                        .gap(8)
                         .items_center()
+                        .when(crew.length > 0, (ch) =>
+                          ch.child(
+                            h_flex()
+                              .gap(5)
+                              .items_center()
+                              .child(div().size(6).bg(dotColor))
+                              .child(
+                                div()
+                                  .text_size(10.5)
+                                  .text_color("#a6adc8")
+                                  .child(`${crew.length} ABOARD`),
+                              ),
+                          ),
+                        )
                         .child(
-                          div()
-                            .text_size(9.5)
-                            .font_family(MONO)
-                            .text_color("#a6adc8")
-                            .child(`ALT+${i + 1}`),
+                          h_flex()
+                            .relative()
+                            .h(20)
+                            .px(5)
+                            .pt(2)
+                            .pb(3)
+                            .items_center()
+                            .children(box("#45475a", "#11111b", "#11111b"))
+                            .child(
+                              div()
+                                .text_size(9.5)
+                                .font_family(MONO)
+                                .text_color("#a6adc8")
+                                .child(`ALT+${i + 1}`),
+                            ),
                         ),
-                    ),
-                );
-            }),
+                    );
+                }),
+              ),
+          )
+          .child(
+            h_flex()
+              .justify_between()
+              .pt(4)
+              .border_t(1)
+              .border_color("#313244")
+              .text_size(10)
+              .text_color("#6c7086")
+              .child("CTRL+P TO CYCLE · 1–9 TO JUMP")
+              .child("ESC TO CLOSE"),
           ),
-      )
-      .child(
-        h_flex()
-          .justify_between()
-          .text_size(10)
-          .text_color("#6c7086")
-          .child("CTRL+P TO CYCLE · 1–9 TO JUMP")
-          .child("ESC TO CLOSE"),
       );
   }
 }

@@ -105,8 +105,8 @@ function duration(ms) {
 
 function thinBar(t, pct, color, width) {
   const fill = pct > 0 ? Math.max(2, Math.round((width * pct) / 100)) : 0;
-  return div().w(width).h(3).flex_none().rounded(2).bg(t.border)
-    .child(div().h_full().rounded(2).bg(color).w(fill));
+  return div().w(width).h(3).flex_none().bg(t.border)
+    .child(div().h_full().bg(color).w(fill));
 }
 const hpColor = (t, pct) => (pct >= 80 ? t.ansi1 : pct >= 60 ? t.ansi3 : t.ansi2);
 const spColor = (t, left) => (left <= 10 ? t.ansi1 : left <= 30 ? t.ansi3 : "#89b4fa");
@@ -529,16 +529,18 @@ export default class Agents extends View {
     const on = sortOf().id;
     return v_flex()
       .w_full()
-      .p(5)
+      .p(6)
       .bg(t.popover)
-      .text_size(12.8)
-      .child(div().px(8).pt(4).pb(6).text_size(11).text_color(t.dim).child("Sort agents"))
+      .border_1()
+      .border_color("#313244")
+      .font_family("JetBrains Mono")
+      .text_size(11)
+      .child(div().px(8).pt(4).pb(6).font_bold().text_size(10).text_color(t.dim).child("SORT AGENTS"))
       .children(SORTS.map((s) => h_flex()
         .id(`sort-${s.id}`)
-        .h(31)
+        .h(28)
         .px(8)
-        .gap(9)
-        .rounded(7)
+        .gap(8)
         .items_center()
         .text_color(t.foreground)
         .hover((el) => el.bg(t.hover))
@@ -546,9 +548,9 @@ export default class Agents extends View {
           setShared("agents.sort", s.id);
           closeOverlay(props().overlay);
         })
-        .child(svg(`mods/workspace-chrome/${s.icon}.svg`).size(14).flex_none().text_color(t.muted))
-        .child(div().flex_1().child(s.label))
-        .when(s.id === on, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).flex_none().text_color(t.foreground)))));
+        .child(svg(`mods/workspace-chrome/${s.icon}.svg`).size(13).flex_none().text_color(t.muted))
+        .child(div().flex_1().child(s.label.toUpperCase()))
+        .when(s.id === on, (el) => el.child(div().size(6).bg(t.accent)))));
   }
 
   needsYou(t) {
@@ -592,10 +594,9 @@ export default class Agents extends View {
         const sub = [a.space_name, a.program?.name, at ? `waiting ${duration(now - at)}` : null].filter(Boolean).join(" · ");
         return h_flex()
           .id(`ny-${a.address}`)
-          .h(52)
+          .h(50)
           .px(6)
           .gap(8)
-          .rounded(8)
           .items_center()
           .cursor_pointer()
           .hover((s) => s.bg(t.hover))
@@ -677,7 +678,6 @@ export default class Agents extends View {
       .id(`sub-${k.address}`)
       .pl(44)
       .pr(8)
-      .rounded(8)
       .h(34)
       .flex_none()
       .gap(0)
@@ -688,7 +688,7 @@ export default class Agents extends View {
       .on_click(() => (this.listed.has(k.address) ? run("pane.focus", { terminal: k.address }) : this.peek(k.address)))
       .children(s.lines.map(l => div().self_start().mt(-4).w(9).h(17).mr(4).flex_none()
         .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
-        .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(6))))
+        .when(l === "└" || l === "├", el => el.border_b(1.5))))
       .child(div().mr(6).child(pic))
       .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
       .child(this.status(t, { status: st }, compact));
@@ -697,12 +697,12 @@ export default class Agents extends View {
   // compact: a ! for blocked where a header already says "Needs you".
   status(t, a, compact = false) {
     const color = t[a.status] ?? t.dim;
-    if (a.status === "working") return svg("mods/workspace-chrome/spinner.svg").size(12).mx(1).flex_none().text_color(t.working).spin(900);
-    if (a.status === "blocked" && compact) return div().size(14).flex_none().rounded(4).bg(t.blocked + "26").text_size(10.5).font_bold().text_color(t.blocked).flex().items_center().justify_center().child("!");
-    if (a.status === "blocked") return div().flex_none().px(6).h(18).rounded(5).bg(t.blocked + "26").text_size(10.5).font_semibold().text_color(t.blocked).flex().items_center().child("Needs you");
+    if (a.status === "working") return svg("mods/company-agents/pixel-spinner.svg").size(12).mx(1).flex_none().text_color(t.working).spin(900);
+    if (a.status === "blocked" && compact) return div().size(14).flex_none().border(1).border_color(t.blocked + "88").bg(t.blocked + "26").text_size(9).font_bold().font_family("JetBrains Mono").text_color(t.blocked).flex().items_center().justify_center().child("!");
+    if (a.status === "blocked") return div().flex_none().px(6).h(18).border(1).border_color(t.blocked + "88").bg(t.blocked + "26").text_size(9.5).font_bold().font_family("JetBrains Mono").text_color(t.blocked).flex().items_center().child("NEEDS YOU");
     // Idle: a ring; done: a dot.
-    if (a.status === "idle") return div().size(7).mx(3).flex_none().rounded(4).border(1.5).border_color(t.idle ?? t.dim);
-    return div().size(7).mx(3).flex_none().rounded(4).bg(a.status === "done" ? color : t.dim + "00");
+    if (a.status === "idle") return div().size(6).mx(3).flex_none().border(1).border_color(t.idle ?? t.dim);
+    return div().size(6).mx(3).flex_none().bg(a.status === "done" ? color : "transparent");
   }
 
   async scan(cx) {
@@ -919,9 +919,9 @@ export default class Agents extends View {
     const tip = [...panels.map((p) => p.charAt(0) + p.slice(1).toLowerCase()), fuelTip ? `Usage window: ${fuelTip}` : null].filter(Boolean).join("\n");
     const board = div().absolute().left(0).top(0).w(B.x + B.w + 4).h(B.y + B.h + 4)
       // the bezel, a dark face with faint scanlines, two bolts
-      .child(div().absolute().left(B.x - 2).top(B.y - 2).w(B.w + 4).h(B.h + 4).rounded(2).bg("#0a0c1a"))
+      .child(div().absolute().left(B.x - 2).top(B.y - 2).w(B.w + 4).h(B.h + 4).bg("#0a0c1a"))
       .child(div().absolute().left(B.x).top(B.y).w(B.w).h(B.h).bg("#14110c").border_1().border_color(needs ? "#5a2234" : "#3a2f1c"))
-      .when(needs, (el) => el.child(div().absolute().left(B.x - 2).top(B.y - 2).w(B.w + 4).h(B.h + 4).rounded(2).border_1().border_color("#f38ba8")
+      .when(needs, (el) => el.child(div().absolute().left(B.x - 2).top(B.y - 2).w(B.w + 4).h(B.h + 4).border_1().border_color("#f38ba8")
         .loop("opacity", { from: 0.2, to: 1, period: 900, easing: "ease-in-out" })))
       .children(gauge)
       .child(shown)
@@ -954,7 +954,7 @@ export default class Agents extends View {
       .when(rows.length === 0, (el) => el.child(div().px(10).py(18).text_size(12).text_color(t.dim).child("Quiet: no sub-agents or shell jobs running.")))
       .children(rows.map(({ a, x }) => {
         const parts = [x.interns.length ? plural(x.interns.length, "sub-agent") : null, x.jobs ? `${plural(x.jobs, "shell job")}${x.long ? ` (${x.long} over a minute)` : ""}` : null].filter(Boolean).join(" · ");
-        return h_flex().id(`wl-${a.address}`).h(52).px(6).gap(8).rounded(8).items_center().cursor_pointer().hover((st) => st.bg(t.hover))
+        return h_flex().id(`wl-${a.address}`).h(52).px(6).gap(8).border(1).border_color(t.border).bg(t.surface).items_center().cursor_pointer().hover((st) => st.bg(t.hover))
           .on_click(() => { run("agent.focus", { terminal: a.address }); closeOverlay(props().overlay); })
           .child(div().flex_none().child(figureFor(a.space_name, a.status, 34, 0, speciesOf(progOf(a)))))
           .child(v_flex().flex_1().min_w(0).gap(1)
@@ -1390,7 +1390,6 @@ export default class Agents extends View {
         .gap(3)
         .flex()
         .items_center()
-        .rounded(4)
         .text_size(11)
         .text_color(open ? t.dim : (t[top] ?? t.dim))
         .cursor_pointer()
@@ -1479,7 +1478,6 @@ export default class Agents extends View {
         .id(`pin-${a.address}`)
         .flex_none()
         .p(2)
-        .rounded(4)
         .text_color(t.dim)
         .cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
@@ -1504,7 +1502,6 @@ export default class Agents extends View {
         .flex_none()
         .border_b(2)
         .border_color("#5B8C3A66")
-        .rounded(8)
         .items_center()
         .gap(6)
         .bg("#10121ccc")
@@ -1766,7 +1763,7 @@ export default class Agents extends View {
           return el.child(full ? div().absolute().left(0).top(PET * 0.84 - n * sh - kk(6)).w(petW).h(n * sh + kk(8))
             .child(pile.top(kk(2)).loop("top", { from: kk(2), to: 0, period: 600, easing: "ease-in-out" })) : pile);
         })
-        .when(a.status === "done", (el) => el.child(div().id(`settle-${a.address}`).absolute().left(-kk(3)).top(-kk(13)).w(kk(13)).h(kk(13)).rounded(3)
+        .when(a.status === "done", (el) => el.child(div().id(`settle-${a.address}`).absolute().left(-kk(3)).top(-kk(13)).w(kk(13)).h(kk(13))
           .bg("#a6e3a1").flex().items_center().justify_center().cursor_pointer()
           .tooltip("Settle: this staff clocks out until their next task")
           .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
@@ -1794,7 +1791,7 @@ export default class Agents extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openFigures(a.space_name); })
         .tooltip(`${a.program?.name ?? ""} · ${isUrge ? `idle for ${duration(waited)} · click to focus` : isSnooze ? `snoozing (${duration(waited)}) · click to focus` : a.status} · ${text}${branch ? ` · ${branch}` : ""}${clTip ? ` · ${clTip}` : ""}${ctx ? ` · ${vitalsTip(ctx)}` : ""}${act.interns.length ? ` · ${act.interns.length} sub-agent${act.interns.length > 1 ? "s" : ""}` : ""}${act.jobs ? ` · ${act.jobs} shell job${act.jobs > 1 ? "s" : ""}${act.long ? ` (${act.long} over a minute)` : ""}` : ""} · drag to move`)
         .child(seat)
-        .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center().rounded(3)
+        .child(div().mt(6).max_w(Math.max(petW + 22, cellW - 4)).px(5).h(15).flex().items_center()
           .bg(this.hint?.addr === a.address ? "#cba6f7" : cl ? (cl.kind === "file" ? "#ff5370" : "#f9b84a") : a.focused || (q && hitOf(a)) ? "#f9e2af" : hot ? "#f38ba8" : isUrge ? "#fab387" : isSnooze ? "#45475a" : "#0f111acc")
           .text_size(10.5).text_color(this.hint?.addr === a.address ? "#1e1233" : cl ? "#2a0f16" : a.focused || (q && hitOf(a)) ? "#2a1a14" : isUrge ? "#1e1e2e" : isSnooze ? "#cdd6f4" : "#ffffff").truncate()
           .child(this.hint?.addr === a.address ? this.hint.text : cl ? clText : `${text}${when && cellW >= 90 ? (isUrge ? ` · idle ${duration(waited)} ⏰` : isSnooze ? ` · zzz ${duration(waited)}` : ` · ${duration(waited)}`) : ""}`))
@@ -1891,17 +1888,17 @@ export default class Agents extends View {
             })
         );
       })
-      .when(list.length === 0 && settledFloor === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
-      .when(list.length === 0 && settledFloor > 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).rounded(3).bg("#0f111acc").text_size(12).text_color("#a6e3a1").child("Everyone shipped has clocked out. Click the ✓ settled chip in the corner to bring them back.")))
-      .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
+      .when(list.length === 0 && settledFloor === 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).bg("#0f111acc").border_1().border_color("#313244").text_size(12).text_color("#ffffff").child("No staff on this floor yet. Hire one with the + above, or start an agent in this space.")))
+      .when(list.length === 0 && settledFloor > 0, (el) => el.child(div().absolute().left(12).top(sz.height * 0.5).w(sz.width - 24).px(8).py(6).bg("#0f111acc").border_1().border_color("#313244").text_size(12).text_color("#a6e3a1").child("Everyone shipped has clocked out. Click the ✓ settled chip in the corner to bring them back.")))
+      .when(hidden > 0, (el) => el.child(div().absolute().right(8).top(horizon + 6).px(8).py(3).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#cdd6f4").child(`+${hidden} more · narrow the panel to list all`)))
       .children(links)
       .children(this.drag?.moved ? [...pets.filter((_, i) => seated[i].address !== this.drag.addr), ...pets.filter((_, i) => seated[i].address === this.drag.addr)] : pets)
       .when(Boolean(this.notice), (el) => {
-        const box = v_flex().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(6).gap(6).rounded(8).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4")
+        const box = v_flex().id("oc-notice").absolute().left(8).right(8).top(horizon + 6).px(8).py(6).gap(6).bg("#11111bee").border_1().border_color("#89b4fa").text_size(11).text_color("#cdd6f4")
           .on_mouse_down("left", (_e, cx) => cx.stop_propagation());
         return el.child(box.cursor_pointer().on_click((_e, cx) => { this.notice = null; cx.notify(); }).child(this.notice));
       })
-      .when(settledCount > 0, (el) => el.child(div().id("settled-undo").absolute().right(8).top(this.notice ? horizon + 84 : horizon + 6).px(8).py(3).rounded(8).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#a6e3a1").cursor_pointer()
+      .when(settledCount > 0, (el) => el.child(div().id("settled-undo").absolute().right(8).top(this.notice ? horizon + 84 : horizon + 6).px(8).py(3).bg("#11111bdd").border_1().border_color("#45475a").text_size(11).text_color("#a6e3a1").cursor_pointer()
         .tooltip("Bring settled staff back on every floor")
         .on_click((_e, cx) => { this.settled.clear(); try { localStorage.removeItem("settled"); } catch { /* storage disabled: next render retries */ } cx.notify(); })
         .child(`✓ ${settledCount} settled`)));
@@ -1914,7 +1911,7 @@ export default class Agents extends View {
     ];
     const MAG = [[2, 0, 4, 1], [1, 1, 1, 1], [6, 1, 1, 1], [0, 2, 1, 4], [7, 2, 1, 4], [1, 6, 1, 1], [6, 6, 1, 1], [2, 7, 4, 1], [7, 7, 2, 1], [8, 8, 2, 1], [9, 9, 1, 1]];
     const magnifier = (c) => div().relative().w(15).h(15).flex_none().children(MAG.map(([x, y, w, h]) => div().absolute().left(x * 1.5).top(y * 1.5).w(w * 1.5).h(h * 1.5).bg(c)));
-        const corgi = image("mods/company-brand/logo.png").size(24).flex_none().rounded(4);
+    const corgi = image("mods/company-brand/logo.png").size(24).flex_none();
     const mono = "JetBrains Mono";
 
     return v_flex()
@@ -1937,7 +1934,7 @@ export default class Agents extends View {
                   .tooltip(`${blockedAll.length} ${blockedAll.length === 1 ? "agent needs" : "agents need"} you · open the list`)
                   .on_click(() => this.openNeedsYou())
                   .children([[6, 0, 2, 1], [4, 1, 6, 1], [3, 2, 8, 1], [2, 3, 10, 7], [1, 10, 12, 2], [0, 12, 14, 1], [5, 13, 4, 1], [6, 14, 2, 1]].map(([x, y, w, h]) => div().absolute().left(x).top(y).w(w).h(h).bg("#f9e2af")))
-                  .child(div().absolute().right(-5).top(-5).min_w(10).h(10).px(2).rounded(5).bg("#f38ba8").flex().items_center().justify_center().text_size(7.5).font_bold().text_color("#11111b").child(String(blockedAll.length)))))
+                  .child(div().absolute().right(-5).top(-5).min_w(10).h(10).px(2).border_1().border_color("#11111b").bg("#f38ba8").flex().items_center().justify_center().text_size(7.5).font_bold().text_color("#11111b").child(String(blockedAll.length)))))
                 .when(Boolean(this.fileError), (el) => el.child(div().id("ag-file-error").text_size(11).font_bold().text_color(t.blocked)
                   .tooltip(`${this.fileError}. Using the last good figures.`).child("!")))
                 .child(div().id("ag-hire").relative().w(14).h(14).flex_none().cursor_pointer()
@@ -1992,7 +1989,7 @@ export default class Agents extends View {
             .child(div().id("staff-clear").flex_none().px(4).text_size(14).font_family(mono).text_color(t.dim).cursor_pointer().hover((s) => s.text_color(t.foreground))
               .on_click((_e, cx) => { this.searchInput.set_value(""); this.query = ""; cx.notify(); }).child("×"))))))
       .child(collapsed ? v_flex().id("ag-list").flex_1().min_h(0).px(0).overflow_y_scrollbar().mode("always").children(rows) : farm)
-      .when(collapsed && settledCount > 0, (el) => el.child(h_flex().h(22).px(6).items_center().child(div().id("settled-undo-rail").px(6).h(17).flex().items_center().rounded(8).bg("#a6e3a122").text_size(10).text_color("#a6e3a1").cursor_pointer()
+      .when(collapsed && settledCount > 0, (el) => el.child(h_flex().h(22).px(6).items_center().child(div().id("settled-undo-rail").px(6).h(17).flex().items_center().border_1().border_color("#a6e3a155").bg("#a6e3a122").text_size(10).text_color("#a6e3a1").cursor_pointer()
         .tooltip("Bring settled staff back on every floor")
         .on_click((_e, cx) => { this.settled.clear(); try { localStorage.removeItem("settled"); } catch { /* storage disabled: next render retries */ } cx.notify(); })
         .child(`✓ ${settledCount} settled`))))

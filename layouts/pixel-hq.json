@@ -2,6 +2,7 @@
   "id": "root",
   "type": "row",
   "theme": "pixel-hq",
+  "toast": "company-toast",
   "children": [
     {
       "id": "sidebar",

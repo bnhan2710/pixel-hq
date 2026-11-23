@@ -85,10 +85,11 @@ function rail(t, line, h, { stop = null, here = false, last = false, crew = [] }
       .loop("opacity", { from: 0.1, to: 0.45, period: blocked ? 800 : 1800, easing: "ease-in-out" })))
     .when(stop === "station", (el) => el.child(node))
     .when(stop === "end", (el) => el.child(div().absolute().left(4).top(c - 6).w(12).h(12).border_2().border_dashed().border_color(line).bg(t.chrome)))
-    .when(moving, (el) => el.child(div().absolute().left(5).w(10).h(14).border_1().border_color("#2a2c40").bg("#e8ecf8")
+    // The car rides up and down by a small offset inside a box placed on the line (loop values aren't scaled by the zoom).
+    .when(moving, (el) => el.child(div().absolute().left(5).top(c - 25).w(10).h(20).child(div().absolute().left(0).w(10).h(14).border_1().border_color("#2a2c40").bg("#e8ecf8")
       .child(div().absolute().left(1).top(2).w(6).h(3).bg("#2a2c40"))
       .child(blocked ? lamp.loop("opacity", { from: 0.3, to: 1, period: 700, easing: "linear" }) : lamp)
-      .loop("top", { from: c - 25, to: c - 19, period: 2400 })));
+      .loop("top", { from: 0, to: 6, period: 2400 }))));
 }
 
 // A space speaks up only when something in it needs you.

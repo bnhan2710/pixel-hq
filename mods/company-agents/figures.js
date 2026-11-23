@@ -127,8 +127,10 @@ function moved(el, motion, h, x) {
   switch (motion) {
     case "bob": return el.loop("top", { from: 0, to: h * 0.05, period: 1200, easing: "ease-out" });
     case "hop": return el.loop("top", { from: 0, to: -h * 0.14, period: 340, easing: "ease-in-out" });
-    case "wiggle": return el.loop("left", { from: x - h * 0.06, to: x + h * 0.06, period: 500, easing: "ease-in-out" });
-    case "shake": return el.loop("left", { from: x - h * 0.04, to: x + h * 0.04, period: 140, easing: "linear" });
+    // Side to side by a small offset inside a box placed at x: Herdr scales left/top by the zoom but not loop values,
+    // so looping over x itself moves the figure sideways at any zoom but 1.
+    case "wiggle": return div().absolute().left(x).top(0).size(h).child(el.left(0).loop("left", { from: -h * 0.06, to: h * 0.06, period: 500, easing: "ease-in-out" }));
+    case "shake": return div().absolute().left(x).top(0).size(h).child(el.left(0).loop("left", { from: -h * 0.04, to: h * 0.04, period: 140, easing: "linear" }));
     case "pulse": return el.loop("opacity", { from: 0.35, to: 1, period: 1400, easing: "ease-in-out" });
     default: return el;
   }

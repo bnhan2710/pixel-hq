@@ -33,7 +33,7 @@ export default class Toast extends View {
     const command = login ? `hc machine login ${login[1]}` : null;
 
     return h_flex()
-      .id("toast")
+      .id("company-toast")
       .size_full()
       .relative()
       .children(box("#45475a", "#181825", "#11111b"))

@@ -1,7 +1,7 @@
 {
   "id": "root",
   "type": "row",
-  "preview": "layouts/pixel-hq.png",
+  "preview": "layouts/pixel-hq.svg",
   "theme": "pixel-hq",
   "toast": "company-toast",
   "children": [

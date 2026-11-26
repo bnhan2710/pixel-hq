@@ -687,7 +687,7 @@ def test_16_volume_preference_and_launch_flags():
     with player.playback_lock(blocking=True):
         assert run("status") is None
 
-    with patch.object(player, "popen_cmd") as popen:
+    with patch.object(player, "popen_cmd") as popen, patch.object(player, "ffplay_volume_port", return_value=None) as port:
         player.spawn_player_process("ffplay", "https://example.com/audio", "test", start_seconds=20)
         args = popen.call_args.args[0]
         assert args[args.index("-volume") + 1] == "80"
@@ -695,6 +695,12 @@ def test_16_volume_preference_and_launch_flags():
         player.spawn_player_process("mpv", "https://example.com/audio", "test", volume=0)
         assert "--volume=0" in popen.call_args.args[0]
         assert "--start=0" not in popen.call_args.args[0]
+        port.return_value = 12345
+        proc, err = player.spawn_player_process("ffplay", "https://example.com/audio", "test", volume=0)
+        args = popen.call_args.args[0]
+        assert err is None and proc.volume_port == 12345
+        assert args[args.index("-volume") + 1] == "100"
+        assert args[args.index("-af") + 1] == r"volume@musicbox=0.00,azmq=b=tcp\\://127.0.0.1\\:12345"
 
     with open(os.path.join(player.CACHE_DIR, "volume.json"), "w", encoding="utf-8") as file:
         file.write("invalid json")
@@ -760,6 +766,15 @@ def test_17_volume_during_playback():
 
         player.write_state({"pid": 4567, "status": "playing", "playing": True, "url": ""})
         assert player.cmd_volume("10") == {"status": "ok", "volume": 10}
+        assert spawn.call_count == 1 and stop.call_count == 1
+
+        live = {**resumed, "volumePort": 12345}
+        player.write_state(live)
+        with patch.object(player, "set_ffplay_volume", return_value=True) as set_volume:
+            assert player.cmd_volume("20") == {**live, "volume": 20}
+            set_volume.assert_called_once_with(12345, 20)
+        assert player.read_volume() == 20
+        assert player.read_state() == {**live, "volume": 20}
         assert spawn.call_count == 1 and stop.call_count == 1
     print("PASS: Track, queue and timer survive changes; paused audio applies volume on resume")
 

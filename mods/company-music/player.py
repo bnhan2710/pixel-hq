@@ -5,6 +5,7 @@ import json
 import time
 import shutil
 import signal
+import socket
 import urllib.parse
 import subprocess
 import tempfile
@@ -115,16 +116,69 @@ def playback_lock(blocking):
                 return
         yield True
 
+def ffplay_volume_port(player_bin):
+    try:
+        result = run_cmd([player_bin, "-filters"], capture_output=True, encoding="utf-8", errors="replace", timeout=2)
+        if result.returncode or not any(line.split()[1:2] == ["azmq"] for line in result.stdout.splitlines()):
+            return None
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            return listener.getsockname()[1]
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+def read_zmtp_frame(reader):
+    header = reader.read(2)
+    if len(header) != 2 or header[0] & 2:
+        raise ValueError("Expected a short ZMTP frame")
+    body = reader.read(header[1])
+    if len(body) != header[1]:
+        raise ValueError("Incomplete ZMTP frame")
+    return header[0], body
+
+def set_ffplay_volume(port, volume):
+    if type(port) is not int or not 1 <= port <= 65535:
+        return False
+    signature = b"\xff" + bytes(7) + b"\x01\x7f"
+    greeting = signature + b"\x03\x00" + b"NULL".ljust(20, b"\0") + bytes(32)
+    ready = b"\x05READY\x0bSocket-Type\x00\x00\x00\x03REQ"
+    command = f"volume@musicbox volume {volume / 100:.2f}".encode("ascii")
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.4) as connection, connection.makefile("rb") as reader:
+            connection.sendall(greeting + bytes((4, len(ready))) + ready)
+            peer_greeting = reader.read(64)
+            if peer_greeting[10:11] != b"\x03" or peer_greeting[12:32] != greeting[12:32]:
+                return False
+            flags, peer_ready = read_zmtp_frame(reader)
+            if flags != 4 or not peer_ready.startswith(b"\x05READY"):
+                return False
+            connection.sendall(bytes((1, 0, 0, len(command))) + command)
+            if read_zmtp_frame(reader) != (1, b""):
+                return False
+            flags, reply = read_zmtp_frame(reader)
+            return flags == 0 and reply.startswith(b"0 ")
+    except (OSError, ValueError):
+        return False
+
+def player_process_state(proc, stream_url, volume):
+    return {
+        "pid": proc.pid,
+        "streamUrl": stream_url,
+        "volume": volume,
+        "volumePort": getattr(proc, "volume_port", None),
+    }
+
 def spawn_player_process(player_bin, stream_url, ua, start_seconds=0, volume=None):
     if volume is None:
         volume = read_volume()
     is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
+    volume_port = ffplay_volume_port(player_bin) if is_ffplay else None
     if is_ffplay:
         args = [
             player_bin,
             "-nodisp",
             "-autoexit",
-            "-volume", str(volume),
+            "-volume", "100" if volume_port else str(volume),
             "-loglevel", "quiet",
             "-reconnect", "1",
             "-reconnect_streamed", "1",
@@ -132,6 +186,9 @@ def spawn_player_process(player_bin, stream_url, ua, start_seconds=0, volume=Non
             "-reconnect_on_network_error", "1",
             "-user_agent", ua
         ]
+        if volume_port:
+            endpoint = rf"tcp\\://127.0.0.1\\:{volume_port}"
+            args.extend(["-af", f"volume@musicbox={volume / 100:.2f},azmq=b={endpoint}"])
         if start_seconds > 0:
             args.extend(["-ss", str(start_seconds)])
         args.append(stream_url)
@@ -153,6 +210,7 @@ def spawn_player_process(player_bin, stream_url, ua, start_seconds=0, volume=Non
             env=env,
             start_new_session=True if sys.platform != "win32" else False
         )
+        proc.volume_port = volume_port
         return proc, None
     except Exception as e:
         return None, str(e)
@@ -908,9 +966,7 @@ def cmd_play_queue_index(index, start_seconds=0):
 
     display_title = f"[{index + 1}/{len(queue['items'])}] {title}"
     state = {
-        "pid": proc.pid,
-        "streamUrl": stream_url,
-        "volume": volume,
+        **player_process_state(proc, stream_url, volume),
         "startTime": int(time.time()),
         "elapsed": start_seconds,
         "duration": duration,
@@ -1092,9 +1148,7 @@ def cmd_play(url, preset_title=None):
         display_title = ext_title or (init_items[0]["title"] if init_items else "YouTube Track")
         total_count = len(init_items) if init_items else 1
         state = {
-            "pid": proc.pid,
-            "streamUrl": ext_stream,
-            "volume": volume,
+            **player_process_state(proc, ext_stream, volume),
             "startTime": int(time.time()),
             "elapsed": 0,
             "duration": ext_dur or (init_items[0]["duration"] if init_items else 0),
@@ -1166,9 +1220,7 @@ def cmd_play(url, preset_title=None):
         return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False, "history": read_history()}
 
     state = {
-        "pid": proc.pid,
-        "streamUrl": stream_url,
-        "volume": volume,
+        **player_process_state(proc, stream_url, volume),
         "startTime": int(time.time()),
         "elapsed": 0,
         "duration": duration,
@@ -1210,9 +1262,7 @@ def restart_at_volume(current, volume):
     stop_process(current["pid"], paused)
     updated = {
         **current,
-        "pid": proc.pid,
-        "streamUrl": stream_url,
-        "volume": volume,
+        **player_process_state(proc, stream_url, volume),
         "startTime": now,
         "elapsed": seek if duration > 0 else elapsed,
         "currentElapsed": seek if duration > 0 else elapsed,
@@ -1241,6 +1291,10 @@ def cmd_volume(raw_volume):
 
     current = read_state()
     if current and current.get("status") == "playing" and current.get("url") and is_valid_player_proc(current.get("pid")):
+        if set_ffplay_volume(current.get("volumePort"), volume):
+            current["volume"] = volume
+            write_state(current)
+            return current
         updated, error = restart_at_volume(current, volume)
         if error:
             try:
@@ -1523,6 +1577,7 @@ def main():
 
     if out:
         out.pop("streamUrl", None)
+        out.pop("volumePort", None)
     json.dump(out, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")
     sys.stdout.flush()

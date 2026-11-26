@@ -517,7 +517,7 @@ export default class CompanyMusic extends View {
     return this.volumeTarget ?? shared(VOLUME_KEY) ?? this.depStatus?.volume ?? 100;
   }
 
-  async changeVolume(step, cx) {
+  changeVolume(step, cx) {
     const current = this.volumeLevel();
     const target = Math.min(100, Math.max(0, current + step));
     if (current === target) return;
@@ -526,6 +526,10 @@ export default class CompanyMusic extends View {
     cx.notify();
     if (this.volumeBusy) return;
     this.volumeBusy = true;
+    cx.spawn((cx) => this.flushVolume(cx));
+  }
+
+  async flushVolume(cx) {
     try {
       let sent;
       do {
@@ -545,7 +549,7 @@ export default class CompanyMusic extends View {
     }
   }
 
-  renderVolume(disabled) {
+  renderVolume() {
     const level = this.volumeLevel();
     const button = (label, step, atLimit, title) =>
       h_flex()
@@ -558,11 +562,11 @@ export default class CompanyMusic extends View {
         .children(box("#45475a", "#313244", "#11111b"))
         .text_size(13)
         .font_bold()
-        .text_color(disabled || atLimit ? "#6c7086" : "#cdd6f4")
+        .text_color(atLimit ? "#6c7086" : "#cdd6f4")
         .tooltip(title)
-        .when(!disabled && !atLimit, (el) =>
+        .when(!atLimit, (el) =>
           el.cursor_pointer().hover((s) => s.text_color("#ffffff"))
-            .on_click((_e, cx) => cx.spawn((cx) => this.changeVolume(step, cx)))
+            .on_click((_e, cx) => this.changeVolume(step, cx))
         )
         .child(label);
 
@@ -1545,7 +1549,7 @@ export default class CompanyMusic extends View {
                 ),
               )
               .child(div().flex_1())
-              .child(this.renderVolume(isBuffering))
+              .child(this.renderVolume())
           )
       )
       .when(Boolean(this.history && this.history.length > 0), (el) =>

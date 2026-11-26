@@ -2026,7 +2026,7 @@ export default class Agents extends View {
         cx.notify();
       })
       .on_mouse_up("left", (_e, cx) => endDrag(cx))
-      .on_mouse_down("right", () => { this.petpos = {}; localStorage.removeItem("petpos"); })
+      .on_mouse_down("right", (_e, cx) => { this.petpos = {}; localStorage.removeItem("petpos"); cx.notify(); })
       // Sizes arrive in window pixels, but everything drawn here is in the mod's own units, which Herdr scales by the zoom: divide
       // it out, or at zoom 1.2 the wall is drawn 20% too wide and its right corner (rack and monitor desk) falls off the edge.
       .on_size_change((s, cx) => {

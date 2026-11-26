@@ -1,1 +1,1 @@
-{"version":"1.8.4","type":"normal","notes":"Fixed Claude Code & Antigravity statusLine setup, improved zoom stability for figure shake/wiggle and the Spaces train car, and fixed the pixel toast integration."}
+{"version":"1.8.5","type":"normal","notes":"Right-clicking the office floor now resets the desk layout immediately instead of waiting for the next drag."}

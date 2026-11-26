@@ -8,6 +8,7 @@ What lives in your install (`~/.config/herdr-app/`):
 | Path | What it is |
 | --- | --- |
 | `layouts/pixel-hq.json` | the layout |
+| `layouts/pixel-hq.svg` | the layout's picture in Settings > Look |
 | `themes/pixel-hq.json` | the terminal theme |
 | `mods/company-agents/`, `company-brand/`, `company-pane/`, `company-spaces/`, `company-status/`, `company-switcher/`, `company-hotkeys/`, `company-music/` | the mods |
 

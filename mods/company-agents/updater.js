@@ -2,6 +2,7 @@ import { appHome, readTextFile, writeTextFile, shared, setShared, notify } from 
 
 const PIXEL_HQ_FILES = [
   "layouts/pixel-hq.json",
+  "layouts/pixel-hq.svg",
   "themes/pixel-hq.json",
   "mods/company-brand/main.js",
   "mods/company-brand/mod.json",

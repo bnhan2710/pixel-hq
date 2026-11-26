@@ -700,7 +700,7 @@ def test_16_volume_preference_and_launch_flags():
         args = popen.call_args.args[0]
         assert err is None and proc.volume_port == 12345
         assert args[args.index("-volume") + 1] == "100"
-        assert args[args.index("-af") + 1] == r"volume@musicbox=0.00,azmq=b=tcp\\://127.0.0.1\\:12345"
+        assert args[args.index("-af") + 1] == r"asetnsamples=n=256:p=0,azmq=b=tcp\\://127.0.0.1\\:12345,volume@musicbox=0.00"
 
     with open(os.path.join(player.CACHE_DIR, "volume.json"), "w", encoding="utf-8") as file:
         file.write("invalid json")

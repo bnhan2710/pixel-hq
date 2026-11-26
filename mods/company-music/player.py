@@ -119,7 +119,9 @@ def playback_lock(blocking):
 def ffplay_volume_port(player_bin):
     try:
         result = run_cmd([player_bin, "-filters"], capture_output=True, encoding="utf-8", errors="replace", timeout=2)
-        if result.returncode or not any(line.split()[1:2] == ["azmq"] for line in result.stdout.splitlines()):
+        filter_rows = (line.split() for line in result.stdout.splitlines())
+        filters = {columns[1] for columns in filter_rows if len(columns) >= 2}
+        if result.returncode or not {"azmq", "asetnsamples"} <= filters:
             return None
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
@@ -188,7 +190,8 @@ def spawn_player_process(player_bin, stream_url, ua, start_seconds=0, volume=Non
         ]
         if volume_port:
             endpoint = rf"tcp\\://127.0.0.1\\:{volume_port}"
-            args.extend(["-af", f"volume@musicbox={volume / 100:.2f},azmq=b={endpoint}"])
+            audio_filter = f"asetnsamples=n=256:p=0,azmq=b={endpoint},volume@musicbox={volume / 100:.2f}"
+            args.extend(["-af", audio_filter])
         if start_seconds > 0:
             args.extend(["-ss", str(start_seconds)])
         args.append(stream_url)

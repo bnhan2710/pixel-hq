@@ -3,6 +3,8 @@ import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { theme, run, shared, setShared, closeOverlay, checking, appHome, exec, window, props, readTextFile, writeTextFile, settings } from "herdr";
 
 const MONO = "JetBrains Mono, Menlo, monospace";
+const VOLUME_KEY = "pixel-hq.music.volume";
+const VOLUME_STEP = 10;
 
 const notch = (c, [l, r, t, b]) => [
   div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
@@ -134,6 +136,9 @@ const PRESETS = [
 export default class CompanyMusic extends View {
   init(_props, cx) {
     this.error = null;
+    this.volumeError = null;
+    this.volumeTarget = null;
+    this.volumeBusy = false;
     this.busy = false;
     this.depStatus = null;
     cx.spawn(async (cx) => {
@@ -187,8 +192,9 @@ export default class CompanyMusic extends View {
   }
 
   async syncStatus(cx) {
+    if (this.volumeBusy) return;
     const res = await runPlayer(["status"], 15000);
-    if (!res) return;
+    if (!res || this.volumeBusy) return;
     if (Array.isArray(res.history)) {
       this.history = res.history;
     }
@@ -502,9 +508,79 @@ export default class CompanyMusic extends View {
   }
 
   async resume(cx) {
-    const res = await runPlayer(["resume"], 4000);
+    const res = await runPlayer(["resume"], 35000);
     if (res) setShared("pixel-hq.music", res);
     cx.notify();
+  }
+
+  volumeLevel() {
+    return this.volumeTarget ?? shared(VOLUME_KEY) ?? this.depStatus?.volume ?? 100;
+  }
+
+  async changeVolume(step, cx) {
+    const current = this.volumeLevel();
+    const target = Math.min(100, Math.max(0, current + step));
+    if (current === target) return;
+    this.volumeTarget = target;
+    this.volumeError = null;
+    cx.notify();
+    if (this.volumeBusy) return;
+    this.volumeBusy = true;
+    try {
+      let sent;
+      do {
+        sent = this.volumeTarget;
+        const res = await runPlayer(["volume", String(sent)], 35000);
+        if (Number.isInteger(res?.volume)) setShared(VOLUME_KEY, res.volume);
+        if (!res || res.status === "error") {
+          this.volumeError = res?.error || "Could not change the volume.";
+          break;
+        }
+        if (res.playing) setShared("pixel-hq.music", res);
+      } while (this.volumeTarget !== sent);
+    } finally {
+      this.volumeBusy = false;
+      this.volumeTarget = null;
+      cx.notify();
+    }
+  }
+
+  renderVolume(disabled) {
+    const level = this.volumeLevel();
+    const button = (label, step, atLimit, title) =>
+      h_flex()
+        .id(step < 0 ? "btn-volume-down" : "btn-volume-up")
+        .relative()
+        .w(24)
+        .h(24)
+        .items_center()
+        .justify_center()
+        .children(box("#45475a", "#313244", "#11111b"))
+        .text_size(13)
+        .font_bold()
+        .text_color(disabled || atLimit ? "#6c7086" : "#cdd6f4")
+        .tooltip(title)
+        .when(!disabled && !atLimit, (el) =>
+          el.cursor_pointer().hover((s) => s.text_color("#ffffff"))
+            .on_click((_e, cx) => cx.spawn((cx) => this.changeVolume(step, cx)))
+        )
+        .child(label);
+
+    return h_flex()
+      .flex_shrink_0()
+      .gap(4)
+      .items_center()
+      .child(div().text_size(8.5).font_bold().text_color("#a6adc8").child("VOL"))
+      .child(button("−", -VOLUME_STEP, level === 0, "Decrease volume"))
+      .child(
+        h_flex()
+          .gap(2)
+          .children(Array.from({ length: 10 }, (_, index) =>
+            div().w(5).h(10).bg(level > index * VOLUME_STEP ? "#89b4fa" : "#313244")
+          ))
+      )
+      .child(button("+", VOLUME_STEP, level === 100, "Increase volume"))
+      .child(div().w(30).text_size(9.5).font_bold().text_color("#cdd6f4").child(`${level}%`));
   }
 
   async stop(cx) {
@@ -936,7 +1012,7 @@ export default class CompanyMusic extends View {
     const rawError = this.error || music.error;
     const isStalePlayerError = Boolean(this.depStatus?.has_player && rawError && rawError.includes("Neither ffplay nor mpv"));
     const isStaleYtDlpError = Boolean(this.depStatus?.has_ytdlp && rawError && rawError.includes("yt-dlp"));
-    const activeError = (isStalePlayerError || isStaleYtDlpError) ? null : rawError;
+    const activeError = this.volumeError || ((isStalePlayerError || isStaleYtDlpError) ? null : rawError);
     const isMusicHidden = isMusicBoxHidden();
 
     return v_flex()
@@ -1468,6 +1544,8 @@ export default class CompanyMusic extends View {
                     ),
                 ),
               )
+              .child(div().flex_1())
+              .child(this.renderVolume(isBuffering))
           )
       )
       .when(Boolean(this.history && this.history.length > 0), (el) =>

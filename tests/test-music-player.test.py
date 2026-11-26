@@ -7,6 +7,8 @@ import time
 import shutil
 import tempfile
 import subprocess
+from types import SimpleNamespace
+from unittest.mock import patch
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PLAYER_PY = os.path.join(SCRIPT_DIR, "../mods/company-music/player.py")
@@ -668,6 +670,99 @@ def test_15_cookies_file_integration():
             player.set_cache_dir(orig_cache)
     print("PASS: Test 15 - Automatic cookies.txt detection and argument injection verified")
 
+def test_16_volume_preference_and_launch_flags():
+    print("=== Test 16: Volume Persistence & Player Flags ===")
+    env = {**os.environ, "PIXEL_HQ_CACHE_DIR": player.CACHE_DIR}
+
+    def run(*args):
+        return json.loads(subprocess.check_output([sys.executable, PLAYER_PY, *args], env=env, text=True))
+
+    assert run("check")["volume"] == 100
+    for invalid in ("-1", "101", "2.5", "no"):
+        assert run("volume", invalid)["status"] == "error"
+    assert run("volume", "0") == {"status": "ok", "volume": 0}
+    assert run("check")["volume"] == 0
+    assert run("volume", "80")["volume"] == 80
+
+    with player.playback_lock(blocking=True):
+        assert run("status") is None
+
+    with patch.object(player, "popen_cmd") as popen:
+        player.spawn_player_process("ffplay", "https://example.com/audio", "test", start_seconds=20)
+        args = popen.call_args.args[0]
+        assert args[args.index("-volume") + 1] == "80"
+        assert args[args.index("-ss") + 1] == "20"
+        player.spawn_player_process("mpv", "https://example.com/audio", "test", volume=0)
+        assert "--volume=0" in popen.call_args.args[0]
+        assert "--start=0" not in popen.call_args.args[0]
+
+    with open(os.path.join(player.CACHE_DIR, "volume.json"), "w", encoding="utf-8") as file:
+        file.write("invalid json")
+    assert run("check")["volume"] == 100
+    print("PASS: Volume bounds, persistence, busy polling, and both player flags")
+
+def test_17_volume_during_playback():
+    print("=== Test 17: Volume Changes During Playback ===")
+    track_url = "https://www.youtube.com/watch?v=test"
+    stream_url = "https://example.com/resolved-audio"
+    state = {
+        "pid": 1234, "startTime": 1000, "elapsed": 20, "currentElapsed": 20,
+        "duration": 120, "url": track_url, "streamUrl": stream_url,
+        "title": "[2/3] Track", "playlist": {"index": 2, "total": 3},
+        "status": "playing", "playing": True,
+    }
+    queue = {"current_index": 1, "items": [{"url": track_url}]}
+    player.write_state(state)
+    player.write_queue(queue)
+    history = player.read_history()
+
+    with (
+        patch.object(player, "find_player_bin", return_value="ffplay"),
+        patch.object(player, "is_valid_player_proc", return_value=True),
+        patch.object(player, "spawn_player_process", return_value=(SimpleNamespace(pid=2345), None)) as spawn,
+        patch.object(player, "stop_process") as stop,
+        patch.object(player, "suspend_process"),
+        patch.object(player, "time") as clock,
+    ):
+        clock.time.return_value = 1010
+        changed = player.cmd_volume("70")
+        spawn.assert_called_once_with("ffplay", stream_url, player.USER_AGENT, start_seconds=30, volume=70)
+        stop.assert_called_once_with(1234, False)
+        assert changed["elapsed"] == changed["currentElapsed"] == 30
+        assert changed["pid"] == 2345 and changed["volume"] == 70
+        assert changed["title"] == state["title"] and changed["playlist"] == state["playlist"]
+        assert player.read_queue() == queue and player.read_history() == history
+        assert player.cmd_volume("70") == {"status": "ok", "volume": 70}
+        assert spawn.call_count == 1
+
+        spawn.return_value = None, "unavailable"
+        assert player.cmd_volume("60")["status"] == "error"
+        assert player.read_volume() == 70 and player.read_state() == changed
+        assert stop.call_count == 1
+
+        clock.time.return_value = 1015
+        paused = player.cmd_pause()
+        spawn.reset_mock()
+        stop.reset_mock()
+        assert player.cmd_volume("0") == {"status": "ok", "volume": 0}
+        assert player.read_state() == paused
+        spawn.assert_not_called()
+        stop.assert_not_called()
+
+        spawn.return_value = SimpleNamespace(pid=3456), None
+        clock.time.return_value = 1115
+        resumed = player.cmd_resume()
+        spawn.assert_called_once_with("ffplay", stream_url, player.USER_AGENT, start_seconds=35, volume=0)
+        stop.assert_called_once_with(2345, True)
+        assert resumed["status"] == "playing" and resumed["pid"] == 3456 and resumed["volume"] == 0
+        assert resumed["elapsed"] == 35 and resumed["startTime"] == 1115
+        assert player.read_queue() == queue
+
+        player.write_state({"pid": 4567, "status": "playing", "playing": True, "url": ""})
+        assert player.cmd_volume("10") == {"status": "ok", "volume": 10}
+        assert spawn.call_count == 1 and stop.call_count == 1
+    print("PASS: Track, queue and timer survive changes; paused audio applies volume on resume")
+
 def main():
     suite_td = tempfile.mkdtemp(prefix="pixel_hq_test_cache_")
     orig_env = os.environ.get("PIXEL_HQ_CACHE_DIR")
@@ -690,7 +785,9 @@ def main():
         test_13_single_track_navigation_boundary()
         test_14_youtube_bot_detection_handling()
         test_15_cookies_file_integration()
-        print("All 15 Music Player unit test suites passed successfully!")
+        test_16_volume_preference_and_launch_flags()
+        test_17_volume_during_playback()
+        print("All 17 Music Player unit test suites passed successfully!")
     finally:
         player.set_cache_dir(orig_cache)
         if orig_env is not None:

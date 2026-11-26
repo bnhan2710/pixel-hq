@@ -1,3 +1,4 @@
+import errno
 import os
 import sys
 import json
@@ -6,6 +7,8 @@ import shutil
 import signal
 import urllib.parse
 import subprocess
+import tempfile
+from contextlib import contextmanager
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -61,13 +64,67 @@ def set_cache_dir(new_dir):
     COOKIES_FILE = os.path.join(CACHE_DIR, "cookies.txt")
     LOG_FILE = os.path.join(CACHE_DIR, "player.log")
 
-def spawn_player_process(player_bin, stream_url, ua, start_seconds=0):
+DEFAULT_VOLUME = 100
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+def read_volume():
+    try:
+        with open(os.path.join(CACHE_DIR, "volume.json"), encoding="utf-8") as file:
+            volume = json.load(file)
+        if type(volume) is int and 0 <= volume <= 100:
+            return volume
+    except (OSError, ValueError):
+        pass
+    return DEFAULT_VOLUME
+
+def write_volume(volume):
+    ensure_cache_dir()
+    file = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=CACHE_DIR, delete=False)
+    try:
+        with file:
+            json.dump(volume, file)
+        os.replace(file.name, os.path.join(CACHE_DIR, "volume.json"))
+    except OSError:
+        os.unlink(file.name)
+        raise
+
+@contextmanager
+def playback_lock(blocking):
+    ensure_cache_dir()
+    with open(os.path.join(CACHE_DIR, "playback.lock"), "a+b") as file:
+        if sys.platform == "win32":
+            import msvcrt
+            while True:
+                try:
+                    msvcrt.locking(file.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as error:
+                    if error.errno != errno.EACCES:
+                        raise
+                    if not blocking:
+                        yield False
+                        return
+                    time.sleep(0.05)
+        else:
+            import fcntl
+            flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
+            try:
+                fcntl.flock(file, flags)
+            except BlockingIOError:
+                yield False
+                return
+        yield True
+
+def spawn_player_process(player_bin, stream_url, ua, start_seconds=0, volume=None):
+    if volume is None:
+        volume = read_volume()
     is_ffplay = "ffplay" in os.path.basename(player_bin).lower()
     if is_ffplay:
         args = [
             player_bin,
             "-nodisp",
             "-autoexit",
+            "-volume", str(volume),
             "-loglevel", "quiet",
             "-reconnect", "1",
             "-reconnect_streamed", "1",
@@ -79,7 +136,7 @@ def spawn_player_process(player_bin, stream_url, ua, start_seconds=0):
             args.extend(["-ss", str(start_seconds)])
         args.append(stream_url)
     else:
-        args = [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}"]
+        args = [player_bin, "--no-video", "--really-quiet", f"--user-agent={ua}", f"--volume={volume}"]
         if start_seconds > 0:
             args.extend([f"--start={start_seconds}"])
         args.append(stream_url)
@@ -842,8 +899,8 @@ def cmd_play_queue_index(index, start_seconds=0):
         clear_state()
         return {"status": "error", "error": "Neither ffplay nor mpv found. Install ffmpeg or mpv to enable playback.", "playing": False}
 
-    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    proc, err = spawn_player_process(player_bin, stream_url, ua, start_seconds=start_seconds)
+    volume = read_volume()
+    proc, err = spawn_player_process(player_bin, stream_url, USER_AGENT, start_seconds=start_seconds, volume=volume)
     if err or not proc:
         clear_queue()
         clear_state()
@@ -852,6 +909,8 @@ def cmd_play_queue_index(index, start_seconds=0):
     display_title = f"[{index + 1}/{len(queue['items'])}] {title}"
     state = {
         "pid": proc.pid,
+        "streamUrl": stream_url,
+        "volume": volume,
         "startTime": int(time.time()),
         "elapsed": start_seconds,
         "duration": duration,
@@ -1009,8 +1068,8 @@ def cmd_play(url, preset_title=None):
             clear_state()
             return {"status": "error", "error": "Neither ffplay nor mpv found. Install ffmpeg or mpv to enable playback.", "playing": False, "history": read_history()}
 
-        ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        proc, err = spawn_player_process(player_bin, ext_stream, ua)
+        volume = read_volume()
+        proc, err = spawn_player_process(player_bin, ext_stream, USER_AGENT, volume=volume)
         if err or not proc:
             clear_state()
             return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False, "history": read_history()}
@@ -1034,6 +1093,8 @@ def cmd_play(url, preset_title=None):
         total_count = len(init_items) if init_items else 1
         state = {
             "pid": proc.pid,
+            "streamUrl": ext_stream,
+            "volume": volume,
             "startTime": int(time.time()),
             "elapsed": 0,
             "duration": ext_dur or (init_items[0]["duration"] if init_items else 0),
@@ -1098,14 +1159,16 @@ def cmd_play(url, preset_title=None):
             title = derive_direct_title(res)
             update_history_title(res, title)
 
-    ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    proc, err = spawn_player_process(player_bin, stream_url, ua)
+    volume = read_volume()
+    proc, err = spawn_player_process(player_bin, stream_url, USER_AGENT, volume=volume)
     if err or not proc:
         clear_state()
         return {"status": "error", "error": f"Failed to start player process: {err}", "playing": False, "history": read_history()}
 
     state = {
         "pid": proc.pid,
+        "streamUrl": stream_url,
+        "volume": volume,
         "startTime": int(time.time()),
         "elapsed": 0,
         "duration": duration,
@@ -1119,6 +1182,74 @@ def cmd_play(url, preset_title=None):
     }
     write_state(state)
     return state
+
+def restart_at_volume(current, volume):
+    player_bin = find_player_bin()
+    if not player_bin:
+        return None, "Install ffplay or mpv to change the volume."
+
+    stream_url = current.get("streamUrl") or current.get("url")
+    if not stream_url:
+        return None, "Restart the stream to change its volume."
+    if not current.get("streamUrl") and is_extractor_url(stream_url):
+        _, stream_url, _, error = extract_stream_info(stream_url)
+        if not stream_url or error:
+            return None, error or "Could not resolve the stream."
+
+    now = int(time.time())
+    paused = current["status"] == "paused"
+    elapsed = current.get("elapsed", 0)
+    if not paused:
+        elapsed += max(0, now - current.get("startTime", now))
+    duration = current.get("duration", 0)
+    seek = min(elapsed, max(0, duration - 1)) if duration > 0 else 0
+    proc, error = spawn_player_process(player_bin, stream_url, USER_AGENT, start_seconds=seek, volume=volume)
+    if not proc:
+        return None, f"Could not change the player volume: {error}"
+
+    stop_process(current["pid"], paused)
+    updated = {
+        **current,
+        "pid": proc.pid,
+        "streamUrl": stream_url,
+        "volume": volume,
+        "startTime": now,
+        "elapsed": seek if duration > 0 else elapsed,
+        "currentElapsed": seek if duration > 0 else elapsed,
+        "status": "playing",
+        "playing": True,
+        "history": read_history(),
+    }
+    write_state(updated)
+    return updated, None
+
+def cmd_volume(raw_volume):
+    try:
+        volume = int(raw_volume)
+    except (TypeError, ValueError):
+        return {"status": "error", "error": "Volume must be an integer from 0 to 100."}
+    if not 0 <= volume <= 100:
+        return {"status": "error", "error": "Volume must be an integer from 0 to 100."}
+
+    old_volume = read_volume()
+    if old_volume == volume:
+        return {"status": "ok", "volume": volume}
+    try:
+        write_volume(volume)
+    except OSError:
+        return {"status": "error", "error": "Could not save the volume setting."}
+
+    current = read_state()
+    if current and current.get("status") == "playing" and current.get("url") and is_valid_player_proc(current.get("pid")):
+        updated, error = restart_at_volume(current, volume)
+        if error:
+            try:
+                write_volume(old_volume)
+            except OSError:
+                return {"status": "error", "volume": volume, "error": f"{error} Saved for the next stream."}
+            return {"status": "error", "error": error}
+        return updated
+    return {"status": "ok", "volume": volume}
 
 def cmd_pause():
     current = read_state()
@@ -1149,6 +1280,11 @@ def cmd_resume():
     if not is_valid_player_proc(pid):
         clear_state()
         return {"status": "idle", "playing": False, "title": "", "url": "", "elapsed": 0, "duration": 0, "currentElapsed": 0, "history": read_history()}
+
+    volume = read_volume()
+    if current.get("volume", DEFAULT_VOLUME) != volume:
+        updated, error = restart_at_volume(current, volume)
+        return {**current, "error": error} if error else updated
 
     resume_process(pid)
     current["startTime"] = int(time.time())
@@ -1338,18 +1474,11 @@ def cmd_check():
         "has_player": bool(player_bin),
         "player": player_bin,
         "has_ytdlp": bool(yt_dlp),
+        "volume": read_volume(),
         "platform": sys.platform
     }
 
-def main():
-    if len(sys.argv) < 2:
-        out = cmd_status()
-        json.dump(out, sys.stdout, ensure_ascii=True)
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-        return
-
-    action = sys.argv[1].lower()
+def run_action(action):
     if action == "play":
         url = sys.argv[2] if len(sys.argv) > 2 else ""
         preset = sys.argv[3] if len(sys.argv) > 3 else None
@@ -1360,6 +1489,8 @@ def main():
         out = cmd_pause()
     elif action == "resume":
         out = cmd_resume()
+    elif action == "volume":
+        out = cmd_volume(sys.argv[2] if len(sys.argv) > 2 else None)
     elif action == "stop":
         out = cmd_stop()
     elif action == "next":
@@ -1380,6 +1511,18 @@ def main():
     else:
         out = {"status": "error", "error": f"Unknown action: {action}", "playing": False}
 
+    return out
+
+def main():
+    action = sys.argv[1].lower() if len(sys.argv) > 1 else "status"
+    if action in ("play", "pause", "resume", "volume", "stop", "next", "prev", "toggle", "status"):
+        with playback_lock(blocking=action != "status") as locked:
+            out = run_action(action) if locked else None
+    else:
+        out = run_action(action)
+
+    if out:
+        out.pop("streamUrl", None)
     json.dump(out, sys.stdout, ensure_ascii=True)
     sys.stdout.write("\n")
     sys.stdout.flush()

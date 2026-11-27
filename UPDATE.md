@@ -56,4 +56,6 @@ git push origin v1.8.7
 
 On GitHub, create a release for that tag. Enter your own description or use **Generate release notes**, then publish the release. Put `[urgent]` on the first line of the description for an urgent update notice.
 
+For reader-friendly notes, give your agent the previous release commit and the new tag. Ask it to inspect the merged pull requests and their diffs, group related changes by what users can do or notice, and credit contributors with pull request links. Paste the draft into the release description. Use the previous installed release commit if that version predates release tags.
+
 Pixel HQ takes the version from the published release tag, downloads that commit, and shows the release description in **Changelog**. The first eligible stable release on `main` also updates the legacy announcement file once so older updaters can find the migration.

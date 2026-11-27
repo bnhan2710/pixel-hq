@@ -54,6 +54,8 @@ git tag v1.8.7 origin/main
 git push origin v1.8.7
 ```
 
-On GitHub, create a release for that tag. Enter your own description or use **Generate release notes**, then publish the release. Put `[urgent]` on the first line of the description for an urgent update notice.
+Set `GEMINI_API_KEY` once under **Settings → Secrets and variables → Actions** to enable plain-English release notes. When you push a version tag from `main`, the draft workflow uses GitHub's generated notes and public PR descriptions to group related changes with Gemini 3.5 Flash-Lite. It adds verified contributor credits and PR links. If Gemini is unavailable, the draft uses GitHub's original notes.
+
+Open the draft in **Releases**, review the description, and click **Publish release**. Put `[urgent]` on the first line of the description for an urgent update notice. The draft workflow leaves existing releases alone.
 
 Pixel HQ takes the version from the published release tag, downloads that commit, and shows the release description in **Changelog**. The first eligible stable release on `main` also updates the legacy announcement file once so older updaters can find the migration.

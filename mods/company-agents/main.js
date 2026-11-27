@@ -1211,28 +1211,31 @@ export default class Agents extends View {
   }
 
   openChangelog() {
-    openOverlay({ mod: "company-agents", kind: "dialog", frame: "none", width: 400, height: 340, props: { changelog: true } });
+    openOverlay({ mod: "company-agents", kind: "dialog", frame: "none", width: 0.62, height: 0.84, props: { changelog: true } });
   }
 
   changelog(t) {
     const log = getPixelHqChangelog(this.installedRelease, shared("pixel-hq.new-version"), shared("pixel-hq.updated"));
     const entries = log?.entries ?? [];
-    return div().relative().w(400).h(340)
+    return div().id("changelog").relative().size_full()
       .children(box(t.raised, t.chrome, t.surface))
-      .child(v_flex().relative().size_full().p(12).gap(8).font_family("JetBrains Mono")
-        .child(h_flex().flex_none().items_center().justify_between().border_b(1).border_color(t.raised).pb(8)
-          .child(div().font_bold().text_size(13).text_color(t.foreground).child("PIXEL HQ CHANGELOG"))
-          .child(div().id("changelog-close").cursor_pointer().px(6).py(3).text_size(10).text_color(t.muted)
+      .child(v_flex().relative().size_full()
+        .child(h_flex().flex_none().items_center().justify_between().gap(16).px(24).py(18)
+          .border_b(1).border_color(t.raised).font_family("JetBrains Mono")
+          .child(v_flex().gap(6)
+            .child(div().font_bold().text_size(15).text_color(t.foreground).child("PIXEL HQ CHANGELOG"))
+            .child(div().font_bold().text_size(12).text_color(t.accent).child(log?.label ?? "Loading release notes…")))
+          .child(div().id("changelog-close").cursor_pointer().px(10).py(6).text_size(11).text_color(t.muted)
             .hover(s => s.bg(t.hover)).on_click(() => closeOverlay(props()?.overlay)).child("CLOSE")))
-        .child(div().font_bold().text_size(12).text_color(t.accent).child(log?.label ?? "Loading release notes…"))
-        .child(v_flex().id("changelog-entries").flex_1().min_h(0).overflow_y_scrollbar().gap(10)
-          .when(Boolean(log && !entries.length), el =>
-            el.child(div().text_size(11).text_color(t.muted).child("No release notes published for this update.")))
-          .children(entries.map(({ version, notes }) =>
-            v_flex().flex_none().gap(4).pr(8).pb(8).border_b(1).border_color(t.raised)
-              .when(entries.length > 1, el => el.child(div().font_bold().text_size(11).text_color(t.foreground).child(`v${version}`)))
-              .child(TextView.markdown(`release-notes-${version}`, notes || "No release notes published.").raw_html(false).scrollable(false))
-          ))));
+        .child(v_flex().id("changelog-entries").flex_1().min_h(0).overflow_y_scrollbar().items_center().p(24)
+          .child(v_flex().w_full().max_w(880).gap(16)
+            .when(Boolean(log && !entries.length), el =>
+              el.child(div().text_size(12).text_color(t.muted).child("No release notes published for this update.")))
+            .children(entries.map(({ version, notes }) =>
+              v_flex().flex_none().gap(10).p(16).border_1().border_color(t.raised)
+                .when(entries.length > 1, el => el.child(div().font_bold().text_size(12).text_color(t.accent).child(`v${version}`)))
+                .child(TextView.markdown(`release-notes-${version}`, notes || "No release notes published.").raw_html(false).scrollable(false))
+            )))));
   }
 
   // The paper pile on a desk: the first click arms it, the second (within 6 s) sends the agent /compact (which already summarizes).

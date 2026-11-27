@@ -44,7 +44,7 @@ jobs:
 
           body=$(jq -n --arg version "$version" --arg tag "$RELEASE_TAG" --arg previous "$previous" '{
             version: $version,
-            type: "important",
+            type: "normal",
             notes: "Switch to tagged Pixel HQ updates.",
             migrationTag: $tag,
             previousVersion: $previous

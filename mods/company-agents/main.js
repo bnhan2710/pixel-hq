@@ -8,7 +8,7 @@ import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, duckMood, mood, DUCK_CENTER, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
 import { scene, sceneLayout, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
-import { checkPixelHqUpdate, executePixelHqUpdate, readInstalledRelease, releaseNotes, restorePixelHqUpdate } from "./updater.js";
+import { checkPixelHqUpdate, executePixelHqUpdate, getPixelHqChangelog, readInstalledRelease, restorePixelHqUpdate } from "./updater.js";
 import { snapshot, clashes, hire, agentTaskArgv } from "./crew.js";
 
 // The figure editor, as a dialog; `space` opens it on that space's pick.
@@ -1215,13 +1215,8 @@ export default class Agents extends View {
   }
 
   changelog(t) {
-    const pending = shared("pixel-hq.new-version");
-    const installed = this.installedRelease;
-    const entries = new Map();
-    const upcoming = pending?.releases ?? releaseNotes(pending);
-    for (const release of [...upcoming, ...releaseNotes(installed)]) {
-      if (!entries.has(release.version)) entries.set(release.version, release.notes);
-    }
+    const log = getPixelHqChangelog(this.installedRelease, shared("pixel-hq.new-version"), shared("pixel-hq.updated"));
+    const entries = log?.entries ?? [];
     return div().relative().w(400).h(340)
       .children(box(t.raised, t.chrome, t.surface))
       .child(v_flex().relative().size_full().p(12).gap(8).font_family("JetBrains Mono")
@@ -1229,14 +1224,13 @@ export default class Agents extends View {
           .child(div().font_bold().text_size(13).text_color(t.foreground).child("PIXEL HQ CHANGELOG"))
           .child(div().id("changelog-close").cursor_pointer().px(6).py(3).text_size(10).text_color(t.muted)
             .hover(s => s.bg(t.hover)).on_click(() => closeOverlay(props()?.overlay)).child("CLOSE")))
+        .child(div().font_bold().text_size(12).text_color(t.accent).child(log?.label ?? "Loading release notes…"))
         .child(v_flex().id("changelog-entries").flex_1().min_h(0).overflow_y_scrollbar().gap(10)
-          .when(!entries.size, el => el.child(div().text_size(11).text_color(t.muted).child("Loading release notes…")))
-          .children([...entries].map(([version, notes]) =>
+          .when(Boolean(log && !entries.length), el =>
+            el.child(div().text_size(11).text_color(t.muted).child("No release notes published for this update.")))
+          .children(entries.map(({ version, notes }) =>
             v_flex().flex_none().gap(4).pr(8).pb(8).border_b(1).border_color(t.raised)
-              .child(h_flex().gap(8).items_center()
-                .child(div().font_bold().text_size(12).text_color(t.foreground).child(`v${version}`))
-                .when(version === pending?.version, el => el.child(div().text_size(10).text_color(t.accent).child("Available")))
-                .when(version === installed?.version, el => el.child(div().text_size(10).text_color(t.muted).child("Installed"))))
+              .when(entries.length > 1, el => el.child(div().font_bold().text_size(11).text_color(t.foreground).child(`v${version}`)))
               .child(div().text_size(11).text_color(t.muted).whitespace_normal().child(notes || "No release notes published."))
           ))));
   }

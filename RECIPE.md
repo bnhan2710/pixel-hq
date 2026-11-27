@@ -140,7 +140,7 @@ Each floor card is 66px: the night-office tile (54x40, as above) inside a notche
 
 ## Update notice
 
-`company-agents` checks `mods/company-agents/version.json` on startup and every six hours. The status bar offers newer releases, and **Changelog** shows the available and installed releases with their notes. Clicking the update pill or running `company-agents.update` downloads the release in the background, writes changed files, and saves the new version once those writes finish. The updater can resume an install after a mod reload and clears expired update state. A toast shows the result.
+`company-agents` checks `mods/company-agents/version.json` on startup and every six hours. The status bar offers newer releases, and **Changelog** shows the changes from your installed version to the available version, or the changes from your last in-app update. Clicking the update pill or running `company-agents.update` downloads the release in the background, writes changed files, and saves the new version once those writes finish. The updater can resume an install after a mod reload and clears expired update state. A toast shows the result.
 
 ## Built from
 

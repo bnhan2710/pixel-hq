@@ -7,7 +7,11 @@ const modFile = "mods/company-agents/updater.js";
 const release = {
   version: "1.8.7",
   notes: "View the changelog.",
-  history: [{ version: "1.8.6", notes: "Update the preview." }],
+  history: [
+    { version: "1.8.6", notes: "Update the preview." },
+    { version: "1.8.5", notes: "Reset the office immediately." },
+    { version: "1.8.4", notes: "Update status lines." },
+  ],
 };
 
 async function updateHarness(source, options = {}, state = new Map(), files = new Map()) {
@@ -71,7 +75,32 @@ async function testUpdateBehavior(source) {
   assert.ok(success.requests.every(url => !url.includes("/tree-ref/")));
   assert.equal(success.state.get("pixel-hq.updating"), null);
   assert.equal(success.state.get("pixel-hq.updated").version, release.version);
+  assert.equal(success.state.get("pixel-hq.updated").previousVersion, "1.0.0");
   assert.equal(success.notifications.at(-1).action.name, "company-agents.changelog");
+
+  const installed = { version: "1.8.5", notes: "Reset the office immediately." };
+  const upgrade = await updateHarness(source, {}, new Map(), new Map([[`/app/${versionFile}`, JSON.stringify(installed)]]));
+  const pending = await upgrade.mod.checkPixelHqUpdate(false);
+  assert.equal(pending.versionLabel, "v1.8.5 → v1.8.7");
+  const expected = {
+    label: pending.versionLabel,
+    entries: [{ version: release.version, notes: release.notes }, release.history[0]],
+  };
+  assert.deepEqual(upgrade.mod.getPixelHqChangelog(installed, pending, null), expected);
+  assert.deepEqual(upgrade.mod.getPixelHqChangelog(null, { ...pending, currentVersion: "1.8.6" }, null), {
+    label: "v1.8.6 → v1.8.7",
+    entries: expected.entries.slice(0, 1),
+  });
+  await upgrade.mod.executePixelHqUpdate(upgrade.cx);
+  const installedNow = await upgrade.mod.readInstalledRelease();
+  const updated = upgrade.state.get("pixel-hq.updated");
+  assert.deepEqual(upgrade.mod.getPixelHqChangelog(installedNow, null, updated), expected);
+  assert.deepEqual(upgrade.mod.getPixelHqChangelog(installedNow, null, null), {
+    label: "v1.8.7",
+    entries: expected.entries.slice(0, 1),
+  });
+  await upgrade.mod.executePixelHqUpdate(upgrade.cx);
+  assert.deepEqual(upgrade.state.get("pixel-hq.updated"), updated);
 
   const fallback = await updateHarness(source, { fallback: true });
   await fallback.mod.executePixelHqUpdate(fallback.cx);
@@ -104,6 +133,7 @@ async function testUpdateBehavior(source) {
     await restarted.mod.restorePixelHqUpdate(restarted.cx);
     assert.deepEqual(restarted.writes, interruptedFile === modFile ? [`/app/${versionFile}`] : []);
     assert.equal(restarted.state.get("pixel-hq.updated").version, release.version);
+    assert.equal(restarted.state.get("pixel-hq.updated").previousVersion, "1.0.0");
     assert.equal(restarted.state.get("pixel-hq.updating"), null);
   }
 
@@ -175,7 +205,6 @@ async function runTests() {
   assert.ok(statusSrc.includes("✨ New update: ${verText}"), "company-status must show '✨ New update: ${verText}' for normal type");
   assert.ok(statusSrc.includes("⚠️ Urgent update: ${verText}"), "company-status must show '⚠️ Urgent update: ${verText}' for urgent type");
   assert.ok(statusSrc.includes('run("company-agents.update")'), "update-status-pill must trigger company-agents.update on click");
-  assert.ok(agentsUpdaterSrc.includes("v${curVer} → v${newVer}"), "updater must calculate version transition string (v<old> → v<new>)");
   console.log("PASS: company-status displays update pill and invokes company-agents.update");
 
   // 5. Verify company-agents integration and direct update execution

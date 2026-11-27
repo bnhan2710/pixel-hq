@@ -38,7 +38,7 @@ The agent follows the rules in `~/.config/herdr-app/AGENTS.md`: it reads the new
 
 ## What changed?
 
-Click **Changelog** in the status bar to see the installed release, earlier releases, and the notes for any available update. The notes saved with the installed release are available offline.
+Click **Changelog** in the status bar to see what changes between your installed version and the available update. If you skip versions, the changelog includes the published changes from each version in between. After installing, you can still review that update offline.
 
 ## Going back
 

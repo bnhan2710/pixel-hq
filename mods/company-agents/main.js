@@ -1809,10 +1809,13 @@ export default class Agents extends View {
     const claim = (addr, k) => { taken.add(k); cellOf.set(addr, k); };
     const dragging = this.drag?.moved ? this.drag.addr : null;
     for (const addr of order) { const own = this.petpos[addr]; if (own && addr !== dragging) claim(addr, nearest(own[0] * sz.width, own[1] * sz.height)); }
-    for (const addr of order) if (!cellOf.has(addr) && addr !== dragging) claim(addr, nearest(0, 0));
+    // Cells are numbered row-major, so the lowest free index is the next cell left to right, top to bottom.
+    const firstFree = () => { let k = 0; while (taken.has(k)) k++; return k; };
+    for (const addr of order) if (!cellOf.has(addr) && addr !== dragging) claim(addr, firstFree());
+    // Pin everyone to the cell they show in now, so a drag never shuffles the other desks.
+    this.pinAll = () => { for (const [o, k] of cellOf) { const [x, y] = cellXY(k); this.petpos[o] = [x / sz.width, y / sz.height]; } };
     this.gridDrop = (addr) => {
-      // Pin everyone to the cell they show in now, so the drop never shuffles the other desks.
-      for (const [o, k] of cellOf) { const [x, y] = cellXY(k); this.petpos[o] = [x / sz.width, y / sz.height]; }
+      this.pinAll();
       const own = this.petpos[addr];
       if (!own) return;
       const k = nearest(own[0] * sz.width, own[1] * sz.height);
@@ -2038,6 +2041,8 @@ export default class Agents extends View {
         const d = this.drag;
         if (!d) return;
         if (!d.moved && Math.hypot(e.position.x - d.sx, e.position.y - d.sy) < 4) return;
+        // Pin before the first move: once the dragged desk leaves its cell, unpinned desks would re-fill from cell 0.
+        if (!d.moved) this.pinAll?.();
         d.moved = true;
         const z = Number(settings()?.zoom) > 0 ? Number(settings().zoom) : 1;
         const x = Math.max(0, Math.min(sz.width - petW, (e.local_position.x - d.dx) / z));

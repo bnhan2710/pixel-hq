@@ -26,13 +26,18 @@ jobs:
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             exit 0
           fi
-          if [ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = tag ] &&
-             [ -n "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$RELEASE_TAG")" ]; then
-            notes_flag=--notes-from-tag
-          else
-            notes_flag=--generate-notes
+          tag_ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")
+          notes_file=$(mktemp)
+          if [ "$(jq -r '.object.type' <<< "$tag_ref")" = tag ]; then
+            tag_sha=$(jq -r '.object.sha' <<< "$tag_ref")
+            gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" | jq -j '.message // ""' > "$notes_file"
           fi
-          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" "$notes_flag"
+          if grep -q '[^[:space:]]' "$notes_file"; then
+            notes_args=(--notes-file "$notes_file")
+          else
+            notes_args=(--generate-notes)
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" "${notes_args[@]}"
       - name: Announce the migration to legacy updaters
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

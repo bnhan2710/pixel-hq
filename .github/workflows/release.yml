@@ -1,49 +1,26 @@
-name: release
+name: announce legacy migration
 
 on:
-  push:
-    tags:
-      - 'v[0-9]*.[0-9]*.[0-9]*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  announce:
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Publish release from tag
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            exit 0
-          fi
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            exit 0
-          fi
-          tag_ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")
-          notes_file=$(mktemp)
-          if [ "$(jq -r '.object.type' <<< "$tag_ref")" = tag ]; then
-            tag_sha=$(jq -r '.object.sha' <<< "$tag_ref")
-            gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" | jq -j '.message // ""' > "$notes_file"
-          fi
-          if grep -q '[^[:space:]]' "$notes_file"; then
-            notes_args=(--notes-file "$notes_file")
-          else
-            notes_args=(--generate-notes)
-          fi
-          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" "${notes_args[@]}"
       - name: Announce the migration to legacy updaters
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            exit 0
-          fi
-          if [ "$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')" != false ]; then
             exit 0
           fi
           git fetch origin main

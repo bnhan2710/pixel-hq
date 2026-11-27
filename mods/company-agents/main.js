@@ -1211,7 +1211,7 @@ export default class Agents extends View {
   }
 
   openChangelog() {
-    openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 400, height: 340, props: { changelog: true } });
+    openOverlay({ mod: "company-agents", kind: "dialog", frame: "none", width: 400, height: 340, props: { changelog: true } });
   }
 
   changelog(t) {

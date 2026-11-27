@@ -149,7 +149,7 @@ Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Clau
 
 ## Thông báo cập nhật
 
-Pixel HQ kiểm tra các bản phát hành công khai trên GitHub lúc khởi động và mỗi 6 giờ. Khi một tag phiên bản được phát hành, thanh trạng thái hiện bản cập nhật. Changelog dùng ghi chú phát hành của các phiên bản trong khoảng nâng cấp.
+Pixel HQ kiểm tra các bản phát hành công khai trên GitHub lúc khởi động và mỗi 6 giờ. Khi GitHub Release của một tag phiên bản được xuất bản, thanh trạng thái hiện bản cập nhật. Changelog dùng ghi chú phát hành của các phiên bản trong khoảng nâng cấp.
 
 ## Tuỳ biến theo ý bạn
 

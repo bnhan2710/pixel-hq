@@ -260,6 +260,7 @@ async function runTests() {
 
   assert.ok(statusSrc.includes('run("company-agents.changelog")'));
   assert.ok(agentsSrc.includes('if (props()?.changelog) return this.changelog(t)'));
+  assert.match(agentsSrc, /openChangelog\(\) \{\s+openOverlay\(\{ mod: "company-agents", kind: "dialog", [^}]+props: \{ changelog: true \}/);
   await testUpdateBehavior(agentsUpdaterSrc);
   console.log("PASS: commit-pinned downloads, fallback, timeout, failures, reload recovery, and changelog");
 }

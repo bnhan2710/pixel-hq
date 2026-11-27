@@ -59,7 +59,7 @@ a lanyard; the robot has its own chest screen and wears none.
 
 The back wall is a slate night office, left to right: a potted plant, a window with a moon, a round clock, a second window, a water cooler, and a short server rack (about as tall as the desk and monitor; a lit top cap with a tiny status graph, a retro pixel boombox on top with floating notes while audio plays, units with drive bays, vents, a fan or a network switch whose ports blink, each with a glowing status light and some blinking), next to a slim modern desk standing on the baseboard (light top, thin dark legs, a glowing LED strip underneath, a hanging white drawer) with a monitor on it showing a code editor (title bar with three dots, a line-number gutter, colored lines of code, a minimap, a live log pane of a worker processing data: finished batches in green, the current one blinking amber, text that flickers as it streams, a progress bar with a blinking frontier and a throughput meter; a running pill and a status bar, a blinking cursor) under a slowly shifting pink-to-cyan RGB bar, a backlit keyboard, a mouse and a steaming mug. Below it is a dark tiled floor with window light. Every pet sits on a grey office chair with a headrest and armrests, behind a steel-grey desk with cubicle panels on both sides.
 
-Desks adapt to the team. Up to four agents get full-size desks in two staggered columns; more agents shrink every desk (never below 0.42x) and add columns and rows until all fit, with each name label as wide as its column (full text in the tooltip). Nobody is ever hidden unless the panel is too small even at the smallest size, then a badge counts the rest.
+Desks adapt to the team. Desks sit on a fixed grid, one desk per cell, with as many columns and rows as fit at the current size: up to four agents get full-size desks, and more agents shrink every desk (never below 0.42x) and add columns and rows until all fit, with each name label as wide as its column (full text in the tooltip). Nobody is ever hidden unless the panel is too small even at the smallest size, then a badge counts the rest.
 
 ## OpenCode status plugin
 
@@ -163,7 +163,10 @@ Each floor card is 66px: the night-office tile (54x40, as above) inside a notche
 - **`mods/company-agents/`**: the agents block: `agents()` for the team, `setAgentOrder` on render, `run("pane.focus")`
   on click. The room is `scene.js` (rectangles plus a few `.loop()` twinkles), the pets are `duck.js`.
   Drag uses `on_mouse_down` on a pet and `on_mouse_move` / `on_mouse_up` on the room, positions stored in
-  `localStorage` as fractions of the panel.
+  `localStorage` as fractions of the panel. While dragging, the desk follows the pointer; on release it drops into the
+  nearest free grid cell and every other desk is pinned to the cell it shows in, so nothing else moves. Desks never
+  dragged fill the free cells left to right, top to bottom, and every render snaps saved positions to the nearest cell,
+  so a resize keeps the grid aligned.
 - **Motion:** only native `.loop()` and `.spin()`, no timers.
 - **Font:** the terminal and UI use whatever Settings says; the build was made with JetBrains Mono NL Medium at 14.
 

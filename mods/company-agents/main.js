@@ -1767,7 +1767,6 @@ export default class Agents extends View {
     const pick = P0.find((p) => p.cols * p.rows >= nAgents) ?? P0[P0.length - 1];
     const S = pick.sc, PET = pick.P, petW = pick.pw, cellW = pick.cw, cellH = pick.ch;
     const kk = (v) => Math.round(v * S);
-    const fieldH = Math.max(0, sz.height - fieldTop - cellH);
     const endDrag = (cx) => {
       const d = this.drag;
       if (!d) return;
@@ -1777,7 +1776,7 @@ export default class Agents extends View {
         const isLongIdle = clicked?.status === "idle" && this.waitOf(clicked.address, clicked.status, now) >= IDLE_SNOOZE;
         if (isLongIdle) this.nudge(clicked, cx);
         else run("pane.focus", { pane: d.pane });
-      } else localStorage.setItem("petpos", JSON.stringify(this.petpos));
+      } else { this.gridDrop?.(d.addr); localStorage.setItem("petpos", JSON.stringify(this.petpos)); }
       cx.notify();
     };
     const ROLES = (a) => ((shared("pixel-hq.names") ?? {})[a.pane]?.role ?? agentOf(a.program?.key)?.role ?? "").toLowerCase();
@@ -1792,21 +1791,45 @@ export default class Agents extends View {
     const seated = list.slice(0, pick.cols * pick.rows);
     const shownSet = new Set(seated.map((x) => x.address));
     const order = stable.filter((x) => shownSet.has(x));
-    const colsUsed = Math.min(pick.cols, Math.max(2, Math.ceil(seated.length / pick.rows)));
-    const rowsUsed = Math.ceil(seated.length / colsUsed);
+    // macOS desktop grid: a fixed cols x rows grid of cells, one desk per cell. A dragged desk moves freely and lands in the
+    // nearest free cell; desks never placed by hand fill the free cells left to right, top to bottom.
+    const gCols = pick.cols, gRows = pick.rows;
+    // Room for the cubicle panels (9 units each side) and the server rack (11 units right), so an edge desk shows them.
+    const cellXY = (k) => [Math.max(kk(10), Math.min(sz.width - petW - kk(12), ((k % gCols) + 0.5) * sz.width / gCols - petW / 2)), fieldTop + Math.floor(k / gCols) * cellH];
+    const taken = new Set(), cellOf = new Map();
+    const nearest = (x, y) => {
+      let best = -1, bd = Infinity;
+      for (let k = 0; k < gCols * gRows; k++) {
+        if (taken.has(k)) continue;
+        const [cx0, cy0] = cellXY(k), dd = (cx0 - x) ** 2 + (cy0 - y) ** 2;
+        if (dd < bd) { bd = dd; best = k; }
+      }
+      return best;
+    };
+    const claim = (addr, k) => { taken.add(k); cellOf.set(addr, k); };
+    const dragging = this.drag?.moved ? this.drag.addr : null;
+    for (const addr of order) { const own = this.petpos[addr]; if (own && addr !== dragging) claim(addr, nearest(own[0] * sz.width, own[1] * sz.height)); }
+    // Cells are numbered row-major, so the lowest free index is the next cell left to right, top to bottom.
+    const firstFree = () => { let k = 0; while (taken.has(k)) k++; return k; };
+    for (const addr of order) if (!cellOf.has(addr) && addr !== dragging) claim(addr, firstFree());
+    // Pin everyone to the cell they show in now, so a drag never shuffles the other desks.
+    this.pinAll = () => { for (const [o, k] of cellOf) { const [x, y] = cellXY(k); this.petpos[o] = [x / sz.width, y / sz.height]; } };
+    this.gridDrop = (addr) => {
+      this.pinAll();
+      const own = this.petpos[addr];
+      if (!own) return;
+      const k = nearest(own[0] * sz.width, own[1] * sz.height);
+      if (k < 0) return;
+      const [x, y] = cellXY(k);
+      this.petpos[addr] = [x / sz.width, y / sz.height];
+    };
     const hidden = list.length - seated.length;
     const posOf = new Map();
     const monoF = "JetBrains Mono";
     const pets = seated.map((a, i) => {
-      // A pet keeps its desk: slots follow a stable order, not the status sort.
-      const slot = order.indexOf(a.address);
-      const sx = ((slot % colsUsed) + 0.5) / colsUsed;
-      const sy = rowsUsed > 1 ? (Math.floor(slot / colsUsed) + ((slot % colsUsed) % 2) * (rowsUsed < 3 ? 0.12 : 0)) / (rowsUsed - 1 + (rowsUsed < 3 ? 0.12 : 0)) : 0;
-      const lap = 0;
+      // A pet keeps its desk: cells follow a stable order, not the status sort. The one being dragged follows the pointer.
       const own = this.petpos[a.address];
-      // Room for the cubicle panels (9 units each side) and the server rack (11 units right), so an edge desk shows them.
-      const left = own ? own[0] * sz.width : Math.max(kk(10), Math.min(sz.width - petW - kk(12), sz.width * Math.min(0.92, sx + lap) - petW / 2));
-      const top = own ? own[1] * sz.height : fieldTop + fieldH * Math.min(1, sy + lap);
+      const [left, top] = a.address === dragging && own ? [own[0] * sz.width, own[1] * sz.height] : cellXY(cellOf.get(a.address));
       posOf.set(a.address, { x: left + petW / 2, y: top + PET * 0.5 });
       const ctx = contextOf.get(a.address);
       const ctxPct = ctx?.pct ?? null;
@@ -2018,6 +2041,8 @@ export default class Agents extends View {
         const d = this.drag;
         if (!d) return;
         if (!d.moved && Math.hypot(e.position.x - d.sx, e.position.y - d.sy) < 4) return;
+        // Pin before the first move: once the dragged desk leaves its cell, unpinned desks would re-fill from cell 0.
+        if (!d.moved) this.pinAll?.();
         d.moved = true;
         const z = Number(settings()?.zoom) > 0 ? Number(settings().zoom) : 1;
         const x = Math.max(0, Math.min(sz.width - petW, (e.local_position.x - d.dx) / z));

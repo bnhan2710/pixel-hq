@@ -1,1 +1,1 @@
-{"version":"1.8.7","type":"important","notes":"Switch to tagged Pixel HQ updates.","migrationTag":"v1.8.7","previousVersion":"1.8.6"}
+{"version":"1.8.6","type":"normal","notes":"Pixel HQ now shows its own picture in Settings > Look instead of a gray placeholder, and Update now installs it too."}

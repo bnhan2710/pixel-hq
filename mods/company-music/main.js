@@ -76,7 +76,9 @@ async function getPythonBin() {
   if (detectedPythonBin) return detectedPythonBin;
   const script = `${appHome()}/mods/company-music/player.py`;
   const isWin = window()?.platform === "windows" || appHome().includes(":") || appHome().includes("\\");
+  const isMac = window()?.platform === "macos";
   const candidates = isWin ? ["python", "py", "python3"] : ["python3", "python"];
+  if (isMac) candidates.unshift("/opt/homebrew/bin/python3", "/usr/local/bin/python3");
   for (const bin of candidates) {
     const r = await exec(bin, [script, "check"], { timeout: 4000 }).catch(() => null);
     if (r?.stdout && r.stdout.includes('"status"')) {
@@ -84,12 +86,12 @@ async function getPythonBin() {
       return bin;
     }
   }
-  detectedPythonBin = candidates[0];
-  return detectedPythonBin;
+  return null;
 }
 
 async function runPlayer(args, timeout = 15000) {
   const bin = await getPythonBin();
+  if (!bin) return null;
   const script = `${appHome()}/mods/company-music/player.py`;
   const r = await exec(bin, [script, ...args], { timeout }).catch(() => null);
   if (!r?.stdout) return null;
@@ -98,6 +100,14 @@ async function runPlayer(args, timeout = 15000) {
   } catch {
     return null;
   }
+}
+
+async function findHomebrew() {
+  for (const bin of ["/opt/homebrew/bin/brew", "/usr/local/bin/brew", "brew"]) {
+    const result = await exec(bin, ["--version"], { timeout: 4000 }).catch(() => null);
+    if (result?.code === 0) return bin;
+  }
+  return null;
 }
 
 function formatTime(seconds) {
@@ -206,9 +216,17 @@ export default class CompanyMusic extends View {
   }
 
   async checkDeps(cx) {
+    detectedPythonBin = null;
     const res = await runPlayer(["check"], 4000);
-    if (!res) return;
-    this.depStatus = res;
+    if (!res) {
+      if (window()?.platform === "macos") {
+        this.depStatus = { platform: "darwin", has_player: false, has_ytdlp: false };
+        this.showGuide = true;
+        if (cx) cx.notify();
+      }
+      return;
+    }
+    this.depStatus = { ...res, has_python: true };
     this.showGuide = !res.has_player;
     if (res.has_player) {
       this.installing = false;
@@ -250,7 +268,12 @@ export default class CompanyMusic extends View {
         exec("cmd.exe", ["/c", "start", "powershell", "-NoExit", "-Command", "winget install Gyan.FFmpeg yt-dlp.yt-dlp"]).catch(() => null);
       });
     } else if (targetOs === "macos") {
-      await exec("osascript", ["-e", 'tell application "Terminal" to do script "brew install ffmpeg yt-dlp"']).catch(() => null);
+      const brew = await findHomebrew();
+      const result = brew && await exec("osascript", ["-e", `tell application "Terminal" to do script "${brew} install python ffmpeg yt-dlp"`]).catch(() => null);
+      if (result?.code !== 0) {
+        this.installMsg = "Could not open Terminal for setup. Run the commands below in Terminal.";
+        if (cx) cx.notify();
+      }
     } else if (targetOs === "linux") {
       await exec("sh", ["-c", 'x-terminal-emulator -e "sudo apt-get install -y ffmpeg yt-dlp" || gnome-terminal -- bash -c "sudo apt-get install -y ffmpeg yt-dlp; exec bash" || xterm -e "sudo apt-get install -y ffmpeg yt-dlp"']).catch(() => null);
     }
@@ -259,7 +282,7 @@ export default class CompanyMusic extends View {
   async installYtDlpOnly(cx) {
     if (this.installing) return;
     this.installing = true;
-    this.installMsg = "Installing yt-dlp via pip (~3s)...";
+    this.installMsg = "Installing yt-dlp...";
     this.installSuccess = null;
     setShared("pixel-hq.music-setup", {
       installing: true,
@@ -271,41 +294,42 @@ export default class CompanyMusic extends View {
     const isWin = window()?.platform === "windows" || this.depStatus?.platform === "win32";
     const isMac = window()?.platform === "macos" || this.depStatus?.platform === "darwin";
 
-    let ok = false;
-    const pyCandidates = isWin ? ["python", "python3", "py"] : ["python3", "python"];
-    for (const py of pyCandidates) {
-      this.installMsg = `Running ${py} -m pip install yt-dlp...`;
+    if (isMac) {
+      this.installMsg = "Installing yt-dlp via Homebrew...";
       if (cx) cx.notify();
-      const r = await exec(py, ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-      if (r?.code === 0) {
-        ok = true;
-        break;
-      }
-    }
-
-    if (!ok) {
-      const pipCandidates = isWin ? ["pip", "pip3"] : ["pip3", "pip"];
-      for (const pip of pipCandidates) {
-        this.installMsg = `Running ${pip} install yt-dlp...`;
+      const brew = await findHomebrew();
+      if (brew) await exec(brew, ["install", "yt-dlp"], { timeout: 90000 }).catch(() => null);
+    } else {
+      let ok = false;
+      const pyCandidates = isWin ? ["python", "python3", "py"] : ["python3", "python"];
+      for (const py of pyCandidates) {
+        this.installMsg = `Running ${py} -m pip install yt-dlp...`;
         if (cx) cx.notify();
-        const r = await exec(pip, ["install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
+        const r = await exec(py, ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
         if (r?.code === 0) {
           ok = true;
           break;
         }
       }
-    }
 
-    if (!ok && isMac) {
-      this.installMsg = "Running brew install yt-dlp...";
-      if (cx) cx.notify();
-      const r = await exec("brew", ["install", "yt-dlp"], { timeout: 90000 }).catch(() => null);
-      if (r?.code === 0) ok = true;
-    } else if (!ok && isWin) {
-      this.installMsg = "Running winget install yt-dlp...";
-      if (cx) cx.notify();
-      const r = await exec("winget", ["install", "yt-dlp.yt-dlp", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 90000 }).catch(() => null);
-      if (r?.code === 0) ok = true;
+      if (!ok) {
+        const pipCandidates = isWin ? ["pip", "pip3"] : ["pip3", "pip"];
+        for (const pip of pipCandidates) {
+          this.installMsg = `Running ${pip} install yt-dlp...`;
+          if (cx) cx.notify();
+          const r = await exec(pip, ["install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
+          if (r?.code === 0) {
+            ok = true;
+            break;
+          }
+        }
+      }
+
+      if (!ok && isWin) {
+        this.installMsg = "Running winget install yt-dlp...";
+        if (cx) cx.notify();
+        await exec("winget", ["install", "yt-dlp.yt-dlp", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 90000 }).catch(() => null);
+      }
     }
 
     this.installMsg = "Verifying yt-dlp installation...";
@@ -379,24 +403,23 @@ export default class CompanyMusic extends View {
         this.installMsg = "Installation failed. Please use Open Terminal.";
       }
     } else if (targetOs === "macos") {
-      try {
-        if (!this.depStatus?.has_player) {
-          this.installMsg = "Installing ffmpeg via Homebrew...";
+      const brew = await findHomebrew();
+      if (brew) {
+        const packages = [];
+        if (!this.depStatus?.has_python) packages.push("python");
+        if (!this.depStatus?.has_player) packages.push("ffmpeg");
+        if (!this.depStatus?.has_ytdlp) packages.push("yt-dlp");
+        if (packages.length) {
+          this.installMsg = `Installing via Homebrew: ${packages.join(", ")}...`;
           if (cx) cx.notify();
-          await exec("brew", ["install", "ffmpeg"], { timeout: 180000 }).catch(() => null);
-        }
-        if (!this.depStatus?.has_ytdlp) {
-          this.installMsg = "Installing yt-dlp via pip...";
-          if (cx) cx.notify();
-          const r = await exec("python3", ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-          if (r?.code !== 0) {
-            await exec("brew", ["install", "yt-dlp"], { timeout: 90000 }).catch(() => null);
+          const result = await exec(brew, ["install", ...packages], { timeout: 180000 }).catch(() => null);
+          await this.checkDeps(cx);
+          if (result?.code !== 0 || !this.depStatus?.has_player || !this.depStatus?.has_ytdlp) {
+            this.installMsg = "Some dependencies are missing. See the Terminal commands below.";
           }
         }
-        this.installMsg = "Installation completed! Verifying dependencies...";
-        await this.checkDeps(cx);
-      } catch {
-        this.installMsg = "Brew failed. Please use Open Terminal.";
+      } else {
+        this.installMsg = "Homebrew was not found. Install Homebrew, then click Re-check.";
       }
     } else if (targetOs === "linux") {
       try {
@@ -635,7 +658,7 @@ export default class CompanyMusic extends View {
     const primaryCmd = isWindows
       ? "winget install Gyan.FFmpeg"
       : isMac
-      ? "brew install ffmpeg"
+      ? "brew install python ffmpeg"
       : "sudo apt install ffmpeg";
 
     const pmLabel = isWindows ? "winget" : isMac ? "brew" : "apt";
@@ -840,8 +863,8 @@ export default class CompanyMusic extends View {
                 v_flex()
                   .gap(4)
                   .child(div().font_bold().text_size(11.5).text_color("#cba6f7").child("1. Required: Audio Engine (Direct Streams & Radio)"))
-                  .child(div().text_size(10.5).text_color(t.muted).child("Install FFmpeg via Homebrew package manager:"))
-                  .child(cmdBox("brew install ffmpeg"))
+                  .child(div().text_size(10.5).text_color(t.muted).child("Install Python and FFmpeg with Homebrew:"))
+                  .child(cmdBox("brew install python ffmpeg"))
               )
               .child(
                 v_flex()
@@ -1293,7 +1316,7 @@ export default class CompanyMusic extends View {
                 h_flex()
                   .gap(6)
                   .items_center()
-                  .child(div().text_size(10).text_color("#f9e2af").child(this.installMsg || "Installing yt-dlp via pip (~3s)... Please wait"))
+                  .child(div().text_size(10).text_color("#f9e2af").child(this.installMsg || "Installing yt-dlp..."))
               )
             )
             .when(!this.installing, (bodyEl) =>

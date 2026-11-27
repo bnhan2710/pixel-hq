@@ -284,7 +284,9 @@ def test_9_playlist_queue_and_auto_advance():
             assert res_play["status"] == "playing"
             assert "[1/6]" in res_play["title"]
 
-            next_res = player.cmd_next()
+            with patch.object(player, "stop_process", wraps=player.stop_process) as stop:
+                next_res = player.cmd_next()
+                stop.assert_called_once_with(res_play, False)
             assert next_res["status"] == "playing"
             assert "[2/6]" in next_res["title"]
             assert player.read_queue()["current_index"] == 1
@@ -733,7 +735,7 @@ def test_17_volume_during_playback():
         clock.time.return_value = 1010
         changed = player.cmd_volume("70")
         spawn.assert_called_once_with("ffplay", stream_url, player.USER_AGENT, start_seconds=30, volume=70)
-        stop.assert_called_once_with(1234, False)
+        stop.assert_called_once_with(state, False)
         assert changed["elapsed"] == changed["currentElapsed"] == 30
         assert changed["pid"] == 2345 and changed["volume"] == 70
         assert changed["title"] == state["title"] and changed["playlist"] == state["playlist"]
@@ -759,7 +761,7 @@ def test_17_volume_during_playback():
         clock.time.return_value = 1115
         resumed = player.cmd_resume()
         spawn.assert_called_once_with("ffplay", stream_url, player.USER_AGENT, start_seconds=35, volume=0)
-        stop.assert_called_once_with(2345, True)
+        stop.assert_called_once_with(paused, True)
         assert resumed["status"] == "playing" and resumed["pid"] == 3456 and resumed["volume"] == 0
         assert resumed["elapsed"] == 35 and resumed["startTime"] == 1115
         assert player.read_queue() == queue
@@ -777,6 +779,59 @@ def test_17_volume_during_playback():
         assert player.read_state() == {**live, "volume": 20}
         assert spawn.call_count == 1 and stop.call_count == 1
     print("PASS: Track, queue and timer survive changes; paused audio applies volume on resume")
+
+def test_18_macos_process_ownership():
+    print("=== Test 18: macOS Process Ownership ===")
+    pid = 1234
+    url = "https://example.com/audio"
+    started = "Fri Nov 27 00:00:00 2026"
+    stamp = "Fri Nov 27 00:01:00 2026"
+    command = f"/opt/homebrew/bin/ffplay -nodisp -autoexit -volume 50 -user_agent {player.USER_AGENT} {url}"
+    with (
+        patch.object(player.sys, "platform", "darwin"),
+        patch.object(player.os, "getpgid", return_value=pid),
+        patch.object(player.os, "kill") as kill,
+        patch.object(player, "kill_prefetch_worker"),
+        patch.object(player, "run_cmd") as run,
+    ):
+        run.return_value = SimpleNamespace(returncode=0, stdout=f"ffplay {started} {command}")
+        launch = player.player_process_state(SimpleNamespace(pid=pid), url, 50)
+        assert launch["processStarted"] == started
+        state = {**launch, "url": url, "status": "playing", "playing": True}
+        assert player.is_current_player(state)
+        legacy = {key: value for key, value in state.items() if key != "processStarted"}
+        assert player.is_current_player(legacy)
+
+        run.return_value.stdout = f"ffplay {stamp} {command}"
+        assert not player.is_current_player(state)
+        run.return_value.stdout = f"ffplay {started} /opt/homebrew/bin/ffplay {url}"
+        assert not player.is_current_player(legacy)
+        run.return_value.stdout = f"sleep {started} /bin/sleep 10 ffplay"
+        assert not player.is_current_player(state)
+        run.side_effect = subprocess.TimeoutExpired("ps", 3)
+        assert not player.is_current_player(state)
+
+        player.clear_state()
+        run.reset_mock()
+        assert player.cmd_status()["status"] == "idle"
+        assert player.cmd_stop()["status"] == "idle"
+        run.assert_not_called()
+        kill.assert_not_called()
+
+        player.write_state({**legacy, "url": ""})
+        assert player.cmd_stop()["status"] == "idle"
+        run.assert_not_called()
+        kill.assert_not_called()
+
+        player.write_state(state)
+        run.side_effect = [
+            SimpleNamespace(returncode=0, stdout=f"ffplay {started} {command}"),
+            SimpleNamespace(returncode=1, stdout=""),
+        ]
+        assert player.cmd_stop()["status"] == "idle"
+        kill.assert_called_once_with(pid, player.signal.SIGTERM)
+        assert all(call.args[0][0] == "/bin/ps" for call in run.call_args_list)
+    print("PASS: Stop targets only the tracked macOS player and rejects stale or foreign PIDs")
 
 def main():
     suite_td = tempfile.mkdtemp(prefix="pixel_hq_test_cache_")
@@ -802,7 +857,8 @@ def main():
         test_15_cookies_file_integration()
         test_16_volume_preference_and_launch_flags()
         test_17_volume_during_playback()
-        print("All 17 Music Player unit test suites passed successfully!")
+        test_18_macos_process_ownership()
+        print("All 18 Music Player unit test suites passed successfully!")
     finally:
         player.set_cache_dir(orig_cache)
         if orig_env is not None:

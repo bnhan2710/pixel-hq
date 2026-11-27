@@ -2,13 +2,13 @@
 // A viewed done agent stays in Done until left.
 
 import { View, div, svg, image } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input } from "gpui-base";
+import { v_flex, h_flex, InputState, Input, TextView } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, settings, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, writeTextFile, nextCommand, hc, knownAgents, checking } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, duckMood, mood, DUCK_CENTER, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
 import { scene, sceneLayout, yHorizon } from "./scene.js";
 import { Editor } from "./editor.js";
-import { checkPixelHqUpdate, executePixelHqUpdate } from "./updater.js";
+import { checkPixelHqUpdate, executePixelHqUpdate, getPixelHqChangelog, readInstalledRelease, restorePixelHqUpdate } from "./updater.js";
 import { snapshot, clashes, hire, agentTaskArgv } from "./crew.js";
 
 // The figure editor, as a dialog; `space` opens it on that space's pick.
@@ -316,6 +316,13 @@ const agyTranscriptVitals = async (cwd, machine) => {
 
 export default class Agents extends View {
   init(_props, cx) {
+    if (props()?.changelog) {
+      cx.spawn(async (cx) => {
+        this.installedRelease = await readInstalledRelease();
+        cx.notify();
+      });
+      return;
+    }
     if (props()?.needsYou || props()?.workload || props()?.today) return;
     if (props()?.sortMenu) return;
     if (props()?.figures) { this.editor = new Editor(cx); return; }
@@ -367,7 +374,7 @@ export default class Agents extends View {
     this.scanCodex(cx);
     cx.timer.every(8000, (cx) => this.scanCodex(cx));
     // `company-agents.hire` (a key binding, or herdr-app do) opens the hire form.
-    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "hire") this.openHire(cx); if (c === "update") this.runUpdate(); if (c === "needsYou") this.openNeedsYou(); } });
+    cx.spawn(async (cx) => { for (;;) { const c = await nextCommand(); if (c === "hire") this.openHire(cx); if (c === "update") this.runUpdate(cx); if (c === "changelog") this.openChangelog(); if (c === "needsYou") this.openNeedsYou(); } });
     // OpenCode 1.x does not report a status by itself, so without help it never gets a desk. Once, if OpenCode is installed, drop its
     // status plugin (this mod's opencode-status.js) into OpenCode's plugins folder. Only ever replaces Pixel HQ's own older copy;
     // deleting the file removes it for good.
@@ -392,7 +399,10 @@ export default class Agents extends View {
     this.setupHermes(cx);
     this.announceHermes(cx);
     cx.timer.every(5000, (cx) => this.announceHermes(cx));
-    checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {});
+    if (!checking()) cx.spawn(async (cx) => {
+      await restorePixelHqUpdate(cx);
+      await checkPixelHqUpdate(true);
+    });
     cx.timer.every(6 * 3600 * 1000, (cx) => checkPixelHqUpdate(true).then(() => cx.notify()).catch(() => {}));
     // Now and then (every 14 to 32 s) one idle pet steps out beside its desk for about 3.6 s, then comes back.
     this.out = null;
@@ -1196,8 +1206,33 @@ export default class Agents extends View {
     cx.notify();
   }
 
-  runUpdate() {
-    executePixelHqUpdate();
+  runUpdate(cx) {
+    cx.spawn((cx) => executePixelHqUpdate(cx));
+  }
+
+  openChangelog() {
+    openOverlay({ mod: "company-agents", kind: "popup", frame: "none", width: 400, height: 340, props: { changelog: true } });
+  }
+
+  changelog(t) {
+    const log = getPixelHqChangelog(this.installedRelease, shared("pixel-hq.new-version"), shared("pixel-hq.updated"));
+    const entries = log?.entries ?? [];
+    return div().relative().w(400).h(340)
+      .children(box(t.raised, t.chrome, t.surface))
+      .child(v_flex().relative().size_full().p(12).gap(8).font_family("JetBrains Mono")
+        .child(h_flex().flex_none().items_center().justify_between().border_b(1).border_color(t.raised).pb(8)
+          .child(div().font_bold().text_size(13).text_color(t.foreground).child("PIXEL HQ CHANGELOG"))
+          .child(div().id("changelog-close").cursor_pointer().px(6).py(3).text_size(10).text_color(t.muted)
+            .hover(s => s.bg(t.hover)).on_click(() => closeOverlay(props()?.overlay)).child("CLOSE")))
+        .child(div().font_bold().text_size(12).text_color(t.accent).child(log?.label ?? "Loading release notes…"))
+        .child(v_flex().id("changelog-entries").flex_1().min_h(0).overflow_y_scrollbar().gap(10)
+          .when(Boolean(log && !entries.length), el =>
+            el.child(div().text_size(11).text_color(t.muted).child("No release notes published for this update.")))
+          .children(entries.map(({ version, notes }) =>
+            v_flex().flex_none().gap(4).pr(8).pb(8).border_b(1).border_color(t.raised)
+              .when(entries.length > 1, el => el.child(div().font_bold().text_size(11).text_color(t.foreground).child(`v${version}`)))
+              .child(TextView.markdown(`release-notes-${version}`, notes || "No release notes published.").raw_html(false).scrollable(false))
+          ))));
   }
 
   // The paper pile on a desk: the first click arms it, the second (within 6 s) sends the agent /compact (which already summarizes).
@@ -1496,6 +1531,7 @@ export default class Agents extends View {
   render(cx) {
     const t = theme();
     if (props()?.sortMenu) return this.sortMenu(t);
+    if (props()?.changelog) return this.changelog(t);
     if (props()?.needsYou) return this.needsYou(t);
     if (props()?.workload) return this.workloadView(t);
     if (props()?.today) return this.todayView(t);

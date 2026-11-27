@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish release from tag
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            exit 0
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+          if [ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = tag ] &&
+             [ -n "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$RELEASE_TAG")" ]; then
+            notes_flag=--notes-from-tag
+          else
+            notes_flag=--generate-notes
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" "$notes_flag"
+      - name: Announce the migration to legacy updaters
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            exit 0
+          fi
+          if [ "$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft or .isPrerelease')" != false ]; then
+            exit 0
+          fi
+          git fetch origin main
+          if ! git merge-base --is-ancestor "${RELEASE_TAG}^{commit}" FETCH_HEAD; then
+            exit 0
+          fi
+
+          metadata_path="repos/$GITHUB_REPOSITORY/contents/mods/company-agents/version.json"
+          metadata=$(gh api "$metadata_path?ref=main")
+          current=$(jq -r '.content | gsub("[[:space:]]"; "") | @base64d' <<< "$metadata")
+          if jq -e '.migrationTag' <<< "$current" >/dev/null; then
+            exit 0
+          fi
+
+          version=${RELEASE_TAG#v}
+          previous=$(jq -r '.version' <<< "$current")
+          if [ "$version" = "$previous" ] ||
+             [ "$(printf '%s\n' "$version" "$previous" | sort -V | tail -n1)" != "$version" ]; then
+            exit 0
+          fi
+
+          body=$(jq -n --arg version "$version" --arg tag "$RELEASE_TAG" --arg previous "$previous" '{
+            version: $version,
+            type: "important",
+            notes: "Switch to tagged Pixel HQ updates.",
+            migrationTag: $tag,
+            previousVersion: $previous
+          } | (tojson + "\n") | @base64' -r)
+          gh api --method PUT "$metadata_path" --raw-field branch=main \
+            --raw-field message="chore: announce the Pixel HQ updater migration" \
+            --raw-field sha="$(jq -r '.sha' <<< "$metadata")" --raw-field content="$body" >/dev/null

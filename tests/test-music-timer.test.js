@@ -1,4 +1,6 @@
 import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds) || seconds < 0) return "00:00";
@@ -96,52 +98,76 @@ function testPauseAndResumeTransitions() {
   console.log("PASS: Pause and resume transitions maintain consistent elapsed counter");
 }
 
-function testBinaryResolutionCaching() {
-  let calls = 0;
-  let detected = null;
-
-  async function mockExec(bin, args) {
-    calls++;
-    if (args[1] === "check") {
-      return { stdout: JSON.stringify({ status: "ok", has_player: true }) };
-    }
-    return { stdout: JSON.stringify({ status: "playing" }) };
-  }
-
-  async function resolveBin() {
-    if (detected) return detected;
-    const candidates = ["python", "py", "python3"];
-    for (const b of candidates) {
-      const r = await mockExec(b, ["script.py", "check"]);
-      if (r?.stdout && r.stdout.includes('"status"')) {
-        detected = b;
-        return b;
+async function testBinaryResolutionCaching() {
+  for (const mod of ["company-music", "company-status"]) {
+    const source = readFileSync(new URL(`../mods/${mod}/main.js`, import.meta.url), "utf8");
+    const resolver = source.slice(source.indexOf("let detectedPythonBin"), source.indexOf("function formatTime"));
+    for (const homebrew of ["/opt/homebrew/bin", "/usr/local/bin"]) {
+      const available = new Set();
+      const calls = [];
+      const context = {
+        appHome: () => "/Users/test/.config/herdr-app",
+        window: () => ({ platform: "macos" }),
+        exec: async (bin, args) => {
+          calls.push([bin, args.at(-1)]);
+          if (!available.has(bin)) throw new Error("Executable missing");
+          if (args[0] === "--version") return { code: 0 };
+          return { code: 0, stdout: '{"status":"ok"}' };
+        },
+      };
+      const runPlayer = runInNewContext(resolver + "\nrunPlayer", context);
+      assert.equal(await runPlayer(["next"]), null);
+      assert.ok(calls.every(([, action]) => action === "check"));
+      const python = `${homebrew}/python3`;
+      available.add(python);
+      assert.equal((await runPlayer(["next"])).status, "ok");
+      assert.deepEqual(calls.filter(([, action]) => action === "next"), [[python, "next"]]);
+      calls.length = 0;
+      await runPlayer(["prev"]);
+      await runPlayer(["stop"]);
+      assert.deepEqual(calls, [[python, "prev"], [python, "stop"]]);
+      if (mod === "company-music") {
+        const brew = `${homebrew}/brew`;
+        available.add(brew);
+        const findHomebrew = runInNewContext(resolver + "\nfindHomebrew", { ...context });
+        assert.equal(await findHomebrew(), brew);
       }
     }
-    detected = candidates[0];
-    return detected;
   }
+  console.log("PASS: Both macOS Homebrew prefixes, retry after setup, and single execution of player actions");
+}
 
-  async function runPlayerAction(action) {
-    const bin = await resolveBin();
-    return mockExec(bin, ["script.py", action]);
-  }
-
-  (async () => {
-    await runPlayerAction("next");
-    assert.strictEqual(calls, 2);
-    assert.strictEqual(detected, "python");
-
-    await runPlayerAction("next");
-    assert.strictEqual(calls, 3);
-
-    await runPlayerAction("prev");
-    assert.strictEqual(calls, 4);
-
-    await runPlayerAction("stop");
-    assert.strictEqual(calls, 5);
-    console.log("PASS: Binary resolution caches properly and executes mutating commands exactly once");
-  })();
+async function testMacAutoInstall() {
+  const source = readFileSync(new URL("../mods/company-music/main.js", import.meta.url), "utf8");
+  const installed = [];
+  const context = {
+    View: class {},
+    appHome: () => "/Users/test/.config/herdr-app",
+    window: () => ({ platform: "macos" }),
+    setShared() {},
+    exec: async (bin, args) => {
+      if (bin === "/opt/homebrew/bin/brew") {
+        if (args[0] === "install") installed.push(...args.slice(1));
+        return { code: 0 };
+      }
+      if (bin === "/opt/homebrew/bin/python3" && installed.includes("python")) {
+        return { code: 0, stdout: '{"status":"ok","has_player":true,"has_ytdlp":true}' };
+      }
+      throw new Error("Executable missing");
+    },
+  };
+  const Music = runInNewContext(source.replace(/^import .+\n/gm, "").replace("export default class", "class") +
+    "\nCompanyMusic", context);
+  const music = new Music();
+  const cx = { notify() {} };
+  await music.checkDeps(cx);
+  assert.equal(music.showGuide, true);
+  await music.runAutoInstall("macos", cx);
+  assert.deepEqual(installed, ["python", "ffmpeg", "yt-dlp"]);
+  assert.equal(music.depStatus.has_python, true);
+  assert.equal(music.showGuide, false);
+  assert.equal(music.installing, false);
+  console.log("PASS: macOS setup installs missing tools through Homebrew and verifies them");
 }
 
 function testMusicBoxDisableToggle() {
@@ -239,6 +265,7 @@ console.log("=== Running Music Timer & Progression Tests ===");
 testFormatTime();
 testTimerNoDoubleCountingAcrossTicks();
 testPauseAndResumeTransitions();
-testBinaryResolutionCaching();
+await testBinaryResolutionCaching();
+await testMacAutoInstall();
 testMusicBoxDisableToggle();
 testMusicBoxHotkeyAndNotification();

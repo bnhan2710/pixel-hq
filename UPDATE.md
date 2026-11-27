@@ -14,13 +14,11 @@ What lives in your install (`~/.config/herdr-app/`):
 
 ## 1. Press Update now
 
-When a newer version is out, the office shows an **Update now** button. It opens a small window that lists the files on this repo's `main` branch (GitHub API, with a built-in list as fallback), downloads them from `raw.githubusercontent.com`, and overwrites only the installed files that changed: `layouts/pixel-hq.json`, `themes/pixel-hq.json` and the `company-*` mods. It always installs the newest version, never one release at a time. When it says **Successfully updated**, press **Reload Layout** (or **Done**).
-
-Writing the new `company-agents` files makes Herdr reload that mod, the update window included; the window notices the finished update and stays on the success message instead of starting over. Updates made by 1.4.5 and older ran a second, harmless pass instead.
+Click the update pill in the status bar when a new version is available. Pixel HQ downloads the release from GitHub in the background and writes only the files that changed. The status bar shows when the update is running, and a notification reports the result. If the update fails, click the update pill again to retry.
 
 ## Or ask your agent
 
-If the download fails, the window offers **Retry Auto-Update** or **Use Agent Tab**, which opens an agent on this prompt. You can also paste it into any agent yourself. An agent never overwrites existing files unless you say so, which is why the prompt says so:
+You can also ask an agent to install the update with this prompt:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -40,8 +38,7 @@ The agent follows the rules in `~/.config/herdr-app/AGENTS.md`: it reads the new
 
 ## What changed?
 
-Read the [commit list](https://github.com/bnhan2710/pixel-hq/commits/main) before you update. The pets and the room are drawn in
-`mods/company-agents/duck.js` and `scene.js`; `RECIPE.md` describes the current look in full.
+Click **Changelog** in the status bar to see the installed release, earlier releases, and the notes for any available update. The notes saved with the installed release are available offline.
 
 ## Going back
 
@@ -49,4 +46,4 @@ Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back t
 
 ## For the maintainer: announcing a release
 
-Installed copies check `mods/company-agents/version.json` on `main` for a newer `version` (and show `notes` as the "what's new" line). To tell everyone, raise `version` there (for example `1.1.0` to `1.2.0`), edit `notes`, and push. Nothing else is needed.
+In `mods/company-agents/version.json`, move the previous `version` and `notes` into the first entry in `history`, then set the new `version`, `type`, and `notes`. Installed copies check this file on `main` and show the new release notes in the changelog.

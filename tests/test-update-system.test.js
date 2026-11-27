@@ -2,6 +2,118 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const versionFile = "mods/company-agents/version.json";
+const modFile = "mods/company-agents/updater.js";
+const release = {
+  version: "1.8.7",
+  notes: "View the changelog.",
+  history: [{ version: "1.8.6", notes: "Update the preview." }],
+};
+
+async function updateHarness(source, options = {}, state = new Map(), files = new Map()) {
+  const requests = [];
+  const notifications = [];
+  const writes = [];
+  const deadlines = [];
+  const response = (body) => ({
+    ok: true,
+    status: 200,
+    text: async () => typeof body === "string" ? body : JSON.stringify(body),
+    json: async () => body,
+  });
+  const host = {
+    appHome: () => "/app",
+    readTextFile: async (target) => {
+      if (!files.has(target)) throw new Error("Missing file");
+      return files.get(target);
+    },
+    writeTextFile: async (target, content) => {
+      writes.push(target);
+      if (options.writeError) throw new Error("Disk write failed");
+      files.set(target, content);
+      if (target.endsWith(options.interruptedFile ?? "/never")) return new Promise(() => {});
+    },
+    shared: (key) => state.get(key),
+    setShared: (key, value) => state.set(key, value),
+    notify: (notification) => notifications.push(notification),
+    fetch: async (url) => {
+      requests.push(url);
+      if (url.endsWith("/commits/main") && !options.fallback) return response({ sha: "commit-ref" });
+      if (url.includes("/git/trees/commit-ref?")) return response({
+        sha: "tree-ref",
+        tree: [versionFile, modFile].map(path => ({ type: "blob", path })),
+      });
+      if (options.hang && url.includes("raw.githubusercontent.com")) return new Promise(() => {});
+      if (!options.missingVersion && url.split("?")[0].endsWith(versionFile)) return response(release);
+      if (url.split("?")[0].endsWith(modFile)) return response("updated script");
+      return { ok: false, status: 404 };
+    },
+  };
+  const key = `pixelHqUpdateTest${updateHarness.nextId++}`;
+  globalThis[key] = host;
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(source.replace(/^import .*?;$/m,
+    `const { appHome, readTextFile, writeTextFile, shared, setShared, notify, fetch } = globalThis.${key};`)).toString("base64")}`);
+  delete globalThis[key];
+  const cx = { timer: { after: (_ms, callback) => {
+    deadlines.push(callback);
+    return { cancel() {} };
+  } } };
+  return { mod, cx, state, files, requests, notifications, writes, deadlines };
+}
+updateHarness.nextId = 0;
+
+async function testUpdateBehavior(source) {
+  const success = await updateHarness(source);
+  const available = await success.mod.checkPixelHqUpdate(false);
+  assert.deepEqual(available.releases, [{ version: release.version, notes: release.notes }, ...release.history]);
+  await success.mod.executePixelHqUpdate(success.cx);
+  assert.deepEqual(success.writes, [`/app/${modFile}`, `/app/${versionFile}`]);
+  assert.ok(success.requests.every(url => !url.includes("/tree-ref/")));
+  assert.equal(success.state.get("pixel-hq.updating"), null);
+  assert.equal(success.state.get("pixel-hq.updated").version, release.version);
+  assert.equal(success.notifications.at(-1).action.name, "company-agents.changelog");
+
+  const fallback = await updateHarness(source, { fallback: true });
+  await fallback.mod.executePixelHqUpdate(fallback.cx);
+  assert.equal(fallback.state.get("pixel-hq.updated").version, release.version);
+
+  for (const options of [{ missingVersion: true }, { writeError: true }]) {
+    const failure = await updateHarness(source, options);
+    await failure.mod.executePixelHqUpdate(failure.cx);
+    assert.equal(failure.notifications.at(-1).level, "error");
+    assert.equal(failure.files.has(`/app/${versionFile}`), false);
+    assert.equal(failure.state.get("pixel-hq.updating"), null);
+  }
+
+  const timeout = await updateHarness(source, { hang: true });
+  const updating = timeout.mod.executePixelHqUpdate(timeout.cx);
+  await timeout.mod.executePixelHqUpdate(timeout.cx);
+  assert.equal(timeout.deadlines.length, 1);
+  timeout.deadlines[0]();
+  await updating;
+  assert.equal(timeout.writes.length, 0);
+  assert.equal(timeout.state.get("pixel-hq.updating"), null);
+  assert.match(timeout.notifications.at(-1).body, /timed out/);
+
+  for (const interruptedFile of [modFile, versionFile]) {
+    const interrupted = await updateHarness(source, { interruptedFile });
+    interrupted.mod.executePixelHqUpdate(interrupted.cx);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(interrupted.state.get("pixel-hq.updating").installing);
+    const restarted = await updateHarness(source, {}, interrupted.state, interrupted.files);
+    await restarted.mod.restorePixelHqUpdate(restarted.cx);
+    assert.deepEqual(restarted.writes, interruptedFile === modFile ? [`/app/${versionFile}`] : []);
+    assert.equal(restarted.state.get("pixel-hq.updated").version, release.version);
+    assert.equal(restarted.state.get("pixel-hq.updating"), null);
+  }
+
+  for (const stale of [true, { id: "expired", expiresAt: 1 }]) {
+    const started = await updateHarness(source, {}, new Map([["pixel-hq.updating", stale]]));
+    await started.mod.restorePixelHqUpdate(started.cx);
+    assert.equal(started.state.get("pixel-hq.updating"), null);
+  }
+}
+
 async function runTests() {
   console.log("=== Running Update System Background & Pristine Brand Tests ===");
 
@@ -67,13 +179,16 @@ async function runTests() {
   console.log("PASS: company-status displays update pill and invokes company-agents.update");
 
   // 5. Verify company-agents integration and direct update execution
-  assert.ok(agentsSrc.includes('if (c === "update") this.runUpdate()'), "company-agents must listen to nextCommand for update");
+  assert.ok(agentsSrc.includes('if (c === "update") this.runUpdate(cx)'), "company-agents must listen to nextCommand for update");
   assert.ok(agentsSrc.includes("executePixelHqUpdate"), "company-agents must import and execute update directly");
   assert.ok(agentsSrc.includes("checkPixelHqUpdate(true)"), "company-agents must check for updates on startup");
   assert.ok(!agentsSrc.includes('Pixel HQ ${this.update.version} is out'), "company-agents office floor must not render intrusive banner");
   console.log("PASS: company-agents executes update directly without modal");
 
-  console.log("All Update System Background & Pristine Brand tests passed!");
+  assert.ok(statusSrc.includes('run("company-agents.changelog")'));
+  assert.ok(agentsSrc.includes('if (props()?.changelog) return this.changelog(t)'));
+  await testUpdateBehavior(agentsUpdaterSrc);
+  console.log("PASS: commit-pinned downloads, fallback, timeout, failures, reload recovery, and changelog");
 }
 
 runTests().catch((err) => {

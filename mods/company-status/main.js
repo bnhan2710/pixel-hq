@@ -57,7 +57,9 @@ async function getPythonBin() {
   if (detectedPythonBin) return detectedPythonBin;
   const script = `${appHome()}/mods/company-music/player.py`;
   const isWin = window()?.platform === "windows" || appHome().includes(":") || appHome().includes("\\");
+  const isMac = window()?.platform === "macos";
   const candidates = isWin ? ["python", "py", "python3"] : ["python3", "python"];
+  if (isMac) candidates.unshift("/opt/homebrew/bin/python3", "/usr/local/bin/python3");
   for (const bin of candidates) {
     const r = await exec(bin, [script, "check"], { timeout: 4000 }).catch(() => null);
     if (r?.stdout && r.stdout.includes('"status"')) {
@@ -65,12 +67,12 @@ async function getPythonBin() {
       return bin;
     }
   }
-  detectedPythonBin = candidates[0];
-  return detectedPythonBin;
+  return null;
 }
 
 async function runPlayer(args, timeout = 15000) {
   const bin = await getPythonBin();
+  if (!bin) return null;
   const script = `${appHome()}/mods/company-music/player.py`;
   const r = await exec(bin, [script, ...args], { timeout }).catch(() => null);
   if (!r?.stdout) return null;
@@ -118,6 +120,7 @@ export default class WorkspaceStatus extends View {
     let prevDisabled = isMusicBoxDisabled();
     cx.timer.every(500, (cx) => {
       const curDisabled = isMusicBoxDisabled();
+      if (this.showingUpdate && !(shared("pixel-hq.updating")?.expiresAt > Date.now())) cx.notify();
       if (curDisabled !== prevDisabled) {
         prevDisabled = curDisabled;
         cx.notify();
@@ -197,6 +200,7 @@ export default class WorkspaceStatus extends View {
 
   render() {
     const t = theme();
+    this.showingUpdate = shared("pixel-hq.updating")?.expiresAt > Date.now();
     const space = spaces().find(s => s.active);
     const activeTab = (space?.tabs ?? []).find(t => t.active) ?? space?.tabs?.[0];
     const leadPane = panes().find(p => p.tab === activeTab?.id && p.terminal) ?? focused();
@@ -215,13 +219,13 @@ export default class WorkspaceStatus extends View {
       .child(label(space?.machine ? "server" : "monitor", space?.machine ?? "This computer"))
       .when(Boolean(currentBranch), el => el.child(label("branch", currentBranch)))
       .child(div().text_color(t.dim).child(`${list.length} ON THE TEAM`))
-      .when(Boolean(shared("pixel-hq.updating")), (el) => el.child(
+      .when(this.showingUpdate, (el) => el.child(
         h_flex().id("update-status-pill").gap(6).items_center().px(7).py(2)
           .bg("#89b4fa").text_color(t.chrome)
-          .tooltip("Downloading Pixel HQ update...")
+          .tooltip("Downloading and installing the Pixel HQ update")
           .child(div().font_bold().text_size(11).child("⏳ Updating Pixel HQ..."))
       ))
-      .when(Boolean(!shared("pixel-hq.updating") && shared("pixel-hq.new-version")), (el) => {
+      .when(Boolean(!this.showingUpdate && shared("pixel-hq.new-version")), (el) => {
         const upd = shared("pixel-hq.new-version");
         const urgent = Boolean(upd?.isUrgent);
         const pillBg = urgent ? (t.blocked ?? "#f38ba8") : t.accent;
@@ -238,6 +242,10 @@ export default class WorkspaceStatus extends View {
             .child(div().font_bold().text_size(11).child(pillText))
         );
       })
+      .child(chip(h_flex(), t).id("btn-changelog")
+        .tooltip("View Pixel HQ release notes")
+        .on_click(() => run("company-agents.changelog"))
+        .child("CHANGELOG"))
       .when(n("working") > 0, el => el.child(pill("#89b4fa", `${n("working")} typing`)))
       .when(n("blocked") > 0, el => el.child(div().id("needs-you-pill").cursor_pointer().px(4).hover(s => s.bg(t.hover))
         .tooltip("Open the needs-you list")

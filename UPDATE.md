@@ -18,7 +18,7 @@ Click the update pill in the status bar when a new version is available. Pixel H
 
 ## Or ask your agent
 
-If your installed updater predates tag-based releases, reinstall Pixel HQ from the shared layout once to pick up the new updater. You can also ask an agent to install it with this prompt:
+The first tagged release also appears in older updaters. Use the existing update button or toast to switch to tagged updates. You can also ask an agent to install the update with this prompt:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -53,4 +53,4 @@ git tag -a v1.8.7 -m "Fix stuck updates and improve MusicBox setup on macOS"
 git push origin v1.8.7
 ```
 
-The release workflow publishes a GitHub Release for the tag. Annotated tags supply the release notes, and lightweight tags use GitHub's generated notes. Put `[urgent]` on the first line of an annotated tag message for an urgent update notice. Pixel HQ takes the version from the tag, downloads the commit the tag points to, and shows the release notes. Commits pushed to `main` become available for in-app updates when a release tag is published.
+The release workflow publishes a GitHub Release for the tag. Annotated tags supply the release notes, and lightweight tags use GitHub's generated notes. Put `[urgent]` on the first line of an annotated tag message for an urgent update notice. Pixel HQ takes the version from the tag, downloads the commit the tag points to, and shows the release notes. Commits pushed to `main` become available for in-app updates when a release tag is published. The first eligible tag on `main` also updates the legacy announcement file once so older updaters can find the migration. Subsequent tagged releases leave that file alone.

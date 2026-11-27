@@ -149,6 +149,38 @@ async function testUpdateBehavior(source) {
     assert.equal(restarted.state.get("pixel-hq.updating"), null);
   }
 
+  const bridge = { version: "1.8.7", migrationTag: "v1.8.7", previousVersion: "1.8.6" };
+  const bridgeFiles = () => new Map([[`/app/${versionFile}`, JSON.stringify(bridge)]]);
+  const legacyOffer = { version: "1.8.7", currentVersion: "1.8.5" };
+  const handoffState = () => new Map([
+    ["pixel-hq.updating", true],
+    ["pixel-hq.new-version", legacyOffer],
+  ]);
+  const partial = await updateHarness(source, {}, handoffState(), bridgeFiles());
+  await partial.mod.restorePixelHqUpdate(partial.cx);
+  assert.equal(partial.state.get("pixel-hq.updated").tag, bridge.migrationTag);
+  assert.equal(partial.state.get("pixel-hq.updated").previousVersion, legacyOffer.currentVersion);
+  assert.equal(partial.state.get("pixel-hq.updating"), null);
+
+  const mixed = await updateHarness(source, {}, handoffState(), bridgeFiles());
+  await mixed.mod.checkPixelHqUpdate(true);
+  assert.equal(mixed.state.get("pixel-hq.updated").tag, bridge.migrationTag);
+  assert.equal(mixed.state.get("pixel-hq.updated").previousVersion, legacyOffer.currentVersion);
+
+  const finishedLegacy = await updateHarness(source, {}, new Map([
+    ["pixel-hq.updated", { version: bridge.version }],
+    ["pixel-hq.dismissed-version", bridge.version],
+  ]), bridgeFiles());
+  await finishedLegacy.mod.checkPixelHqUpdate(true);
+  assert.equal(finishedLegacy.state.get("pixel-hq.updated").tag, bridge.migrationTag);
+
+  const importedBridge = await updateHarness(source, {}, new Map(), bridgeFiles());
+  await importedBridge.mod.checkPixelHqUpdate(true);
+  assert.equal(importedBridge.state.get("pixel-hq.new-version").version, bridge.version);
+  assert.equal(importedBridge.state.has("pixel-hq.updated"), false);
+  assert.deepEqual(importedBridge.writes, []);
+  assert.equal(importedBridge.notifications.at(-1).action.name, "company-agents.update");
+
   for (const stale of [true, { id: "expired", expiresAt: 1 }]) {
     const started = await updateHarness(source, {}, new Map([["pixel-hq.updating", stale]]));
     await started.mod.restorePixelHqUpdate(started.cx);

@@ -108,7 +108,7 @@ Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Re
 
 ## Cập nhật
 
-Herdr cài layout chia sẻ dưới dạng bản sao thường. Khi có bản phát hành mới, bấm thông báo cập nhật trên thanh trạng thái. Pixel HQ tải đúng commit của tag trên GitHub và ghi đè các file Pixel HQ có thay đổi. Bấm **Changelog** để xem những gì thay đổi giữa bản đang cài và bản mới. Nếu đang dùng updater cũ, cài lại layout chia sẻ một lần hoặc nhờ agent:
+Herdr cài layout chia sẻ dưới dạng bản sao thường. Khi có bản phát hành mới, bấm thông báo cập nhật trên thanh trạng thái. Pixel HQ tải đúng commit của tag trên GitHub và ghi đè các file Pixel HQ có thay đổi. Bấm **Changelog** để xem những gì thay đổi giữa bản đang cài và bản mới. Bản updater cũ sẽ nhận bản chuyển tiếp qua nút cập nhật hiện có. Bạn cũng có thể nhờ agent:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 

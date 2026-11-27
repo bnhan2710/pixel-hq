@@ -145,9 +145,20 @@ export async function readInstalledRelease() {
   if (installed?.tag) return installed;
   try {
     const legacy = JSON.parse(await readTextFile(`${appHome()}/${LEGACY_VERSION_FILE}`));
+    if (legacy?.migrationTag) {
+      const pending = shared("pixel-hq.new-version");
+      const version = pending?.currentVersion && compareVersions(pending.currentVersion, legacy.version) < 0
+        ? pending.currentVersion : legacy.previousVersion || LAST_LEGACY_VERSION;
+      return { version, migrationTag: legacy.migrationTag };
+    }
     if (legacy?.version) return legacy;
   } catch {}
   return { version: LAST_LEGACY_VERSION };
+}
+
+function hasLegacyInstallInProgress(installed) {
+  return Boolean(installed.migrationTag && (shared("pixel-hq.updating") === true ||
+    shared("pixel-hq.updated")?.version === installed.migrationTag.slice(1)));
 }
 
 export function isUrgentUpdate(type) {
@@ -175,8 +186,12 @@ export async function checkPixelHqUpdate(notifyUser = true) {
     };
     setShared("pixel-hq.new-version", upd);
 
+    if (notifyUser && hasLegacyInstallInProgress(mine)) {
+      await executePixelHqUpdate();
+      return upd;
+    }
     const dismissed = shared("pixel-hq.dismissed-version");
-    if (notifyUser && dismissed !== upd.version) {
+    if (notifyUser && (mine.migrationTag || dismissed !== upd.version)) {
       if (upd.isUrgent) {
         notify({
           title: `⚠️ Urgent Pixel HQ update: ${versionLabel}`,
@@ -255,6 +270,10 @@ let runningUpdate;
 
 export async function restorePixelHqUpdate(cx) {
   const update = shared("pixel-hq.updating");
+  if (update === true && hasLegacyInstallInProgress(await readInstalledRelease())) {
+    await executePixelHqUpdate(cx);
+    return;
+  }
   if (update === true || (update?.expiresAt && update.expiresAt <= Date.now())) {
     setShared("pixel-hq.updating", null);
     return;
@@ -280,7 +299,7 @@ export async function executePixelHqUpdate(cx, interrupted) {
     });
 
     const deadline = new Promise((_, reject) => {
-      timer = cx.timer.after(Math.max(0, update.expiresAt - Date.now()), () => reject(new Error("The update timed out. Try again.")));
+      timer = cx?.timer.after(Math.max(0, update.expiresAt - Date.now()), () => reject(new Error("The update timed out. Try again.")));
     });
     const active = () => shared("pixel-hq.updating")?.id === update.id && Date.now() < update.expiresAt;
     const installed = await Promise.race([readInstalledRelease(), deadline]);

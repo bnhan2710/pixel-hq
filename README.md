@@ -111,7 +111,7 @@ Mods are trusted code and Herdr does not sandbox them. This repo is about 4,200 
 
 ## Update
 
-Herdr installs a shared layout as a plain copy. When a new release is published, click the update in the status bar. Pixel HQ downloads the tagged commit from GitHub and overwrites the installed Pixel HQ files that changed. Click **Changelog** to see the release notes for your upgrade. If your updater predates tag-based releases, install the shared layout again once, or ask an agent:
+Herdr installs a shared layout as a plain copy. When a new release is published, click the update in the status bar. Pixel HQ downloads the tagged commit from GitHub and overwrites the installed Pixel HQ files that changed. Click **Changelog** to see the release notes for your upgrade. Older updaters receive a one-time migration through the existing update button. You can also ask an agent:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 

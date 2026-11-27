@@ -64,7 +64,7 @@ const plus = (c) => div().relative().flex_none().w(10).h(10)
 
 export default class Tabs extends View {
   init(_props, cx) {
-    this.pressed = null;
+    this.drag = null; this.widths = {};
     this.frame = 0; this.spin = false;
     cx.timer.every(110, (cx) => { if (this.spin) { this.frame = (this.frame + 1) % 8; cx.notify(); } });
     this.scroll = ScrollHandle.new();
@@ -94,6 +94,45 @@ export default class Tabs extends View {
     s.steps++;
     s.last = now;
     run(e.delta.y > 0 ? "tab.prev" : "tab.next");
+  }
+
+  zoom() { return Number(settings()?.zoom) > 0 ? Number(settings().zoom) : 1; }
+
+  // Chrome-style: the held tab follows the pointer, the others slide aside once it passes their middle.
+  dragMove(e, cx) {
+    const d = this.drag;
+    if (!d) return;
+    if (e.pressed_button !== "left") { this.drag = null; cx.notify(); return; }
+    const raw = e.position.x - d.sx;
+    if (!d.moved && Math.abs(raw) < 4) return;
+    d.moved = true;
+    const G = 3 * this.zoom(), W = d.ids.map(id => this.widths[id] ?? 0);
+    const before = W.slice(0, d.i).reduce((a, w) => a + w + G, 0), after = W.slice(d.i + 1).reduce((a, w) => a + w + G, 0);
+    d.dx = Math.max(-before, Math.min(after, raw));
+    let t = d.i, acc = 0;
+    if (d.dx > 0) for (let j = d.i + 1; j < W.length && d.dx > acc + W[j] / 2; j++) { t = j; acc += W[j] + G; }
+    else for (let j = d.i - 1; j >= 0 && -d.dx > acc + W[j] / 2; j--) { t = j; acc += W[j] + G; }
+    d.t = t; d.slot = d.dx > 0 ? acc : -acc;
+    cx.notify();
+  }
+
+  dragEnd(cx) {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null; this.last = d;
+    if (d.moved && d.t !== d.i) {
+      const ids = d.ids.slice();
+      ids.splice(d.t, 0, ...ids.splice(d.i, 1));
+      this.order = { ids, until: Date.now() + 1000 };
+      run("tab.move", { id: d.id, index: d.t + 1 });
+    }
+    if (d.moved) {
+      run("tab.select", { id: d.id });
+      this.settle = { id: d.id, off: d.dx - d.slot };
+      cx.timer.after(16, (cx) => { if (this.settle?.id === d.id) { this.settle.off = 0; cx.notify(); } });
+      cx.timer.after(220, (cx) => { if (this.settle?.id === d.id) { this.settle = null; cx.notify(); } });
+    }
+    cx.notify();
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -127,7 +166,24 @@ export default class Tabs extends View {
   render() {
     const t = theme();
     const space = spaces().find(p => p.active);
-    const shown = space?.tabs ?? [];
+    let shown = space?.tabs ?? [];
+    // Until Herdr reports the move, show the order the drop asked for, so nothing jumps back for a frame.
+    const p = this.order;
+    if (p) {
+      const ids = shown.map(x => x.id);
+      if (Date.now() > p.until || ids.join() === p.ids.join() || ids.length !== p.ids.length || !p.ids.every(id => ids.includes(id))) this.order = null;
+      else shown = p.ids.map(id => shown.find(x => x.id === id));
+    }
+    const d = this.drag, z = this.zoom(), lift = d?.moved ? (this.widths[d.id] ?? 0) + 3 * z : 0;
+    const shift = (c, j) => {
+      if (d?.moved) {
+        if (c.id === d.id) return d.dx;
+        if (j > d.i && j <= d.t) return -lift;
+        if (j < d.i && j >= d.t) return lift;
+        return 0;
+      }
+      return this.settle?.id === c.id ? this.settle.off : 0;
+    };
     const active = shown.findIndex(tab => tab.active);
     const selected = shown[active]?.id;
     this.spin = shown.some(tab => tab.status === "working");
@@ -145,16 +201,15 @@ export default class Tabs extends View {
       const lead = panes().find(p => p.tab === c.id && p.program?.agent) ?? panes().find(p => p.tab === c.id);
       const program = lead?.program;
       const name = label(c, lead);
-      return h_flex().id(`tab-${c.id}`).relative().h(32).pl(9).pr(11).pt(4).pb(6).gap(7).items_center().flex_none()
+      const dragged = d?.moved && d.id === c.id;
+      return h_flex().id(`tab-${c.id}`).relative().left(dragged ? 0 : shift(c, i) / z).h(32).pl(9).pr(11).pt(4).pb(6).gap(7).items_center().flex_none()
         .children([...box(c.active ? t.muted : t.raised, c.active ? t.raised : t.chrome, t.surface), ...(c.active ? [div().absolute().left(8).right(10).bottom(4).h(2).bg(t.accent)] : [])])
         // A rename or status dot on this or an earlier tab can push the active one out.
-        .when(i <= active, el => el.on_size_change((_size, cx) => { this.scroll.scroll_to_item(active); cx.notify(); }))
-        .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
-        .on_mouse_up("left", () => {
-          const from = this.pressed; this.pressed = null;
-          if (from !== null && from !== i) run("tab.move", { id: shown[from].id, index: space.tabs.findIndex(x => x.id === c.id) + 1 });
-          else run("tab.select", { id: c.id });
-        })
+        .on_size_change((size, cx) => { this.widths[c.id] = size.width; if (i <= active) { this.scroll.scroll_to_item(active); cx.notify(); } })
+        .when(d?.moved ? !dragged : this.settle?.id === c.id, el => el.transition("left", { duration: 180, easing: "ease-out" }))
+        .when(Boolean(d?.moved), el => el.cursor_grabbing())
+        .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.drag = { i, id: c.id, ids: shown.map(x => x.id), sx: e.position.x, dx: 0, t: i, slot: 0, moved: false }; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
+        .on_mouse_up("left", () => { const g = this.drag ?? this.last; if (g?.id === c.id && !g.moved) run("tab.select", { id: c.id }); })
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "menu", kind: "popup", width: 200, props: { tab: "tab", target: { id: c.id, space: space.id } } }); })
         .when(Boolean(program?.icon), el => el.child(program.tint ? svg(program.icon).size(14).text_color(c.active ? t.accent : t.muted) : image(program.icon).size(14)))
         .child(div().max_w(170).truncate().font_family(MONO).font_bold().text_size(11).text_color(c.active ? t.foreground : t.muted).child(c.zoomed ? `${name} Z` : name))
@@ -186,11 +241,17 @@ export default class Tabs extends View {
         .child(text.toUpperCase());
     };
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.surface)
-      .on_mouse_up("left", () => { this.pressed = null; })
+      .on_window_mouse_move((e, cx) => this.dragMove(e, cx))
+      .on_window_mouse_up("left", (_e, cx) => this.dragEnd(cx))
       .on_scroll_wheel(e => this.wheel(e))
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().track_scroll(this.scroll)
         .on_size_change((_size, cx) => { if (active >= 0) { this.scroll.scroll_to_item(active); cx.notify(); } })
-        .children(shown.map(item)))
+        .relative()
+        // No z-index here: the held tab leaves a gap in its slot and is drawn last, so it rides over the others.
+        .children(shown.map((c, i) => d?.moved && c.id === d.id ? div().flex_none().w((this.widths[c.id] ?? 0) / z).h(32) : item(c, i)))
+        .when(Boolean(d?.moved && shown[d.i]?.id === d.id), el => el.child(div().absolute().top(0).bottom(0)
+          .left((d.ids.slice(0, d.i).reduce((a, id) => a + (this.widths[id] ?? 0) + 3 * z, 0) + d.dx) / z)
+          .flex().items_center().child(item(shown[d.i], d.i)))))
       .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes")))

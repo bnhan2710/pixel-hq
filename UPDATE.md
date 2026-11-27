@@ -46,11 +46,14 @@ Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back t
 
 ## For the maintainer: announcing a release
 
-Tag the commit you want to ship and push that tag. Use an annotated tag to supply your own Markdown changelog.
+Tag the commit you want to ship and push that tag.
 
 ```sh
-git tag -a v1.8.7 -m "Fix stuck updates and improve MusicBox setup on macOS"
+git fetch origin main
+git tag v1.8.7 origin/main
 git push origin v1.8.7
 ```
 
-The release workflow publishes a GitHub Release for the tag. Annotated tags supply the release notes, and lightweight tags use GitHub's generated notes. Put `[urgent]` on the first line of an annotated tag message for an urgent update notice. Pixel HQ takes the version from the tag, downloads the commit the tag points to, and shows the release notes. Commits pushed to `main` become available for in-app updates when a release tag is published. The first eligible tag on `main` also updates the legacy announcement file once so older updaters can find the migration. Subsequent tagged releases leave that file alone.
+On GitHub, create a release for that tag. Enter your own description or use **Generate release notes**, then publish the release. Put `[urgent]` on the first line of the description for an urgent update notice.
+
+Pixel HQ takes the version from the published release tag, downloads that commit, and shows the release description in **Changelog**. The first eligible stable release on `main` also updates the legacy announcement file once so older updaters can find the migration.

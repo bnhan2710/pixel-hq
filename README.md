@@ -163,7 +163,7 @@ Herdr only counts a program as an agent when it reports a status. Claude Code do
 
 ## Update notices
 
-Pixel HQ checks public GitHub Releases at startup and every six hours. Publishing a new version tag makes the update available. The status bar shows the version range and the changelog uses the release notes for that range.
+Pixel HQ checks public GitHub Releases at startup and every six hours. Publishing a GitHub Release for a version tag makes the update available. The status bar shows the version range and the changelog uses the release notes for that range.
 
 ## Make it yours
 

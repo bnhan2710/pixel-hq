@@ -6,8 +6,111 @@ const MONO = "JetBrains Mono, Menlo, monospace";
 const VOLUME_KEY = "pixel-hq.music.volume";
 const VOLUME_STEP = 10;
 const SETUP_KEY = "pixel-hq.music-setup";
-const BREW_TIMEOUT = 600000;
-const BREW_EXIT_MARKER = "PIXEL_HQ_BREW_EXIT=";
+const INSTALL_TIMEOUT = 600000;
+const INSTALL_EXIT_MARKER = "PIXEL_HQ_INSTALL_EXIT=";
+const INSTALLER_NAMES = { macos: "Homebrew", linux: "pip / system packages", windows: "pip / WinGet" };
+const LINUX_INSTALL = `
+export PIP_NO_INPUT=1 PYTHONUNBUFFERED=1
+install_system() {
+  package=$1
+  if command -v apt-get >/dev/null && {
+    printf 'Installing %s with APT\\n' "$package"
+    { [ "$package" != ffmpeg ] || sudo -n apt-get update; } &&
+      sudo -n apt-get install -y "$package"
+  }; then
+    return 0
+  fi
+  if command -v dnf >/dev/null && {
+    printf 'Installing %s with DNF\\n' "$package"
+    sudo -n dnf install -y "$package"
+  }; then
+    return 0
+  fi
+  if command -v pacman >/dev/null; then
+    printf 'Installing %s with Pacman\\n' "$package"
+    sudo -n pacman -S --noconfirm "$package"
+    return $?
+  fi
+  return 1
+}
+install_ytdlp() {
+  for python in python3 python; do
+    command -v "$python" >/dev/null || continue
+    printf 'Installing yt-dlp with %s -m pip\\n' "$python"
+    "$python" -m pip install --upgrade yt-dlp && return 0
+  done
+  for pip in pip3 pip; do
+    command -v "$pip" >/dev/null || continue
+    printf 'Installing yt-dlp with %s\\n' "$pip"
+    "$pip" install --upgrade yt-dlp && return 0
+  done
+  install_system yt-dlp
+}
+status=0
+for target do
+  case "$target" in
+    ffmpeg) install_system ffmpeg || status=$? ;;
+    yt-dlp) install_ytdlp || status=$? ;;
+  esac
+done
+exit "$status"`;
+
+function powerShellArgs(script) {
+  return ["-NoProfile", "-NonInteractive", "-Command", script];
+}
+
+function powerShellString(value) {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function windowsInstallScript(logPath, packages) {
+  const targets = packages.map(powerShellString).join(", ");
+  return `
+$log = [System.IO.StreamWriter]::new(${powerShellString(logPath)}, $false, [System.Text.UTF8Encoding]::new($false))
+$log.AutoFlush = $true
+$env:PIP_NO_INPUT = '1'
+$env:PYTHONUNBUFFERED = '1'
+$wingetArgs = @('install', '--exact', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity', '--id')
+function Invoke-Installer($command, [string[]]$arguments) {
+  if (-not (Get-Command $command -CommandType Application -ErrorAction SilentlyContinue)) {
+    $log.WriteLine('Command unavailable: ' + $command)
+    return 1
+  }
+  $log.WriteLine('Running ' + $command + ' ' + ($arguments -join ' '))
+  & $command @arguments 2>&1 | ForEach-Object {
+    $line = if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { [string]$_ }
+    if ($line) { $log.WriteLine($line) }
+  }
+  return $LASTEXITCODE
+}
+function Install-YtDlp {
+  foreach ($python in @('python', 'py', 'python3')) {
+    if ((Invoke-Installer $python @('-m', 'pip', 'install', '--upgrade', 'yt-dlp')) -eq 0) { return 0 }
+  }
+  foreach ($pip in @('pip', 'pip3')) {
+    if ((Invoke-Installer $pip @('install', '--upgrade', 'yt-dlp')) -eq 0) { return 0 }
+  }
+  return (Invoke-Installer 'winget' ($wingetArgs + 'yt-dlp.yt-dlp'))
+}
+$status = 0
+try {
+  foreach ($target in @(${targets})) {
+    if ($target -eq 'ffmpeg') {
+      $code = Invoke-Installer 'winget' ($wingetArgs + 'Gyan.FFmpeg')
+    } else {
+      $code = Install-YtDlp
+    }
+    if ($code -ne 0) { $status = $code }
+  }
+} catch {
+  $log.WriteLine([string]$_)
+  $status = 1
+} finally {
+  $log.WriteLine('${INSTALL_EXIT_MARKER}' + $status)
+  $log.Dispose()
+}
+exit $status`;
+}
 
 const notch = (c, [l, r, t, b]) => [
   div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
@@ -161,8 +264,8 @@ export default class CompanyMusic extends View {
     this.guideTab = window()?.platform === "windows" ? "windows" : window()?.platform === "macos" ? "macos" : "linux";
     this.installMsg = null;
     this.installSuccess = null;
-    this.brewProgress = null;
-    this.readingBrewProgress = false;
+    this.installProgress = null;
+    this.readingInstallProgress = false;
     this.history = shared("pixel-hq.music")?.history || [];
     const curMusic = shared("pixel-hq.music");
     if (curMusic?.error && curMusic.status !== "error") {
@@ -201,24 +304,24 @@ export default class CompanyMusic extends View {
     return Boolean(shared(SETUP_KEY)?.installing);
   }
 
-  renderBrewProgress(setup, t) {
-    const text = this.brewProgress?.logPath === setup?.logPath && this.brewProgress?.text;
+  renderInstallProgress(setup) {
+    const text = this.installProgress?.logPath === setup?.logPath && this.installProgress?.text;
     return div()
       .w_full()
       .truncate()
       .text_size(10)
-      .text_color(t.muted)
-      .tooltip(text || "Waiting for Homebrew output…")
-      .child(text || "Waiting for Homebrew output…");
+      .text_color("#a6adc8")
+      .tooltip(text || "Waiting for installer output…")
+      .child(text || "Waiting for installer output…");
   }
 
   pollSetup(cx) {
     const setup = shared(SETUP_KEY);
-    if (!setup?.installing || this.readingBrewProgress) return;
+    if (!setup?.installing || this.readingInstallProgress) return;
     const expiresAt = setup.expiresAt ?? setup.startedAt + 180000;
     if (!setup.startedAt || Date.now() >= expiresAt) {
       setShared(SETUP_KEY, null);
-      if (setup.logPath) exec("/bin/rm", ["-f", setup.logPath]).catch(() => null);
+      if (setup.logPath) this.removeInstallLog(setup);
       this.installMsg = "Installation timed out. Click Re-check or use Open Terminal.";
       if (setup.ytDlpOnly) this.error = "yt-dlp installation timed out. Try again or use Open Terminal.";
       cx.notify();
@@ -226,65 +329,82 @@ export default class CompanyMusic extends View {
     }
     if (!setup.logPath || setup.verifying) return;
 
-    this.readingBrewProgress = true;
+    this.readingInstallProgress = true;
     cx.spawn(async (cx) => {
       try {
-        const result = await exec("/usr/bin/tail", ["-c", "4096", setup.logPath], { timeout: 2000 }).catch(() => null);
+        const result = await (setup.platform === "windows"
+          ? exec("powershell", powerShellArgs(`[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Get-Content -Tail 25 -Encoding UTF8 -LiteralPath ${powerShellString(setup.logPath)}`), { timeout: 3000 })
+          : exec("/usr/bin/tail", ["-c", "4096", setup.logPath], { timeout: 2000 })).catch(() => null);
         const current = shared(SETUP_KEY);
         if (current?.logPath !== setup.logPath || current.verifying || result?.code !== 0) return;
-        const lines = result.stdout.split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean);
+        const lines = result.stdout.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+          .split(/[\r\n]+/).map((line) => line.trim()).filter((line) => /[\p{L}\p{N}]/u.test(line));
         const lastLine = lines.pop();
-        const exitCode = lastLine?.startsWith(BREW_EXIT_MARKER) ? Number(lastLine.slice(BREW_EXIT_MARKER.length)) : null;
+        const exitCode = lastLine?.startsWith(INSTALL_EXIT_MARKER) ? Number(lastLine.slice(INSTALL_EXIT_MARKER.length)) : null;
         const detail = exitCode === null ? lastLine : lines.pop();
-        if (detail && this.brewProgress?.text !== detail) {
-          this.brewProgress = { logPath: setup.logPath, text: detail };
+        if (detail && (this.installProgress?.logPath !== setup.logPath || this.installProgress.text !== detail)) {
+          this.installProgress = { logPath: setup.logPath, text: detail };
           cx.notify();
         }
-        if (exitCode !== null) await this.finishHomebrewInstall(setup, exitCode, cx);
+        if (exitCode !== null) await this.finishInstall(setup, exitCode, cx);
       } finally {
-        this.readingBrewProgress = false;
+        this.readingInstallProgress = false;
       }
     });
   }
 
-  async installWithHomebrew(packages, ytDlpOnly, cx) {
+  removeInstallLog(setup) {
+    const result = setup.platform === "windows"
+      ? exec("powershell", powerShellArgs(`Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath ${powerShellString(setup.logPath)}`), { timeout: 3000 })
+      : exec("/bin/rm", ["-f", setup.logPath], { timeout: 2000 });
+    result.catch(() => null);
+  }
+
+  async installDependencies(platform, packages, ytDlpOnly, cx) {
     const startedAt = Date.now();
     const setup = {
       installing: true,
-      msg: ytDlpOnly ? "Installing yt-dlp via Homebrew..." : `Installing via Homebrew: ${packages.join(", ")}...`,
+      platform,
+      msg: `Installing ${packages.join(", ")} via ${INSTALLER_NAMES[platform]}...`,
       startedAt,
-      expiresAt: startedAt + BREW_TIMEOUT + 15000,
-      logPath: `${appHome()}/.music-homebrew-${startedAt}.log`,
+      expiresAt: startedAt + INSTALL_TIMEOUT + 15000,
+      logPath: `${appHome()}/.music-install-${startedAt}.log`,
       ytDlpOnly
     };
     this.installMsg = null;
     this.installSuccess = null;
-    this.brewProgress = null;
+    this.installProgress = null;
     setShared(SETUP_KEY, setup);
     cx.notify();
 
-    const brew = await findHomebrew();
-    if (shared(SETUP_KEY)?.logPath !== setup.logPath) return;
-    if (!brew) {
-      await this.finishHomebrewInstall(setup, null, cx);
-      return;
+    let command = ["/bin/sh", "-c", LINUX_INSTALL, "pixel-hq-linux-install", ...packages];
+    if (platform === "macos") {
+      const brew = await findHomebrew();
+      if (shared(SETUP_KEY)?.logPath !== setup.logPath) return;
+      if (!brew) {
+        await this.finishInstall(setup, null, cx);
+        return;
+      }
+      command = [brew, "install", ...packages];
     }
 
     const script = `umask 077
 log=$1
 shift
 {
-  printf 'Starting Homebrew…\\n'
+  printf 'Starting installer…\\n'
   NONINTERACTIVE=1 HOMEBREW_NO_COLOR=1 HOMEBREW_NO_EMOJI=1 "$@"
   result=$?
-  printf '\\n${BREW_EXIT_MARKER}%s\\n' "$result"
+  printf '\\n${INSTALL_EXIT_MARKER}%s\\n' "$result"
   exit "$result"
 } > "$log" 2>&1`;
-    const result = await exec("/bin/sh", ["-c", script, "pixel-hq-homebrew", setup.logPath, brew, "install", ...packages], { timeout: BREW_TIMEOUT }).catch(() => null);
-    await this.finishHomebrewInstall(setup, result?.code ?? -1, cx);
+    const result = await (platform === "windows"
+      ? exec("powershell", powerShellArgs(windowsInstallScript(setup.logPath, packages)), { timeout: INSTALL_TIMEOUT })
+      : exec("/bin/sh", ["-c", script, "pixel-hq-install", setup.logPath, ...command], { timeout: INSTALL_TIMEOUT })).catch(() => null);
+    await this.finishInstall(setup, result?.code ?? -1, cx);
   }
 
-  async finishHomebrewInstall(setup, exitCode, cx) {
+  async finishInstall(setup, exitCode, cx) {
     const current = shared(SETUP_KEY);
     if (current?.logPath !== setup.logPath || current.verifying) return;
     setShared(SETUP_KEY, {
@@ -303,14 +423,14 @@ shift
           ? "Homebrew was not found. Install Homebrew, then click Re-check."
           : exitCode === 0
             ? "Some dependencies are missing. See the Terminal commands below."
-            : "Homebrew could not finish installing. See the Terminal commands below.";
+            : "Automatic installation failed. Use the setup guide to install manually.";
         this.installMsg = message;
         if (setup.ytDlpOnly) this.error = `Could not install yt-dlp. ${message}`;
       }
     } finally {
       if (shared(SETUP_KEY)?.logPath === setup.logPath) {
         setShared(SETUP_KEY, null);
-        exec("/bin/rm", ["-f", setup.logPath]).catch(() => null);
+        this.removeInstallLog(setup);
       }
     }
   }
@@ -367,7 +487,7 @@ shift
   }
 
   async openTerminal(targetOs, cx) {
-    const detectedPlatform = window()?.platform || (this.depStatus?.platform === "win32" ? "windows" : this.depStatus?.platform === "darwin" ? "macos" : "linux");
+    const detectedPlatform = this.platform();
     if (targetOs !== detectedPlatform) {
       this.installMsg = `Cannot open ${targetOs} terminal on ${detectedPlatform}. Switch to ${detectedPlatform} tab.`;
       if (cx) cx.notify();
@@ -394,70 +514,7 @@ shift
   }
 
   async installYtDlpOnly(cx) {
-    if (this.installing) return;
-    const isMac = window()?.platform === "macos" || this.depStatus?.platform === "darwin";
-    if (isMac) {
-      await this.installWithHomebrew(["yt-dlp"], true, cx);
-      return;
-    }
-
-    this.installMsg = "Installing yt-dlp...";
-    this.installSuccess = null;
-    setShared(SETUP_KEY, {
-      installing: true,
-      msg: this.installMsg,
-      startedAt: Date.now(),
-      expiresAt: Date.now() + 315000
-    });
-    if (cx) cx.notify();
-
-    const isWin = window()?.platform === "windows" || this.depStatus?.platform === "win32";
-
-    try {
-      let ok = false;
-      const pyCandidates = isWin ? ["python", "python3", "py"] : ["python3", "python"];
-      for (const py of pyCandidates) {
-        this.installMsg = `Running ${py} -m pip install yt-dlp...`;
-        if (cx) cx.notify();
-        const r = await exec(py, ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-        if (r?.code === 0) {
-          ok = true;
-          break;
-        }
-      }
-
-      if (!ok) {
-        const pipCandidates = isWin ? ["pip", "pip3"] : ["pip3", "pip"];
-        for (const pip of pipCandidates) {
-          this.installMsg = `Running ${pip} install yt-dlp...`;
-          if (cx) cx.notify();
-          const r = await exec(pip, ["install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-          if (r?.code === 0) {
-            ok = true;
-            break;
-          }
-        }
-      }
-
-      if (!ok && isWin) {
-        this.installMsg = "Running winget install yt-dlp...";
-        if (cx) cx.notify();
-        await exec("winget", ["install", "yt-dlp.yt-dlp", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 90000 }).catch(() => null);
-      }
-
-      this.installMsg = "Verifying yt-dlp installation...";
-      if (cx) cx.notify();
-      const deps = await this.checkDeps(cx);
-      if (deps?.has_ytdlp) {
-        this.finishYtDlpInstall(cx);
-      } else {
-        this.error = "Could not install yt-dlp automatically. Click Open Terminal below to install manually.";
-      }
-    } finally {
-      this.installMsg = null;
-      setShared(SETUP_KEY, null);
-      if (cx) cx.notify();
-    }
+    if (!this.installing) await this.installDependencies(this.platform(), ["yt-dlp"], true, cx);
   }
 
   finishYtDlpInstall(cx) {
@@ -475,84 +532,24 @@ shift
     });
   }
 
+  platform() {
+    return window()?.platform || (this.depStatus?.platform === "win32" ? "windows" : this.depStatus?.platform === "darwin" ? "macos" : "linux");
+  }
+
   async runAutoInstall(targetOs, cx) {
     if (this.installing) return;
-
-    const detectedPlatform = window()?.platform || (this.depStatus?.platform === "win32" ? "windows" : this.depStatus?.platform === "darwin" ? "macos" : "linux");
+    const detectedPlatform = this.platform();
     if (targetOs !== detectedPlatform) {
       this.installMsg = `Cannot run ${targetOs} package manager on ${detectedPlatform}. Switch to ${detectedPlatform} tab.`;
-      if (cx) cx.notify();
+      cx.notify();
       return;
     }
 
-    if (targetOs === "macos") {
-      const packages = [];
-      if (!this.depStatus?.has_python) packages.push("python");
-      if (!this.depStatus?.has_player) packages.push("ffmpeg");
-      if (!this.depStatus?.has_ytdlp) packages.push("yt-dlp");
-      if (packages.length) await this.installWithHomebrew(packages, false, cx);
-      return;
-    }
-
-    this.installMsg = "Installing dependencies... Please wait";
-    setShared(SETUP_KEY, {
-      installing: true,
-      msg: this.installMsg,
-      targetOs,
-      startedAt: Date.now(),
-      expiresAt: Date.now() + 420000
-    });
-    if (cx) cx.notify();
-
-    if (targetOs === "windows") {
-      try {
-        if (!this.depStatus?.has_player) {
-          this.installMsg = "Installing FFmpeg (audio engine)... Please wait";
-          if (cx) cx.notify();
-          await exec("winget", ["install", "Gyan.FFmpeg", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 180000 }).catch(() => null);
-        }
-        if (!this.depStatus?.has_ytdlp) {
-          this.installMsg = "Installing yt-dlp via pip...";
-          if (cx) cx.notify();
-          let ytdlpOk = false;
-          const pyCandidates = ["python", "python3", "py"];
-          for (const py of pyCandidates) {
-            const r = await exec(py, ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-            if (r?.code === 0) { ytdlpOk = true; break; }
-          }
-          if (!ytdlpOk) {
-            await exec("winget", ["install", "yt-dlp.yt-dlp", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 90000 }).catch(() => null);
-          }
-        }
-        this.installMsg = "Installation completed! Verifying dependencies...";
-        await this.checkDeps(cx);
-      } catch {
-        this.installMsg = "Installation failed. Please use Open Terminal.";
-      }
-    } else if (targetOs === "linux") {
-      try {
-        if (!this.depStatus?.has_player) {
-          this.installMsg = "Installing ffmpeg...";
-          if (cx) cx.notify();
-          await exec("sh", ["-c", "which apt-get && sudo apt-get update && sudo apt-get install -y ffmpeg || sudo dnf install -y ffmpeg || sudo pacman -S --noconfirm ffmpeg"], { timeout: 180000 }).catch(() => null);
-        }
-        if (!this.depStatus?.has_ytdlp) {
-          this.installMsg = "Installing yt-dlp via pip...";
-          if (cx) cx.notify();
-          const r = await exec("python3", ["-m", "pip", "install", "--upgrade", "yt-dlp"], { timeout: 45000 }).catch(() => null);
-          if (r?.code !== 0) {
-            await exec("sh", ["-c", "sudo apt-get install -y yt-dlp || sudo dnf install -y yt-dlp || sudo pacman -S --noconfirm yt-dlp"], { timeout: 90000 }).catch(() => null);
-          }
-        }
-        this.installMsg = "Installation completed! Verifying dependencies...";
-        await this.checkDeps(cx);
-      } catch {
-        this.installMsg = "Install failed. Run in Terminal (sudo required).";
-      }
-    }
-
-    setShared(SETUP_KEY, null);
-    if (cx) cx.notify();
+    const packages = [];
+    if (targetOs === "macos" && !this.depStatus?.has_python) packages.push("python");
+    if (!this.depStatus?.has_player) packages.push("ffmpeg");
+    if (!this.depStatus?.has_ytdlp) packages.push("yt-dlp");
+    if (packages.length) await this.installDependencies(targetOs, packages, false, cx);
   }
 
   async play(url, presetTitle, cx) {
@@ -756,7 +753,7 @@ shift
     const isMac = this.guideTab === "macos";
     const isLinux = this.guideTab === "linux";
 
-    const detectedPlatform = window()?.platform || (this.depStatus?.platform === "win32" ? "windows" : this.depStatus?.platform === "darwin" ? "macos" : "linux");
+    const detectedPlatform = this.platform();
     const isCurrentOsTab = this.guideTab === detectedPlatform;
 
     const primaryCmd = isWindows
@@ -1012,7 +1009,7 @@ shift
                 .border_color("#f9e2af44")
                 .gap(6)
                 .child(div().text_size(10.5).font_medium().text_color("#f9e2af").truncate().child(installMsg))
-                .when(Boolean(setup?.logPath), (row) => row.child(this.renderBrewProgress(setup, t)))
+                .when(Boolean(setup?.logPath), (row) => row.child(this.renderInstallProgress(setup)))
             )
           )
           .child(
@@ -1422,7 +1419,7 @@ shift
                   .w_full()
                   .gap(3)
                   .child(div().text_size(10).text_color("#f9e2af").child(installMsg || "Installing yt-dlp..."))
-                  .when(Boolean(setup?.logPath), (row) => row.child(this.renderBrewProgress(setup, t)))
+                  .when(Boolean(setup?.logPath), (row) => row.child(this.renderInstallProgress(setup)))
               )
             )
             .when(!this.installing, (bodyEl) =>

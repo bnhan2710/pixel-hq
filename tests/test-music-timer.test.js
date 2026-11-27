@@ -194,11 +194,11 @@ async function testMacAutoInstall() {
   brewOutput = "==> Fetching downloads for: yt-dlp\n==> Downloading Deno\r==> Pouring deno\n";
   reopened.pollSetup(cx);
   await cx.task;
-  assert.equal(reopened.brewProgress.text, "==> Pouring deno");
+  assert.equal(reopened.installProgress.text, "==> Pouring deno");
   assert.equal(reopened.installing, true);
 
   dependenciesReady = true;
-  brewOutput += "\nPIXEL_HQ_BREW_EXIT=0\n";
+  brewOutput += "\nPIXEL_HQ_INSTALL_EXIT=0\n";
   reopened.pollSetup(cx);
   await cx.task;
   assert.equal(reopened.depStatus.has_python, true);
@@ -221,8 +221,59 @@ async function testMacAutoInstall() {
   brewExitCode = 1;
   await music.installYtDlpOnly(cx);
   assert.equal(music.installing, false);
-  assert.match(music.error, /Homebrew could not finish/);
+  assert.match(music.error, /Automatic installation failed/);
   console.log("PASS: macOS setup reports Homebrew progress, recovers after reopening, and clears the banner without replaying active audio");
+}
+
+async function testLinuxAndWindowsInstallProgress() {
+  const source = readFileSync(new URL("../mods/company-music/main.js", import.meta.url), "utf8");
+  const setupKey = "pixel-hq.music-setup";
+
+  for (const platform of ["linux", "windows"]) {
+    const values = new Map();
+    const calls = [];
+    let release;
+    const installation = new Promise((resolve) => { release = resolve; });
+    const Music = runInNewContext(source.replace(/^import .+\n/gm, "").replace("export default class", "class") +
+      "\nCompanyMusic", {
+      View: class {},
+      appHome: () => platform === "windows" ? "C:/Users/Test's App/herdr" : "/home/test/herdr",
+      window: () => ({ platform }),
+      shared: (key) => values.get(key),
+      setShared: (key, value) => values.set(key, value),
+      exec: async (command, args) => {
+        calls.push([command, args]);
+        if (command === "/usr/bin/tail" || args.at(-1).includes("Get-Content")) {
+          return { code: 0, stdout: "Collecting yt-dlp\n\x1b[2KDownloading yt_dlp.whl (3.3 MB)\r" };
+        }
+        if (command === "/bin/rm" || args.at(-1).includes("Remove-Item")) return { code: 0 };
+        await installation;
+        return { code: 0 };
+      },
+    });
+    const music = new Music();
+    music.depStatus = { has_player: false, has_ytdlp: false };
+    music.checkDeps = async () => ({ has_player: true, has_ytdlp: true });
+    const cx = { notify() {}, task: null, spawn(callback) { this.task = callback(this); } };
+    const install = music.runAutoInstall(platform, cx);
+    const [command, args] = calls[0];
+    assert.match(values.get(setupKey).msg, /Installing ffmpeg, yt-dlp/);
+    if (platform === "windows") {
+      assert.equal(command, "powershell");
+      assert.match(args.at(-1), /'ffmpeg', 'yt-dlp'/);
+      assert.match(args.at(-1), /Test''s App/);
+    } else {
+      assert.equal(command, "/bin/sh");
+      assert.deepEqual(Array.from(args.slice(-2)), ["ffmpeg", "yt-dlp"]);
+    }
+    music.pollSetup(cx);
+    await cx.task;
+    assert.equal(music.installProgress.text, "Downloading yt_dlp.whl (3.3 MB)");
+    release();
+    await install;
+    assert.equal(music.installing, false);
+  }
+  console.log("PASS: Linux and Windows share live installer output and clear completed setup");
 }
 
 function testMusicBoxDisableToggle() {
@@ -322,5 +373,6 @@ testTimerNoDoubleCountingAcrossTicks();
 testPauseAndResumeTransitions();
 await testBinaryResolutionCaching();
 await testMacAutoInstall();
+await testLinuxAndWindowsInstallProgress();
 testMusicBoxDisableToggle();
 testMusicBoxHotkeyAndNotification();

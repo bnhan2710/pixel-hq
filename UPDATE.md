@@ -49,7 +49,8 @@ Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back t
 Tag the commit you want to ship and push that tag.
 
 ```sh
-git tag v1.8.7
+git fetch origin main
+git tag v1.8.7 origin/main
 git push origin v1.8.7
 ```
 

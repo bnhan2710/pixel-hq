@@ -5,6 +5,9 @@ import { theme, run, shared, setShared, closeOverlay, checking, appHome, exec, w
 const MONO = "JetBrains Mono, Menlo, monospace";
 const VOLUME_KEY = "pixel-hq.music.volume";
 const VOLUME_STEP = 10;
+const SETUP_KEY = "pixel-hq.music-setup";
+const BREW_TIMEOUT = 600000;
+const BREW_EXIT_MARKER = "PIXEL_HQ_BREW_EXIT=";
 
 const notch = (c, [l, r, t, b]) => [
   div().absolute().left(l + 2).right(r + 2).top(t).bottom(b).bg(c),
@@ -156,9 +159,10 @@ export default class CompanyMusic extends View {
     });
     this.showGuide = false;
     this.guideTab = window()?.platform === "windows" ? "windows" : window()?.platform === "macos" ? "macos" : "linux";
-    this.installing = false;
     this.installMsg = null;
     this.installSuccess = null;
+    this.brewProgress = null;
+    this.readingBrewProgress = false;
     this.history = shared("pixel-hq.music")?.history || [];
     const curMusic = shared("pixel-hq.music");
     if (curMusic?.error && curMusic.status !== "error") {
@@ -172,24 +176,16 @@ export default class CompanyMusic extends View {
     this.handle.focus();
     this.urlInput.focus();
 
-    const setup = shared("pixel-hq.music-setup");
-    if (setup?.installing) {
-      if (!setup.startedAt || Date.now() - setup.startedAt > 180000) {
-        setShared("pixel-hq.music-setup", { installing: false, msg: null });
-      } else {
-        this.installing = true;
-        this.installMsg = setup.msg;
-      }
-    }
-
     if (checking()) return;
 
     cx.timer.after(150, () => this.urlInput.focus());
     this.checkDeps(cx);
     this.loadHistory(cx);
     this.syncStatus(cx);
+    this.pollSetup(cx);
 
     cx.timer.every(1000, (cx) => {
+      if (this.installing) this.pollSetup(cx);
       const music = shared("pixel-hq.music");
       if (music?.playing) cx.notify();
     });
@@ -199,6 +195,124 @@ export default class CompanyMusic extends View {
       if (music?.status !== "buffering" && !music?.playing) return;
       this.syncStatus(cx);
     });
+  }
+
+  get installing() {
+    return Boolean(shared(SETUP_KEY)?.installing);
+  }
+
+  renderBrewProgress(setup, t) {
+    const text = this.brewProgress?.logPath === setup?.logPath && this.brewProgress?.text;
+    return div()
+      .w_full()
+      .truncate()
+      .text_size(10)
+      .text_color(t.muted)
+      .tooltip(text || "Waiting for Homebrew output…")
+      .child(text || "Waiting for Homebrew output…");
+  }
+
+  pollSetup(cx) {
+    const setup = shared(SETUP_KEY);
+    if (!setup?.installing || this.readingBrewProgress) return;
+    const expiresAt = setup.expiresAt ?? setup.startedAt + 180000;
+    if (!setup.startedAt || Date.now() >= expiresAt) {
+      setShared(SETUP_KEY, null);
+      if (setup.logPath) exec("/bin/rm", ["-f", setup.logPath]).catch(() => null);
+      this.installMsg = "Installation timed out. Click Re-check or use Open Terminal.";
+      if (setup.ytDlpOnly) this.error = "yt-dlp installation timed out. Try again or use Open Terminal.";
+      cx.notify();
+      return;
+    }
+    if (!setup.logPath || setup.verifying) return;
+
+    this.readingBrewProgress = true;
+    cx.spawn(async (cx) => {
+      try {
+        const result = await exec("/usr/bin/tail", ["-c", "4096", setup.logPath], { timeout: 2000 }).catch(() => null);
+        const current = shared(SETUP_KEY);
+        if (current?.logPath !== setup.logPath || current.verifying || result?.code !== 0) return;
+        const lines = result.stdout.split(/[\r\n]+/).map((line) => line.trim()).filter(Boolean);
+        const lastLine = lines.pop();
+        const exitCode = lastLine?.startsWith(BREW_EXIT_MARKER) ? Number(lastLine.slice(BREW_EXIT_MARKER.length)) : null;
+        const detail = exitCode === null ? lastLine : lines.pop();
+        if (detail && this.brewProgress?.text !== detail) {
+          this.brewProgress = { logPath: setup.logPath, text: detail };
+          cx.notify();
+        }
+        if (exitCode !== null) await this.finishHomebrewInstall(setup, exitCode, cx);
+      } finally {
+        this.readingBrewProgress = false;
+      }
+    });
+  }
+
+  async installWithHomebrew(packages, ytDlpOnly, cx) {
+    const startedAt = Date.now();
+    const setup = {
+      installing: true,
+      msg: ytDlpOnly ? "Installing yt-dlp via Homebrew..." : `Installing via Homebrew: ${packages.join(", ")}...`,
+      startedAt,
+      expiresAt: startedAt + BREW_TIMEOUT + 15000,
+      logPath: `${appHome()}/.music-homebrew-${startedAt}.log`,
+      ytDlpOnly
+    };
+    this.installMsg = null;
+    this.installSuccess = null;
+    this.brewProgress = null;
+    setShared(SETUP_KEY, setup);
+    cx.notify();
+
+    const brew = await findHomebrew();
+    if (shared(SETUP_KEY)?.logPath !== setup.logPath) return;
+    if (!brew) {
+      await this.finishHomebrewInstall(setup, null, cx);
+      return;
+    }
+
+    const script = `umask 077
+log=$1
+shift
+{
+  printf 'Starting Homebrew…\\n'
+  NONINTERACTIVE=1 HOMEBREW_NO_COLOR=1 HOMEBREW_NO_EMOJI=1 "$@"
+  result=$?
+  printf '\\n${BREW_EXIT_MARKER}%s\\n' "$result"
+  exit "$result"
+} > "$log" 2>&1`;
+    const result = await exec("/bin/sh", ["-c", script, "pixel-hq-homebrew", setup.logPath, brew, "install", ...packages], { timeout: BREW_TIMEOUT }).catch(() => null);
+    await this.finishHomebrewInstall(setup, result?.code ?? -1, cx);
+  }
+
+  async finishHomebrewInstall(setup, exitCode, cx) {
+    const current = shared(SETUP_KEY);
+    if (current?.logPath !== setup.logPath || current.verifying) return;
+    setShared(SETUP_KEY, {
+      ...setup,
+      verifying: true,
+      expiresAt: Date.now() + 25000,
+      msg: setup.ytDlpOnly ? "Verifying yt-dlp installation..." : "Verifying audio dependencies..."
+    });
+    try {
+      const deps = await this.checkDeps(cx);
+      if (shared(SETUP_KEY)?.logPath !== setup.logPath) return;
+      if (setup.ytDlpOnly && deps?.has_ytdlp) {
+        this.finishYtDlpInstall(cx);
+      } else if (!deps?.has_player || !deps?.has_ytdlp) {
+        const message = exitCode === null
+          ? "Homebrew was not found. Install Homebrew, then click Re-check."
+          : exitCode === 0
+            ? "Some dependencies are missing. See the Terminal commands below."
+            : "Homebrew could not finish installing. See the Terminal commands below.";
+        this.installMsg = message;
+        if (setup.ytDlpOnly) this.error = `Could not install yt-dlp. ${message}`;
+      }
+    } finally {
+      if (shared(SETUP_KEY)?.logPath === setup.logPath) {
+        setShared(SETUP_KEY, null);
+        exec("/bin/rm", ["-f", setup.logPath]).catch(() => null);
+      }
+    }
   }
 
   async syncStatus(cx) {
@@ -228,12 +342,12 @@ export default class CompanyMusic extends View {
     }
     this.depStatus = { ...res, has_python: true };
     this.showGuide = !res.has_player;
-    if (res.has_player) {
-      this.installing = false;
-      this.installMsg = null;
-      setShared("pixel-hq.music-setup", { installing: false, msg: null });
+    const setup = shared(SETUP_KEY);
+    if (setup?.installing && !setup.expiresAt && res.has_player && res.has_ytdlp) {
+      setShared(SETUP_KEY, null);
     }
     if (cx) cx.notify();
+    return this.depStatus;
   }
 
   async loadHistory(cx) {
@@ -281,25 +395,25 @@ export default class CompanyMusic extends View {
 
   async installYtDlpOnly(cx) {
     if (this.installing) return;
-    this.installing = true;
+    const isMac = window()?.platform === "macos" || this.depStatus?.platform === "darwin";
+    if (isMac) {
+      await this.installWithHomebrew(["yt-dlp"], true, cx);
+      return;
+    }
+
     this.installMsg = "Installing yt-dlp...";
     this.installSuccess = null;
-    setShared("pixel-hq.music-setup", {
+    setShared(SETUP_KEY, {
       installing: true,
       msg: this.installMsg,
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      expiresAt: Date.now() + 315000
     });
     if (cx) cx.notify();
 
     const isWin = window()?.platform === "windows" || this.depStatus?.platform === "win32";
-    const isMac = window()?.platform === "macos" || this.depStatus?.platform === "darwin";
 
-    if (isMac) {
-      this.installMsg = "Installing yt-dlp via Homebrew...";
-      if (cx) cx.notify();
-      const brew = await findHomebrew();
-      if (brew) await exec(brew, ["install", "yt-dlp"], { timeout: 90000 }).catch(() => null);
-    } else {
+    try {
       let ok = false;
       const pyCandidates = isWin ? ["python", "python3", "py"] : ["python3", "python"];
       for (const py of pyCandidates) {
@@ -330,31 +444,35 @@ export default class CompanyMusic extends View {
         if (cx) cx.notify();
         await exec("winget", ["install", "yt-dlp.yt-dlp", "--accept-package-agreements", "--accept-source-agreements", "--disable-interactivity"], { timeout: 90000 }).catch(() => null);
       }
-    }
 
-    this.installMsg = "Verifying yt-dlp installation...";
-    if (cx) cx.notify();
-    await this.checkDeps(cx);
-
-    this.installing = false;
-    setShared("pixel-hq.music-setup", { installing: false, msg: null });
-
-    if (this.depStatus?.has_ytdlp) {
-      this.error = null;
-      this.installSuccess = "yt-dlp installed successfully! Starting playback...";
+      this.installMsg = "Verifying yt-dlp installation...";
       if (cx) cx.notify();
-      const val = this.urlInput.value()?.trim();
-      if (val) {
-        cx.timer.after(600, () => this.play(val, null, cx));
+      const deps = await this.checkDeps(cx);
+      if (deps?.has_ytdlp) {
+        this.finishYtDlpInstall(cx);
+      } else {
+        this.error = "Could not install yt-dlp automatically. Click Open Terminal below to install manually.";
       }
-      cx.timer.after(4000, () => {
-        this.installSuccess = null;
-        if (cx) cx.notify();
-      });
-    } else {
-      this.error = "Could not install yt-dlp automatically. Click Open Terminal below to install manually.";
+    } finally {
+      this.installMsg = null;
+      setShared(SETUP_KEY, null);
       if (cx) cx.notify();
     }
+  }
+
+  finishYtDlpInstall(cx) {
+    const val = this.urlInput.value()?.trim();
+    const music = shared("pixel-hq.music");
+    const startPlayback = val && !(music?.url === val && (music.playing || music.status === "buffering"));
+    this.error = null;
+    this.installSuccess = startPlayback
+      ? "yt-dlp installed successfully! Starting playback..."
+      : "yt-dlp installed successfully!";
+    if (startPlayback) cx.timer.after(600, (cx) => this.play(val, null, cx));
+    cx.timer.after(4000, (cx) => {
+      this.installSuccess = null;
+      cx.notify();
+    });
   }
 
   async runAutoInstall(targetOs, cx) {
@@ -367,13 +485,22 @@ export default class CompanyMusic extends View {
       return;
     }
 
-    this.installing = true;
+    if (targetOs === "macos") {
+      const packages = [];
+      if (!this.depStatus?.has_python) packages.push("python");
+      if (!this.depStatus?.has_player) packages.push("ffmpeg");
+      if (!this.depStatus?.has_ytdlp) packages.push("yt-dlp");
+      if (packages.length) await this.installWithHomebrew(packages, false, cx);
+      return;
+    }
+
     this.installMsg = "Installing dependencies... Please wait";
-    setShared("pixel-hq.music-setup", {
+    setShared(SETUP_KEY, {
       installing: true,
       msg: this.installMsg,
       targetOs,
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      expiresAt: Date.now() + 420000
     });
     if (cx) cx.notify();
 
@@ -402,25 +529,6 @@ export default class CompanyMusic extends View {
       } catch {
         this.installMsg = "Installation failed. Please use Open Terminal.";
       }
-    } else if (targetOs === "macos") {
-      const brew = await findHomebrew();
-      if (brew) {
-        const packages = [];
-        if (!this.depStatus?.has_python) packages.push("python");
-        if (!this.depStatus?.has_player) packages.push("ffmpeg");
-        if (!this.depStatus?.has_ytdlp) packages.push("yt-dlp");
-        if (packages.length) {
-          this.installMsg = `Installing via Homebrew: ${packages.join(", ")}...`;
-          if (cx) cx.notify();
-          const result = await exec(brew, ["install", ...packages], { timeout: 180000 }).catch(() => null);
-          await this.checkDeps(cx);
-          if (result?.code !== 0 || !this.depStatus?.has_player || !this.depStatus?.has_ytdlp) {
-            this.installMsg = "Some dependencies are missing. See the Terminal commands below.";
-          }
-        }
-      } else {
-        this.installMsg = "Homebrew was not found. Install Homebrew, then click Re-check.";
-      }
     } else if (targetOs === "linux") {
       try {
         if (!this.depStatus?.has_player) {
@@ -443,11 +551,7 @@ export default class CompanyMusic extends View {
       }
     }
 
-    this.installing = false;
-    setShared("pixel-hq.music-setup", {
-      installing: false,
-      msg: this.installMsg
-    });
+    setShared(SETUP_KEY, null);
     if (cx) cx.notify();
   }
 
@@ -663,9 +767,9 @@ export default class CompanyMusic extends View {
 
     const pmLabel = isWindows ? "winget" : isMac ? "brew" : "apt";
 
-    const setup = shared("pixel-hq.music-setup");
-    const isInstalling = Boolean(this.installing || setup?.installing);
-    const installMsg = this.installMsg || setup?.msg;
+    const setup = shared(SETUP_KEY);
+    const isInstalling = Boolean(setup?.installing);
+    const installMsg = setup?.logPath ? setup.msg : this.installMsg || setup?.msg;
 
     const copyBtn = (cmd, label) => {
       const isCopied = this.copiedCmd === cmd;
@@ -899,7 +1003,7 @@ export default class CompanyMusic extends View {
           .gap(8)
           .when(Boolean(installMsg), (el) =>
             el.child(
-              h_flex()
+              v_flex()
                 .w_full()
                 .px(10)
                 .py(6)
@@ -907,9 +1011,8 @@ export default class CompanyMusic extends View {
                 .border_1()
                 .border_color("#f9e2af44")
                 .gap(6)
-                .items_center()
-                .child(div().text_size(12).child("⏳"))
                 .child(div().text_size(10.5).font_medium().text_color("#f9e2af").truncate().child(installMsg))
+                .when(Boolean(setup?.logPath), (row) => row.child(this.renderBrewProgress(setup, t)))
             )
           )
           .child(
@@ -931,7 +1034,7 @@ export default class CompanyMusic extends View {
                           .text_color(isInstalling ? "#cdd6f4" : "#11111b")
                           .cursor_pointer()
                           .hover((s) => s.opacity(0.88))
-                          .on_click((_e, cx) => this.runAutoInstall(this.guideTab, cx))
+                          .on_click((_e, cx) => cx.spawn((cx) => this.runAutoInstall(this.guideTab, cx)))
                       )
                       .when(!isCurrentOsTab, (el) =>
                         el
@@ -988,7 +1091,7 @@ export default class CompanyMusic extends View {
                       .font_semibold()
                       .text_color("#cdd6f4")
                       .hover((s) => s.bg("#45475a"))
-                      .on_click((_e, cx) => this.checkDeps(cx))
+                      .on_click((_e, cx) => cx.spawn((cx) => this.checkDeps(cx)))
                       .child("🔄 Re-check")
                   )
               )
@@ -1020,6 +1123,8 @@ export default class CompanyMusic extends View {
       return this.renderSetupGuide(t);
     }
 
+    const setup = shared(SETUP_KEY);
+    const installMsg = setup?.logPath ? setup.msg : this.installMsg || setup?.msg;
     const music = shared("pixel-hq.music") ?? { playing: false, status: "idle", title: "", url: "" };
     const isPlaying = Boolean(music.playing);
     const isBuffering = music.status === "buffering" || this.busy;
@@ -1285,7 +1390,7 @@ export default class CompanyMusic extends View {
                           .font_bold()
                           .text_color("#89b4fa")
                           .hover((s) => s.bg("#89b4fa44"))
-                          .on_click((_e, cx) => this.installYtDlpOnly(cx))
+                          .on_click((_e, cx) => cx.spawn((cx) => this.installYtDlpOnly(cx)))
                           .child("⚡ INSTALL YT-DLP")
                       )
                   )
@@ -1313,10 +1418,11 @@ export default class CompanyMusic extends View {
             )
             .when(this.installing, (bodyEl) =>
               bodyEl.child(
-                h_flex()
-                  .gap(6)
-                  .items_center()
-                  .child(div().text_size(10).text_color("#f9e2af").child(this.installMsg || "Installing yt-dlp..."))
+                v_flex()
+                  .w_full()
+                  .gap(3)
+                  .child(div().text_size(10).text_color("#f9e2af").child(installMsg || "Installing yt-dlp..."))
+                  .when(Boolean(setup?.logPath), (row) => row.child(this.renderBrewProgress(setup, t)))
               )
             )
             .when(!this.installing, (bodyEl) =>

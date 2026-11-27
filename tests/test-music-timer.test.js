@@ -139,18 +139,37 @@ async function testBinaryResolutionCaching() {
 
 async function testMacAutoInstall() {
   const source = readFileSync(new URL("../mods/company-music/main.js", import.meta.url), "utf8");
+  const setupKey = "pixel-hq.music-setup";
   const installed = [];
+  const values = new Map();
+  const timers = [];
+  let brewOutput = "";
+  let brewExitCode = 0;
+  let dependenciesReady = false;
+  let finishInstall;
+  const installResult = new Promise((resolve) => { finishInstall = resolve; });
   const context = {
     View: class {},
     appHome: () => "/Users/test/.config/herdr-app",
     window: () => ({ platform: "macos" }),
-    setShared() {},
+    shared: (key) => values.get(key),
+    setShared: (key, value) => values.set(key, value),
     exec: async (bin, args) => {
-      if (bin === "/opt/homebrew/bin/brew") {
-        if (args[0] === "install") installed.push(...args.slice(1));
-        return { code: 0 };
+      if (bin === "/opt/homebrew/bin/brew") return { code: 0 };
+      if (bin === "/bin/sh") {
+        assert.deepEqual(Array.from(args.slice(4, 6)), ["/opt/homebrew/bin/brew", "install"]);
+        assert.ok(args[1].includes('} > "$log" 2>&1'));
+        installed.push(...args.slice(6));
+        await installResult;
+        return { code: brewExitCode };
       }
-      if (bin === "/opt/homebrew/bin/python3" && installed.includes("python")) {
+      if (bin === "/usr/bin/tail") {
+        assert.equal(args.at(-1), values.get(setupKey).logPath);
+        return { code: 0, stdout: brewOutput };
+      }
+      if (bin === "/bin/rm") return { code: 0 };
+      if (bin === "/opt/homebrew/bin/python3" && dependenciesReady) {
+        assert.equal(values.get(setupKey)?.verifying, true);
         return { code: 0, stdout: '{"status":"ok","has_player":true,"has_ytdlp":true}' };
       }
       throw new Error("Executable missing");
@@ -159,15 +178,51 @@ async function testMacAutoInstall() {
   const Music = runInNewContext(source.replace(/^import .+\n/gm, "").replace("export default class", "class") +
     "\nCompanyMusic", context);
   const music = new Music();
-  const cx = { notify() {} };
+  const cx = {
+    notify() {},
+    task: null,
+    spawn(callback) { this.task = callback(this); },
+    timer: { after: (ms) => timers.push(ms) },
+  };
   await music.checkDeps(cx);
   assert.equal(music.showGuide, true);
-  await music.runAutoInstall("macos", cx);
+  const install = music.runAutoInstall("macos", cx);
+  await new Promise(setImmediate);
   assert.deepEqual(installed, ["python", "ffmpeg", "yt-dlp"]);
-  assert.equal(music.depStatus.has_python, true);
-  assert.equal(music.showGuide, false);
+
+  const reopened = new Music();
+  brewOutput = "==> Fetching downloads for: yt-dlp\n==> Downloading Deno\r==> Pouring deno\n";
+  reopened.pollSetup(cx);
+  await cx.task;
+  assert.equal(reopened.brewProgress.text, "==> Pouring deno");
+  assert.equal(reopened.installing, true);
+
+  dependenciesReady = true;
+  brewOutput += "\nPIXEL_HQ_BREW_EXIT=0\n";
+  reopened.pollSetup(cx);
+  await cx.task;
+  assert.equal(reopened.depStatus.has_python, true);
+  assert.equal(reopened.showGuide, false);
+  assert.equal(reopened.installing, false);
+  finishInstall();
+  await install;
   assert.equal(music.installing, false);
-  console.log("PASS: macOS setup installs missing tools through Homebrew and verifies them");
+
+  const url = "https://www.youtube.com/watch?v=test";
+  music.urlInput = { value: () => url };
+  values.set("pixel-hq.music", { url, playing: true });
+  await music.installYtDlpOnly(cx);
+  assert.deepEqual(installed, ["python", "ffmpeg", "yt-dlp", "yt-dlp"]);
+  assert.equal(music.installing, false);
+  assert.equal(music.installSuccess, "yt-dlp installed successfully!");
+  assert.deepEqual(timers, [4000]);
+
+  dependenciesReady = false;
+  brewExitCode = 1;
+  await music.installYtDlpOnly(cx);
+  assert.equal(music.installing, false);
+  assert.match(music.error, /Homebrew could not finish/);
+  console.log("PASS: macOS setup reports Homebrew progress, recovers after reopening, and clears the banner without replaying active audio");
 }
 
 function testMusicBoxDisableToggle() {

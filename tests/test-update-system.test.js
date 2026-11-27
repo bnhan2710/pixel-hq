@@ -4,15 +4,19 @@ const path = require("node:path");
 
 const versionFile = "mods/company-agents/version.json";
 const modFile = "mods/company-agents/updater.js";
-const release = {
-  version: "1.8.7",
-  notes: "View the changelog.",
-  history: [
-    { version: "1.8.6", notes: "Update the preview." },
-    { version: "1.8.5", notes: "Reset the office immediately." },
-    { version: "1.8.4", notes: "Update status lines." },
-  ],
-};
+const mainFile = "mods/company-agents/main.js";
+const commitRef = "a".repeat(40);
+const releases = [
+  { tag_name: "v1.8.6", body: "Update the preview." },
+  { tag_name: "v1.8.7", body: "[urgent]\n\n- View the changelog." },
+  { tag_name: "v1.8.5", body: "Reset the office immediately." },
+  { tag_name: "v1.8.4", body: "Update status lines." },
+  { tag_name: "v1.8.8", body: "Unpublished changes.", draft: true },
+  { tag_name: "v1.8.9", body: "Prerelease changes.", prerelease: true },
+  { tag_name: "test", body: "Non-version tag." },
+];
+const latestNotes = { version: "1.8.7", notes: "- View the changelog." };
+const previousNotes = { version: "1.8.6", notes: "Update the preview." };
 
 async function updateHarness(source, options = {}, state = new Map(), files = new Map()) {
   const requests = [];
@@ -42,14 +46,15 @@ async function updateHarness(source, options = {}, state = new Map(), files = ne
     notify: (notification) => notifications.push(notification),
     fetch: async (url) => {
       requests.push(url);
-      if (url.endsWith("/commits/main") && !options.fallback) return response({ sha: "commit-ref" });
-      if (url.includes("/git/trees/commit-ref?")) return response({
+      if (url.includes("/releases?")) return response(options.releases ?? releases);
+      if (url.endsWith("/commits/refs/tags/v1.8.7") && !options.missingTag) return response({ sha: commitRef });
+      if (url.includes(`/git/trees/${commitRef}?`) && !options.fallback) return response({
         sha: "tree-ref",
-        tree: [versionFile, modFile].map(path => ({ type: "blob", path })),
+        tree: [versionFile, modFile, mainFile].map(path => ({ type: "blob", path })),
       });
       if (options.hang && url.includes("raw.githubusercontent.com")) return new Promise(() => {});
-      if (!options.missingVersion && url.split("?")[0].endsWith(versionFile)) return response(release);
-      if (url.split("?")[0].endsWith(modFile)) return response("updated script");
+      if (!options.missingFile && url.endsWith(`/${commitRef}/${mainFile}`)) return response("updated main");
+      if (url.endsWith(`/${commitRef}/${modFile}`)) return response("updated updater");
       return { ok: false, status: 404 };
     },
   };
@@ -69,13 +74,16 @@ updateHarness.nextId = 0;
 async function testUpdateBehavior(source) {
   const success = await updateHarness(source);
   const available = await success.mod.checkPixelHqUpdate(false);
-  assert.deepEqual(available.releases, [{ version: release.version, notes: release.notes }, ...release.history]);
+  assert.deepEqual(available.releases, [latestNotes]);
+  assert.equal(available.isUrgent, true);
   await success.mod.executePixelHqUpdate(success.cx);
-  assert.deepEqual(success.writes, [`/app/${modFile}`, `/app/${versionFile}`]);
-  assert.ok(success.requests.every(url => !url.includes("/tree-ref/")));
+  assert.deepEqual(success.writes, [`/app/${modFile}`, `/app/${mainFile}`]);
+  assert.ok(success.requests.some(url => url.endsWith("/commits/refs/tags/v1.8.7")));
+  assert.ok(success.requests.every(url => !url.includes("/tree-ref/") && !url.endsWith(versionFile)));
+  assert.ok(success.requests.filter(url => url.includes("raw.githubusercontent.com")).every(url => url.includes(`/${commitRef}/`)));
   assert.equal(success.state.get("pixel-hq.updating"), null);
-  assert.equal(success.state.get("pixel-hq.updated").version, release.version);
-  assert.equal(success.state.get("pixel-hq.updated").previousVersion, "1.0.0");
+  assert.equal(success.state.get("pixel-hq.updated").version, latestNotes.version);
+  assert.equal(success.state.get("pixel-hq.updated").previousVersion, "1.8.6");
   assert.equal(success.notifications.at(-1).action.name, "company-agents.changelog");
 
   const installed = { version: "1.8.5", notes: "Reset the office immediately." };
@@ -84,7 +92,7 @@ async function testUpdateBehavior(source) {
   assert.equal(pending.versionLabel, "v1.8.5 → v1.8.7");
   const expected = {
     label: pending.versionLabel,
-    entries: [{ version: release.version, notes: release.notes }, release.history[0]],
+    entries: [latestNotes, previousNotes],
   };
   assert.deepEqual(upgrade.mod.getPixelHqChangelog(installed, pending, null), expected);
   assert.deepEqual(upgrade.mod.getPixelHqChangelog(null, { ...pending, currentVersion: "1.8.6" }, null), {
@@ -102,15 +110,19 @@ async function testUpdateBehavior(source) {
   await upgrade.mod.executePixelHqUpdate(upgrade.cx);
   assert.deepEqual(upgrade.state.get("pixel-hq.updated"), updated);
 
+  const untagged = await updateHarness(source, { releases: releases.filter(row => row.tag_name !== "v1.8.7") });
+  assert.equal(await untagged.mod.checkPixelHqUpdate(false), null);
+  assert.ok(untagged.requests.every(url => url.includes("/releases?")));
+
   const fallback = await updateHarness(source, { fallback: true });
   await fallback.mod.executePixelHqUpdate(fallback.cx);
-  assert.equal(fallback.state.get("pixel-hq.updated").version, release.version);
+  assert.equal(fallback.state.get("pixel-hq.updated").version, latestNotes.version);
 
-  for (const options of [{ missingVersion: true }, { writeError: true }]) {
+  for (const options of [{ missingTag: true }, { missingFile: true }, { writeError: true }]) {
     const failure = await updateHarness(source, options);
     await failure.mod.executePixelHqUpdate(failure.cx);
     assert.equal(failure.notifications.at(-1).level, "error");
-    assert.equal(failure.files.has(`/app/${versionFile}`), false);
+    assert.equal(failure.state.has("pixel-hq.updated"), false);
     assert.equal(failure.state.get("pixel-hq.updating"), null);
   }
 
@@ -124,16 +136,16 @@ async function testUpdateBehavior(source) {
   assert.equal(timeout.state.get("pixel-hq.updating"), null);
   assert.match(timeout.notifications.at(-1).body, /timed out/);
 
-  for (const interruptedFile of [modFile, versionFile]) {
+  for (const interruptedFile of [modFile, mainFile]) {
     const interrupted = await updateHarness(source, { interruptedFile });
     interrupted.mod.executePixelHqUpdate(interrupted.cx);
     await new Promise(resolve => setImmediate(resolve));
     assert.ok(interrupted.state.get("pixel-hq.updating").installing);
     const restarted = await updateHarness(source, {}, interrupted.state, interrupted.files);
     await restarted.mod.restorePixelHqUpdate(restarted.cx);
-    assert.deepEqual(restarted.writes, interruptedFile === modFile ? [`/app/${versionFile}`] : []);
-    assert.equal(restarted.state.get("pixel-hq.updated").version, release.version);
-    assert.equal(restarted.state.get("pixel-hq.updated").previousVersion, "1.0.0");
+    assert.deepEqual(restarted.writes, interruptedFile === modFile ? [`/app/${mainFile}`] : []);
+    assert.equal(restarted.state.get("pixel-hq.updated").version, latestNotes.version);
+    assert.equal(restarted.state.get("pixel-hq.updated").previousVersion, "1.8.6");
     assert.equal(restarted.state.get("pixel-hq.updating"), null);
   }
 

@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish release from tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            exit 0
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+          if [ "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = tag ] &&
+             [ -n "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$RELEASE_TAG")" ]; then
+            notes_flag=--notes-from-tag
+          else
+            notes_flag=--generate-notes
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" "$notes_flag"

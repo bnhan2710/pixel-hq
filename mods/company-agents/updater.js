@@ -2,7 +2,8 @@ import { appHome, readTextFile, writeTextFile, shared, setShared, notify } from 
 
 const REPO_API = "https://api.github.com/repos/bnhan2710/pixel-hq";
 const REPO_RAW = "https://raw.githubusercontent.com/bnhan2710/pixel-hq";
-const VERSION_FILE = "mods/company-agents/version.json";
+const LEGACY_VERSION_FILE = "mods/company-agents/version.json";
+const LAST_LEGACY_VERSION = "1.8.6";
 const UPDATE_TIMEOUT = 120000;
 const PIXEL_HQ_FILES = [
   "layouts/pixel-hq.json",
@@ -81,7 +82,6 @@ const PIXEL_HQ_FILES = [
   "mods/company-toast/main.js",
   "mods/company-toast/mod.json",
   "themes/pixel-hq.json",
-  VERSION_FILE,
 ];
 
 async function github(ref) {
@@ -91,16 +91,32 @@ async function github(ref) {
   return res.ok ? res.json() : null;
 }
 
-async function fetchReleaseFile(ref, path) {
-  return fetch(`${REPO_RAW}/${ref}/${path}${ref === "main" ? `?t=${Date.now()}` : ""}`);
+function fetchReleaseFile(commit, path) {
+  return fetch(`${REPO_RAW}/${commit}/${path}`);
 }
 
-function releaseNotes(release) {
-  if (!release?.version) return [];
-  return [
-    { version: String(release.version), notes: String(release.notes ?? "") },
-    ...(Array.isArray(release.history) ? release.history : []),
-  ];
+function parseRelease(release) {
+  const tag = release?.tag_name;
+  if (release?.draft || release?.prerelease || !/^v\d+\.\d+\.\d+$/.test(tag)) return null;
+  const body = String(release.body ?? "").trim();
+  const marker = body.match(/^\[(\w+)\](?:\s|$)/);
+  const urgent = isUrgentUpdate(marker?.[1]);
+  return { tag, version: tag.slice(1), notes: urgent ? body.slice(marker[0].length).trim() : body, isUrgent: urgent };
+}
+
+async function publishedReleases() {
+  const releases = [];
+  for (let page = 1; ; page++) {
+    const batch = await github(`releases?per_page=100&page=${page}`);
+    if (!Array.isArray(batch)) throw new Error("Could not read Pixel HQ releases from GitHub.");
+    releases.push(...batch.map(parseRelease).filter(Boolean));
+    if (batch.length < 100) return releases.sort((a, b) => compareVersions(b.version, a.version));
+  }
+}
+
+function notesForUpgrade(releases, from, to) {
+  return releases.filter(({ version }) => compareVersions(version, to) <= 0 && compareVersions(version, from) > 0)
+    .map(({ version, notes }) => ({ version, notes }));
 }
 
 function compareVersions(left, right) {
@@ -118,23 +134,20 @@ export function getPixelHqChangelog(installed, pending, updated) {
   if (!target?.version) return null;
   const from = pending ? pending.currentVersion : updated?.version === installed?.version ? updated.previousVersion : null;
   const to = String(target.version);
-  const entries = (pending?.releases ?? releaseNotes(target))
-    .filter(({ version }) => compareVersions(version, to) <= 0 &&
-      (from ? compareVersions(version, from) > 0 : compareVersions(version, to) === 0))
+  const entries = notesForUpgrade(target.releases ?? [{ version: to, notes: target.notes }], from || "0.0.0", to)
+    .filter(({ version }) => from || version === to)
     .sort((a, b) => compareVersions(b.version, a.version));
   return { label: formatTransition(from, to), entries };
 }
 
 export async function readInstalledRelease() {
+  const installed = shared("pixel-hq.updated");
+  if (installed?.tag) return installed;
   try {
-    const release = JSON.parse(await readTextFile(`${appHome()}/${VERSION_FILE}`));
-    if (release?.version) return release;
+    const legacy = JSON.parse(await readTextFile(`${appHome()}/${LEGACY_VERSION_FILE}`));
+    if (legacy?.version) return legacy;
   } catch {}
-  return { version: "1.0.0" };
-}
-
-async function latestCommit() {
-  return (await github("commits/main").catch(() => null))?.sha || "main";
+  return { version: LAST_LEGACY_VERSION };
 }
 
 export function isUrgentUpdate(type) {
@@ -144,40 +157,30 @@ export function isUrgentUpdate(type) {
 
 export async function checkPixelHqUpdate(notifyUser = true) {
   try {
-    const ref = await latestCommit();
-    let res = await fetchReleaseFile(ref, VERSION_FILE).catch(() => null);
-    if (!res?.ok && ref !== "main") res = await fetchReleaseFile("main", VERSION_FILE);
-    if (!res?.ok) return null;
-    const latest = await res.json();
-    if (!latest?.version || shared("pixel-hq.updating")?.expiresAt > Date.now()) return null;
+    const releases = await publishedReleases();
+    if (shared("pixel-hq.updating")?.expiresAt > Date.now()) return null;
     const mine = await readInstalledRelease();
-
-    if (compareVersions(latest.version, mine?.version) <= 0) {
+    const latest = releases[0];
+    if (!latest || compareVersions(latest.version, LAST_LEGACY_VERSION) <= 0 || compareVersions(latest.version, mine.version) <= 0) {
       setShared("pixel-hq.new-version", null);
       return null;
     }
 
-    const curVer = mine?.version ? String(mine.version) : "";
-    const newVer = String(latest.version);
-    const versionLabel = formatTransition(curVer, newVer);
-    const urgent = isUrgentUpdate(latest.type);
+    const versionLabel = formatTransition(mine.version, latest.version);
     const upd = {
-      version: newVer,
-      currentVersion: curVer,
+      ...latest,
+      currentVersion: mine.version,
       versionLabel,
-      type: latest.type ? String(latest.type) : (urgent ? "urgent" : "normal"),
-      isUrgent: urgent,
-      notes: latest.notes ? String(latest.notes) : "",
-      releases: releaseNotes(latest),
+      releases: notesForUpgrade(releases, mine.version, latest.version),
     };
     setShared("pixel-hq.new-version", upd);
 
     const dismissed = shared("pixel-hq.dismissed-version");
     if (notifyUser && dismissed !== upd.version) {
-      if (urgent) {
+      if (upd.isUrgent) {
         notify({
           title: `⚠️ Urgent Pixel HQ update: ${versionLabel}`,
-          body: upd.notes ? `${upd.notes} · Click to update now` : `Critical update ${versionLabel} is out · Click to update now`,
+          body: `Critical update ${versionLabel} is out · Click to update now`,
           level: "warning",
           timeout: 30000,
           action: { name: "company-agents.update" },
@@ -199,25 +202,23 @@ export async function checkPixelHqUpdate(notifyUser = true) {
 }
 
 async function prepareUpdate(ref, active) {
-  const tree = ref === "main" ? null : await github(`git/trees/${ref}?recursive=1`).catch(() => null);
+  const tree = await github(`git/trees/${ref}?recursive=1`).catch(() => null);
   const files = !tree?.truncated && Array.isArray(tree?.tree) ? tree.tree
     .filter((file) => file.type === "blob" && /^(layouts|mods|themes)\//.test(file.path) &&
-      !file.path.endsWith("README.md") && !file.path.endsWith(".png"))
+      file.path !== LEGACY_VERSION_FILE && !file.path.endsWith("README.md") && !file.path.endsWith(".png"))
     .map((file) => file.path) : [];
-  const listed = files.includes(VERSION_FILE);
+  const listed = files.includes("mods/company-agents/main.js");
   const paths = listed ? files : PIXEL_HQ_FILES;
   const changed = [];
-  let release;
 
   for (let index = 0; index < paths.length; index += 8) {
     if (!active()) throw new Error("The update expired. Try again.");
     const batch = paths.slice(index, index + 8);
     const results = await Promise.all(batch.map(async (path) => {
       const res = await fetchReleaseFile(ref, path);
-      if (res.status === 404 && !listed && path !== VERSION_FILE) return null;
+      if (res.status === 404 && !listed && path !== "mods/company-agents/main.js") return null;
       if (!res.ok) throw new Error(`HTTP ${res.status} while fetching ${path}`);
       const content = await res.text();
-      if (path === VERSION_FILE) release = JSON.parse(content);
       const target = `${appHome()}/${path}`;
       const current = await readTextFile(target).catch(() => null);
       return current === content ? null : { path, target, content, current };
@@ -225,28 +226,25 @@ async function prepareUpdate(ref, active) {
     changed.push(...results.filter(Boolean));
   }
 
-  if (!release?.version) throw new Error("The release has no version.");
   const order = ({ path }) => {
-    if (path === VERSION_FILE) return 4;
     if (path === "mods/company-agents/main.js") return 3;
     if (path.startsWith("mods/company-agents/")) return 2;
     if (path === "layouts/pixel-hq.json") return 1;
     return 0;
   };
   changed.sort((a, b) => order(a) - order(b));
-  return { release, changed };
+  return changed;
 }
 
-function completeUpdate(version, previousVersion, changed) {
-  if (previousVersion && compareVersions(previousVersion, version) < 0) {
-    setShared("pixel-hq.updated", { version, previousVersion, at: Date.now() });
-  }
+function completeUpdate(release, previousVersion, changed) {
+  const { version } = release;
+  setShared("pixel-hq.updated", { ...release, previousVersion, at: Date.now() });
   setShared("pixel-hq.new-version", null);
   setShared("pixel-hq.dismissed-version", version);
   setShared("pixel-hq.updating", null);
   notify({
     title: "Pixel HQ updated!",
-    body: changed ? `Successfully updated to v${version}!` : `Pixel HQ is already up to date (v${version}).`,
+    body: changed ? `Successfully updated to v${version}!` : `Pixel HQ is now registered as v${version}.`,
     level: "success",
     timeout: 8000,
     action: { name: "company-agents.changelog" },
@@ -262,13 +260,7 @@ export async function restorePixelHqUpdate(cx) {
     return;
   }
   if (!update?.installing || runningUpdate === update.id) return;
-  const installed = await readInstalledRelease();
-  if (shared("pixel-hq.updating")?.id !== update.id) return;
-  if (update.version && installed.version === update.version) {
-    completeUpdate(update.version, update.previousVersion, true);
-  } else {
-    await executePixelHqUpdate(cx, update);
-  }
+  await executePixelHqUpdate(cx, update);
 }
 
 export async function executePixelHqUpdate(cx, interrupted) {
@@ -291,17 +283,30 @@ export async function executePixelHqUpdate(cx, interrupted) {
       timer = cx.timer.after(Math.max(0, update.expiresAt - Date.now()), () => reject(new Error("The update timed out. Try again.")));
     });
     const active = () => shared("pixel-hq.updating")?.id === update.id && Date.now() < update.expiresAt;
-    const previousVersion = interrupted?.previousVersion ?? (await Promise.race([readInstalledRelease(), deadline])).version;
-    const ref = interrupted?.ref ?? await Promise.race([latestCommit(), deadline]);
-    const { release, changed } = await Promise.race([prepareUpdate(ref, active), deadline]);
-    const installing = { ...update, ref, previousVersion, installing: true };
+    const installed = await Promise.race([readInstalledRelease(), deadline]);
+    const previousVersion = interrupted?.previousVersion ?? installed.version;
+    const releases = interrupted?.release ? null : await Promise.race([publishedReleases(), deadline]);
+    const advertised = shared("pixel-hq.new-version")?.tag;
+    const target = interrupted?.release ?? (advertised ? releases.find(({ tag }) => tag === advertised) : releases[0]);
+    if (!target || compareVersions(target.version, LAST_LEGACY_VERSION) <= 0) throw new Error("No published Pixel HQ release is available.");
+    if (compareVersions(target.version, installed.version) <= 0) {
+      setShared("pixel-hq.new-version", null);
+      return;
+    }
+    const release = interrupted?.release ?? {
+      ...target,
+      releases: notesForUpgrade(releases, previousVersion, target.version),
+    };
+    const ref = interrupted?.ref ?? (await Promise.race([github(`commits/refs/tags/${release.tag}`), deadline]))?.sha;
+    if (!/^[0-9a-f]{40}$/.test(ref)) throw new Error(`Could not resolve release tag ${release.tag}.`);
+    const changed = await Promise.race([prepareUpdate(ref, active), deadline]);
+    const installing = { ...update, ref, release, previousVersion, installing: true };
     if (changed.length && active()) setShared("pixel-hq.updating", installing);
     for (const file of changed) {
       if (!active()) return;
-      if (file.path === VERSION_FILE) setShared("pixel-hq.updating", { ...installing, version: release.version });
       await Promise.race([writeTextFile(file.target, file.content, file.current), deadline]);
     }
-    if (active()) completeUpdate(release.version, previousVersion, changed.length > 0);
+    if (active()) completeUpdate(release, previousVersion, changed.length > 0);
   } catch (err) {
     if (shared("pixel-hq.updating")?.id === update.id) {
       notify({

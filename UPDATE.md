@@ -14,11 +14,11 @@ What lives in your install (`~/.config/herdr-app/`):
 
 ## 1. Press Update now
 
-Click the update pill in the status bar when a new version is available. Pixel HQ downloads the release from GitHub in the background and writes only the files that changed. The status bar shows when the update is running, and a notification reports the result. If the update fails, click the update pill again to retry.
+Click the update pill in the status bar when a new version is available. Pixel HQ downloads the tagged release from GitHub in the background and writes only the files that changed. The status bar shows when the update is running, and a notification reports the result. If the update fails, click the update pill again to retry.
 
 ## Or ask your agent
 
-You can also ask an agent to install the update with this prompt:
+If your installed updater predates tag-based releases, reinstall Pixel HQ from the shared layout once to pick up the new updater. You can also ask an agent to install it with this prompt:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -46,4 +46,11 @@ Ask your agent: "Read ~/.config/herdr-app/AGENTS.md, then put my Pixel HQ back t
 
 ## For the maintainer: announcing a release
 
-In `mods/company-agents/version.json`, move the previous `version` and `notes` into the first entry in `history`, then set the new `version`, `type`, and `notes`. Installed copies check this file on `main` and show the new release notes in the changelog.
+Tag the commit you want to ship and push that tag. Use an annotated tag to supply your own Markdown changelog.
+
+```sh
+git tag -a v1.8.7 -m "Fix stuck updates and improve MusicBox setup on macOS"
+git push origin v1.8.7
+```
+
+The release workflow publishes a GitHub Release for the tag. Annotated tags supply the release notes, and lightweight tags use GitHub's generated notes. Put `[urgent]` on the first line of an annotated tag message for an urgent update notice. Pixel HQ takes the version from the tag, downloads the commit the tag points to, and shows the release notes. Commits pushed to `main` become available for in-app updates when a release tag is published.

@@ -104,11 +104,11 @@ Hoặc làm tay: chép `layouts/`, `mods/` và `themes/` vào `~/.config/herdr-a
 sau đó chọn **pixel-hq** trong Settings > Look. Layout tự mang theme **pixel-hq**, luôn tối kể cả khi hệ thống đang ở chế độ sáng.
 
 Mod là code được tin cậy và Herdr không chạy chúng trong sandbox. Repo này có khoảng 4.200 dòng JavaScript. Các chương trình duy nhất nó chạy là các công cụ cục bộ
-(`mkdir`, `cp`, `open`, `git` để xem mỗi bàn đã sửa gì và tạo worktree khi bạn thuê staff, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Điều duy nhất nó ghi ra ngoài thư mục của mình là plugin trạng thái OpenCode ở mục bên dưới (chỉ khi máy có OpenCode, một lần, không ghi đè). Nó chỉ kết nối tới GitHub: phần kiểm tra cập nhật đọc một file công khai rất nhỏ, còn khi bạn bấm **Update now** thì nó tải các file của repo này (xem "Cập nhật"). Nó không gửi gì về bạn. Hãy đọc code trước khi cài.
+(`mkdir`, `cp`, `open`, `git` để xem mỗi bàn đã sửa gì và tạo worktree khi bạn thuê staff, và Chrome/ImageMagick khi bạn chuyển đổi ảnh động trong trình chỉnh figures). Điều duy nhất nó ghi ra ngoài thư mục của mình là plugin trạng thái OpenCode ở mục bên dưới (chỉ khi máy có OpenCode, một lần, không ghi đè). Nó chỉ kết nối tới GitHub: phần kiểm tra cập nhật đọc thông tin phát hành công khai, còn khi bạn bấm **Update now** thì nó tải các file của repo này (xem "Cập nhật"). Nó không gửi gì về bạn. Hãy đọc code trước khi cài.
 
 ## Cập nhật
 
-Herdr cài layout chia sẻ dưới dạng bản sao thường, nên nó không tự cập nhật. Khi có phiên bản mới, Pixel HQ hiện nút **Update now** trong văn phòng. Nút này mở một cửa sổ nhỏ, tải thẳng từ GitHub các file mới nhất trên nhánh `main` của repo này (danh sách file lấy từ GitHub API, nếu lỗi thì dùng danh sách có sẵn), hiện tiến độ, rồi chỉ ghi đè những file Pixel HQ đã thay đổi trong bản cài: `layouts/pixel-hq.json`, `themes/pixel-hq.json` và các mod `company-*`. Không cần agent nào. Nó luôn cài bản mới nhất, kể cả khi bạn đã bỏ qua vài bản. Nếu tải lỗi, cửa sổ có nút **Retry Auto-Update** hoặc **Use Agent Tab**: nút sau mở tab mới với một agent (agent bạn đang dùng, nếu không thì Claude) chạy câu lệnh bên dưới. Bạn cũng có thể tự nhờ một agent bất kỳ:
+Herdr cài layout chia sẻ dưới dạng bản sao thường. Khi có bản phát hành mới, bấm thông báo cập nhật trên thanh trạng thái. Pixel HQ tải đúng commit của tag trên GitHub và ghi đè các file Pixel HQ có thay đổi. Bấm **Changelog** để xem những gì thay đổi giữa bản đang cài và bản mới. Nếu đang dùng updater cũ, cài lại layout chia sẻ một lần hoặc nhờ agent:
 
 > Read ~/.config/herdr-app/AGENTS.md, then update my Pixel HQ layout to the latest version from herdr.dev/layouts/bnhan2710/pixel-hq. Overwriting my installed pixel-hq files is intended; keep my other layouts and mods.
 
@@ -149,7 +149,7 @@ Herdr chỉ coi một chương trình là agent khi nó báo trạng thái. Clau
 
 ## Thông báo cập nhật
 
-Khi có phiên bản Pixel HQ mới, văn phòng hiện một dòng nhỏ ("Pixel HQ 1.4.0 is out · có gì mới") kèm nút **Update now** (tải và cài các file mới, xem "Cập nhật") và nút **Later** để ẩn đến phiên bản kế tiếp. Để làm vậy, mod `company-agents` đọc một file công khai rất nhỏ, `mods/company-agents/version.json` trên nhánh `main` của repo này, lúc khởi động và mỗi 6 giờ, rồi so với bản trong máy bạn. Nó không gửi gì về bạn. Muốn tắt, xóa `mods/company-agents/version.json` trong bản cài của bạn (cập nhật sẽ đặt nó lại).
+Pixel HQ kiểm tra các bản phát hành công khai trên GitHub lúc khởi động và mỗi 6 giờ. Khi một tag phiên bản được phát hành, thanh trạng thái hiện bản cập nhật. Changelog dùng ghi chú phát hành của các phiên bản trong khoảng nâng cấp.
 
 ## Tuỳ biến theo ý bạn
 

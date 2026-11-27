@@ -231,9 +231,7 @@ export default class WorkspaceStatus extends View {
         const pillBg = urgent ? (t.blocked ?? "#f38ba8") : t.accent;
         const verText = upd?.versionLabel ?? `v${upd.version}`;
         const pillText = urgent ? `⚠️ Urgent update: ${verText}` : `✨ New update: ${verText}`;
-        const tooltip = urgent
-          ? `[Urgent Update] Pixel HQ ${verText} is out${upd.notes ? ` · ${upd.notes}` : ""} · Click to update now`
-          : `Pixel HQ ${verText} is out${upd.notes ? ` · ${upd.notes}` : ""} · Click to update`;
+        const tooltip = `Install Pixel HQ ${verText}`;
         return el.child(
           h_flex().id("update-status-pill").gap(6).items_center().px(7).py(2)
             .bg(pillBg).text_color(t.chrome).cursor_pointer().hover(s => s.opacity(0.85))

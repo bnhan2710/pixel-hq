@@ -2,7 +2,7 @@
 // A viewed done agent stays in Done until left.
 
 import { View, div, svg, image } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input } from "gpui-base";
+import { v_flex, h_flex, InputState, Input, TextView } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, settings, openOverlay, closeOverlay, props, window, layout, appHome, exec, readTextFile, writeTextFile, nextCommand, hc, knownAgents, checking } from "herdr";
 import { figureFor, load } from "./figures.js";
 import { agentOf, speciesOf, duckWidth, duckMood, mood, DUCK_CENTER, IDLE_SNOOZE, IDLE_URGE } from "./duck.js";
@@ -1231,7 +1231,7 @@ export default class Agents extends View {
           .children(entries.map(({ version, notes }) =>
             v_flex().flex_none().gap(4).pr(8).pb(8).border_b(1).border_color(t.raised)
               .when(entries.length > 1, el => el.child(div().font_bold().text_size(11).text_color(t.foreground).child(`v${version}`)))
-              .child(div().text_size(11).text_color(t.muted).whitespace_normal().child(notes || "No release notes published."))
+              .child(TextView.markdown(`release-notes-${version}`, notes || "No release notes published.").raw_html(false).scrollable(false))
           ))));
   }
 

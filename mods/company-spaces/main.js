@@ -681,7 +681,7 @@ export default class Spaces extends View {
       .h(26)
       .justify_center()
       .items_center()
-      .children(pix(w.active ? t.selected : "transparent", RAIL_CELL, 26))
+      .children(pix(w.active ? t.selected : "#00000000", RAIL_CELL, 26))
       .when(!w.active, (el) => el.hover((s) => s.bg(t.hover)))
       .on_click(() => run("space.select", { id: w.id }))
       .child(div().relative().text_color(w.active ? t.foreground : t.muted).child(String(i + 1)))

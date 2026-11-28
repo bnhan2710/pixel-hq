@@ -801,7 +801,7 @@ export default class Agents extends View {
     if (a.status === "blocked") return div().flex_none().px(6).h(18).border(1).border_color(t.blocked + "88").bg(t.blocked + "26").text_size(9.5).font_bold().font_family("JetBrains Mono").text_color(t.blocked).flex().items_center().child("NEEDS YOU");
     // Idle: a ring; done: a dot.
     if (a.status === "idle") return div().size(6).mx(3).flex_none().border(1).border_color(t.idle ?? t.dim);
-    return div().size(6).mx(3).flex_none().bg(a.status === "done" ? color : "transparent");
+    return div().size(6).mx(3).flex_none().bg(a.status === "done" ? color : "#00000000");
   }
 
   async scan(cx) {

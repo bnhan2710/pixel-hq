@@ -114,7 +114,7 @@ export default class CompanyPane extends View {
           .font_family(MONO).font_bold().text_size(11).text_color(t.muted).child(">_");
     const custom = (shared("pixel-hq.names") ?? {})[pane] ?? {};
     const title = custom.name ?? ((((p.program?.agent || p.program?.shell) && p.program.name) || p.title || p.program?.name) || "shell");
-    const chip = (text, color, iconEl) => h_flex().flex_none().gap(5).px(7).h(20).items_center().relative()
+    const chip = (text, color, iconEl, raw) => h_flex().flex_none().gap(5).px(7).h(20).items_center().relative()
       .children(notch(color + "22", [0, 0, 0, 0]))
       .child(div().absolute().left(1).right(1).top(0).h(1).bg(color + "66"))
       .child(div().absolute().left(1).right(1).bottom(0).h(1).bg(color + "66"))
@@ -122,7 +122,21 @@ export default class CompanyPane extends View {
       .child(div().absolute().right(0).top(1).bottom(1).w(1).bg(color + "66"))
       .font_family(MONO).font_bold().text_size(9.5).text_color(color)
       .when(Boolean(iconEl), el => el.child(iconEl))
-      .child(text.toUpperCase());
+      .child(raw ? text : text.toUpperCase());
+    // hc terminal address (same as $HC_TERMINAL_ID in that pane), shown left of the status chip
+    // Double-click copies the address to the clipboard; the chip says "copied" for a moment.
+    const termId = p.terminal
+      ? chip(this.copied === pane ? "copied" : p.terminal, this.copied === pane ? (t.done ?? "#8ec07c") : (t.dim ?? "#9a8f86"), null, true)
+          .id(`pt-${pane}`).h(18).cursor_pointer().tooltip(`hc terminal ${p.terminal} (double-click to copy)`)
+          .on_click((e, cx) => {
+            if (e.click_count < 2) return;
+            cx.stop_propagation();
+            cx.write_to_clipboard(p.terminal);
+            this.copied = pane;
+            cx.notify();
+            cx.timer.after(1200, (cx) => { if (this.copied === pane) { this.copied = null; cx.notify(); } });
+          })
+      : null;
     const status = st === "working" ? chip("typing", "#89b4fa", spinner("#89b4fa", this.frame))
       : st === "blocked" ? chip("needs you", t.blocked ?? "#e8744f", bang(t.blocked ?? "#e8744f"))
       : st === "done" ? chip("shipped", t.done ?? "#8ec07c", tick(t.done ?? "#8ec07c"))
@@ -158,6 +172,7 @@ export default class CompanyPane extends View {
           .child(div().absolute().right(0).top(1).bottom(1).w(1).bg("#89b4fa66"))
           .font_family(MONO).font_bold().text_size(9.5).text_color("#b4befe")
           .child((custom.role ?? ROLE(p)).toUpperCase()), 120)))
+      .when(Boolean(termId), el => el.child(termId))
       .child(div().flex_1().truncate().font_family(MONO).text_size(11).text_color(t.dim).child(folder(p.cwd)))
       .when(Boolean(status), el => el.child(status))
       .when(this.hovered, el => el
